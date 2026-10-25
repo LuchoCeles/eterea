@@ -1,0 +1,25 @@
+import { NextResponse } from "next/server";
+import { ContentKey } from "@/lib/content";
+import { contentKeys, saveContentAndCleanImages } from "@/server/content";
+import { isAdminRequest } from "@/server/auth";
+import { contentSchemas } from "@/lib/content-schema";
+
+export async function PUT(request: Request, { params }: { params: Promise<{ key: string }> }) {
+  if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const { key } = await params;
+  if (!contentKeys.includes(key as ContentKey)) return NextResponse.json({ error: "Sección desconocida." }, { status: 404 });
+
+  try {
+    const body: unknown = await request.json();
+    const data = body && typeof body === "object" && "data" in body ? body.data : body;
+    const uploadedUrls = body && typeof body === "object" && "uploadedUrls" in body && Array.isArray(body.uploadedUrls)
+      ? body.uploadedUrls.filter((url): url is string => typeof url === "string")
+      : [];
+    const parsed = contentSchemas[key as ContentKey].safeParse(data);
+    if (!parsed.success) return NextResponse.json({ error: "El formato del contenido no es válido." }, { status: 400 });
+    const result = await saveContentAndCleanImages(key as ContentKey, parsed.data, uploadedUrls);
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json({ error: "No se pudo guardar el contenido." }, { status: 400 });
+  }
+}

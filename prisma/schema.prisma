@@ -1,0 +1,41 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           String     @id @default(cuid()) @db.VarChar(191)
+  email        String     @unique @db.VarChar(191)
+  passwordHash String     @db.VarChar(255)
+  createdAt    DateTime   @default(now()) @db.DateTime(3)
+  roles        UserRole[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid()) @db.VarChar(191)
+  userId    String   @db.VarChar(191)
+  role      String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model SiteContent {
+  key       String   @id @db.VarChar(64)
+  data      Json
+  updatedAt DateTime @updatedAt @db.DateTime(3)
+}
+
+model Media {
+  id          String   @id @default(cuid()) @db.VarChar(191)
+  contentType String   @db.VarChar(100)
+  bytes       Bytes    @db.LongBlob
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+}

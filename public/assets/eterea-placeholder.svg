@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1500" role="img" aria-labelledby="title">
+  <title id="title">Etérea New Concept</title>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2e9dc"/><stop offset=".52" stop-color="#e7ddcf"/><stop offset="1" stop-color="#d3c5b1"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b9a991" stop-opacity=".04"/><stop offset="1" stop-color="#8f8068" stop-opacity=".34"/></linearGradient>
+  </defs>
+  <rect width="1200" height="1500" fill="url(#paper)"/>
+  <circle cx="830" cy="390" r="260" fill="#fffaf1" fill-opacity=".62"/>
+  <path d="M0 960c175-91 328-80 482 0s287 92 430 10 202-79 288-39v569H0Z" fill="url(#sea)"/>
+  <path d="M0 1090c183-84 315-48 475 22s318 76 454-2 183-65 271-42" fill="none" stroke="#8f8068" stroke-opacity=".42" stroke-width="4"/>
+  <path d="M600 1090c-82-130-67-303 7-434 72 127 90 298-7 434Zm-1-109c-103-41-165-130-170-246 111 51 174 132 170 246Zm2-90c90-37 152-115 164-222-105 45-168 116-164 222Z" fill="#fffaf1" fill-opacity=".4" stroke="#80725d" stroke-opacity=".68" stroke-width="5"/>
+  <text x="600" y="1335" fill="#4c4236" font-family="Georgia,serif" font-size="50" letter-spacing="12" text-anchor="middle">ETÉREA</text>
+  <text x="600" y="1385" fill="#675b4b" font-family="Arial,sans-serif" font-size="17" letter-spacing="8" text-anchor="middle">NEW CONCEPT</text>
+</svg>
