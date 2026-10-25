@@ -6,7 +6,7 @@ import type { HomeSections } from "@/lib/content";
 const sectionLabels: { key: keyof HomeSections; label: string }[] = [
   { key: "promoBar", label: "Barra de promociones" },
   { key: "hero", label: "Banners principales" },
-  { key: "benefits", label: "Beneficios" },
+  { key: "benefits", label: "Franja publicitaria" },
   { key: "categories", label: "Categorías" },
   { key: "newArrivals", label: "Lo nuevo" },
   { key: "offerBanners", label: "Banners de ofertas" },

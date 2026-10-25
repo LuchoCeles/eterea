@@ -37,7 +37,7 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
       <main>
         <HeroCarousel />
 
-        {/* Beneficios */}
+        {/* Franja publicitaria */}
         {homeSections.benefits && <div className="border-b">
           <div className="mx-auto grid max-w-[1600px] grid-cols-1 divide-y px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 md:px-8">
             {benefits.map(({ t, d }, bi) => { const Icon = icons[bi % 3] ?? Waves; return (

@@ -38,24 +38,24 @@ export function TextsEditor({
         />
       </CollapsibleCard>
       <CollapsibleCard
-        title="Beneficios"
-        summary={`${value.benefits.length} beneficios · debajo de los banners`}
+        title="Franja publicitaria"
+        summary={`${value.benefits.length} mensajes de marca · debajo de los banners, como la barra superior`}
       >
         <div className="space-y-2 md:grid md:grid-cols-3 md:items-start">
           {value.benefits.map((benefit, index) => (
             <CollapsibleCard
               key={index}
-              title={`Beneficio ${index + 1}`}
+              title={`Mensaje ${index + 1}`}
               summary={benefit.t || "Sin título"}
             >
               <div className="space-y-3">
                 <Field
-                  label="Título"
+                  label="Texto principal"
                   value={benefit.t}
                   onChange={(next) => benefits.set(index, { t: next })}
                 />
                 <Field
-                  label="Detalle"
+                  label="Texto secundario"
                   value={benefit.d}
                   onChange={(next) => benefits.set(index, { d: next })}
                 />

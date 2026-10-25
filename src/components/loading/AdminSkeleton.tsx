@@ -42,20 +42,11 @@ export function AdminSkeleton() {
   return (
     <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground">
       <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
-        <header
-          className="z-20 flex h-[68px] shrink-0 items-center justify-between gap-4 border-b border-border px-5 sm:h-[74px] sm:px-7 lg:px-9"
-          aria-hidden="true"
-        >
-          <div className="flex items-baseline gap-3 sm:gap-5">
-            <Skeleton className="h-8 w-24 rounded-none" />
-            <Skeleton className="hidden h-3 w-28 rounded-none md:block" />
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Skeleton className="hidden h-4 w-36 rounded-none lg:block" />
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <Skeleton className="h-10 w-24 rounded-full" />
-            <Skeleton className="h-10 w-10 rounded-full" />
-          </div>
+        <header className="z-20 flex h-[68px] shrink-0 items-center gap-3 border-b border-border px-5 sm:h-[74px] sm:gap-5 sm:px-7 lg:px-9">
+          <span className="font-display text-[29px] leading-none tracking-tight sm:text-[33px]">Etérea</span>
+          <span className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:block sm:text-[11px]">
+            Administración
+          </span>
         </header>
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           <main
