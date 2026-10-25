@@ -1,27 +1,5 @@
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function AdminNavSkeleton() {
-  return (
-    <aside
-      className="z-30 shrink-0 border-t border-border bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] sm:order-first sm:w-[205px] sm:border-r sm:border-t-0 sm:bg-card/25 sm:px-3 sm:py-6 lg:w-[210px]"
-      aria-hidden="true"
-    >
-      <Skeleton className="mb-4 ml-3 hidden h-3 w-20 rounded-none sm:block" />
-      <nav className="mx-auto grid max-w-[780px] grid-cols-6 gap-1 py-2 sm:flex sm:flex-col sm:gap-2 sm:py-0">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div
-            key={index}
-            className="flex min-h-[66px] flex-col items-center justify-center gap-2 rounded-2xl px-1 sm:min-h-[52px] sm:flex-row sm:justify-start sm:gap-3 sm:rounded-xl sm:px-3"
-          >
-            <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
-            <Skeleton className="h-3 w-12 rounded-none sm:hidden" />
-            <Skeleton className="hidden h-4 w-28 rounded-none sm:block" />
-          </div>
-        ))}
-      </nav>
-    </aside>
-  );
-}
 
 export function AdminContentSkeleton() {
   return (
@@ -62,13 +40,8 @@ export function AdminContentSkeleton() {
 
 export function AdminSkeleton() {
   return (
-    <div
-      data-theme="dark"
-      className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground"
-      aria-busy="true"
-      aria-label="Cargando panel de administración"
-    >
-      <div className="admin-shell flex h-full w-full flex-col overflow-hidden">
+    <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground">
+      <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
         <header
           className="z-20 flex h-[68px] shrink-0 items-center justify-between gap-4 border-b border-border px-5 sm:h-[74px] sm:px-7 lg:px-9"
           aria-hidden="true"
@@ -85,10 +58,13 @@ export function AdminSkeleton() {
           </div>
         </header>
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-          <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-10 sm:px-7 lg:px-10 xl:px-12">
+          <main
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-7 sm:pb-10 lg:px-10 xl:px-12"
+            aria-busy="true"
+          >
             <AdminContentSkeleton />
           </main>
-          <AdminNavSkeleton />
+          <AdminSidebar />
         </div>
       </div>
     </div>

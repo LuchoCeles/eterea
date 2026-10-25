@@ -26,7 +26,9 @@ export function InstagramEditor({
       <p className="text-sm leading-6 text-muted-foreground">
         Las publicaciones que cargues acá se muestran en la tienda. Si la lista está vacía
         y Instagram está conectado, se muestran sus últimas publicaciones. Pegá enlaces
-        de publicaciones o reels reales de @eterea.newconcept; la portada es opcional.
+        de publicaciones o reels de la cuenta vinculada. Para reproducir videos propios sin pedir
+        inicio de sesión a los visitantes, conectá la cuenta de Instagram arriba. Si Meta no
+        entrega el archivo, la tienda muestra la portada y un enlace.
       </p>
       {value.map((post) => (
         <CollapsibleCard

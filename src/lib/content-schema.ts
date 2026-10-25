@@ -1,6 +1,6 @@
 import { z, type ZodType } from "zod";
 import type { ContentKey } from "@/lib/content";
-import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
+import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 
 const shortText = z.string().max(4000);
 const image = z.string().max(4000);
@@ -51,6 +51,7 @@ const instagramPost = z.object({
   kind: z.enum(["post", "reel"]),
 });
 const whatsapp = z.string().trim().max(30).refine((value) => !value || normalizeWhatsAppNumber(value) !== null);
+const instagramUsername = z.string().trim().max(31).refine((value) => !value || instagramProfileUrl(value) !== null);
 
 export const contentSchemas: Record<ContentKey, ZodType> = {
   promo: z.array(shortText).max(100),
@@ -58,7 +59,7 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
   products: z.array(product).max(500),
   categories: z.array(category).max(100),
   instagram: z.array(instagramPost).max(100),
-  contact: z.object({ whatsapp }).partial().passthrough(),
+  contact: z.object({ whatsapp, instagramUsername }).partial().passthrough(),
   texts: z.object({
     offers,
     homeSections: homeSections.optional(),

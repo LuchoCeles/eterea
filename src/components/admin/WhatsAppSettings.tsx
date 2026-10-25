@@ -25,7 +25,7 @@ export function WhatsAppSettings() {
     setSaving(true);
     setMessage("");
     try {
-      const data = { whatsapp: phone.trim() };
+      const data = { ...contact, whatsapp: phone.trim() };
       await saveContent("contact", data);
       updateContent("contact", data);
       setMessage(data.whatsapp ? "Número de WhatsApp guardado." : "Número de WhatsApp eliminado.");

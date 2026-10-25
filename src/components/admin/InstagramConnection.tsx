@@ -12,15 +12,19 @@ export function InstagramConnection() {
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/admin/instagram", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("No se pudo consultar la conexión.");
-        return response.json() as Promise<{ saved: boolean }>;
+        return response.json() as Promise<{ saved: boolean; username: string | null }>;
       })
-      .then((result) => setStatus(result.saved ? "saved" : "missing"))
+      .then((result) => {
+        setUsername(result.username);
+        setStatus(result.saved ? "saved" : "missing");
+      })
       .catch(() => {
         if (!controller.signal.aborted) setStatus("error");
       });
@@ -38,11 +42,12 @@ export function InstagramConnection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: token.trim() }),
       });
-      const result = (await response.json()) as { saved?: boolean; error?: string };
+      const result = (await response.json()) as { saved?: boolean; username?: string; error?: string };
       if (!response.ok) throw new Error(result.error || "No se pudo guardar el token.");
       setToken("");
       setStatus("saved");
-      setMessage("Token guardado. Las publicaciones recientes aparecerán en el home.");
+      setUsername(result.username ?? null);
+      setMessage("Token guardado. Los videos propios podrán reproducirse en el home sin iniciar sesión.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo guardar el token.");
     } finally {
@@ -53,13 +58,16 @@ export function InstagramConnection() {
   return (
     <CollapsibleCard
       title="Conexión automática con Instagram"
-      summary={status === "saved" ? "Cuenta conectada" : "Vinculá @eterea.newconcept"}
+      summary={status === "saved" ? (username ? `Cuenta conectada: @${username}` : "Cuenta conectada") : "Vinculá una cuenta"}
     >
       <form onSubmit={save} className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Conectá la cuenta de Instagram que publica los videos para reproducirlos en el home sin pedir inicio de sesión a los visitantes.
+        </p>
         <p className="text-sm" role="status">
           {status === "loading" && "Consultando conexión…"}
           {status === "saved" &&
-            "Token guardado. Ingresá otro solamente si necesitás reemplazarlo."}
+            (username ? `Cuenta vinculada: @${username}. Ingresá otro token solamente si necesitás reemplazarlo.` : "Token guardado. Ingresá otro solamente si necesitás reemplazarlo.")}
           {status === "missing" && "Todavía no hay un token guardado."}
           {status === "error" && "No se pudo consultar el estado de la conexión."}
         </p>

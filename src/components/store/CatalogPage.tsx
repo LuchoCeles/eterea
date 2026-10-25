@@ -8,7 +8,7 @@ import { PromoBar } from "@/components/store/PromoBar";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
-import { hasRealDiscount, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
+import { hasRealDiscount, instagramProfileUrl, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
 import { sortProductsByCreation } from "@/lib/products";
 
 const PRODUCTS_PER_PAGE = 12;
@@ -23,6 +23,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   const products = useContent("products");
   const { offers, homeSections } = useContent("texts");
   const contact = useContent("contact");
+  const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
   const regularCandidates = products.filter((product) => product.section === "nuevo");
   const saleCandidates = products.filter((product) => product.section === "sale");
@@ -204,7 +205,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
           <a href="/" className="font-display text-2xl">Etérea</a>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-muted-foreground">
             <a href="/" className="hover:text-foreground">Inicio</a>
-            <a href="https://www.instagram.com/eterea.newconcept/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">Escribinos <ArrowUpRight className="h-3.5 w-3.5" /></a>
+            {instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">Escribinos <ArrowUpRight className="h-3.5 w-3.5" /></a>}
             <a href="/admin" className="hover:text-foreground">Administración</a>
           </div>
         </div>

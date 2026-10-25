@@ -3,6 +3,7 @@
 import { InstagramEditor } from "@/components/store/InstagramEditor";
 import { TextsEditor } from "@/components/admin/AdminTextsEditor";
 import { InstagramConnection } from "@/components/admin/InstagramConnection";
+import { InstagramProfileSettings } from "@/components/admin/InstagramProfileSettings";
 import { WhatsAppSettings } from "@/components/admin/WhatsAppSettings";
 import { AdminProductsEditor } from "@/components/admin/AdminProductsEditor";
 import { AdminCategoriesEditor } from "@/components/admin/AdminCategoriesEditor";
@@ -56,6 +57,7 @@ export function AdminContentEditor({
     <div className="space-y-3 sm:space-y-5">
       <WhatsAppSettings />
       <InstagramConnection />
+      <InstagramProfileSettings />
       <InstagramEditor
         value={draft as InstagramPost[]}
         onChange={onChange}

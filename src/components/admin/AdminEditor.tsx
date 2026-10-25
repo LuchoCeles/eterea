@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
 import { AdminContentEditor } from "@/components/admin/AdminContentEditors";
-import { AdminContentSkeleton } from "@/components/loading/AdminSkeleton";
+import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
 import { useContent, useContentUpdater, saveContent } from "@/components/providers/ContentProvider";
 import type { ContentKey } from "@/lib/content";
 
@@ -14,43 +14,44 @@ type AdminTheme = "light" | "dark";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
 const ADMIN_SECTION_STORAGE_KEY = "eterea-admin-section";
 
-export function AdminEditor({ email }: { email: string }) {
+export function AdminEditor({ email, children }: { email: string; children: ReactNode }) {
   const router = useRouter();
-  const [tab, setTab] = useState<ContentKey>("hero");
-  const [sectionRestored, setSectionRestored] = useState(false);
-  const [theme, setTheme] = useState<AdminTheme>("dark");
+  const pathname = usePathname();
   const contentRef = useRef<HTMLElement>(null);
-  const [uploadedImages, setUploadedImages] = useState<Partial<Record<ContentKey, string[]>>>({});
-  const recordUploadedImages = (key: ContentKey, urls: string[]) => {
-    setUploadedImages((current) => ({
-      ...current,
-      [key]: [...new Set([...(current[key] ?? []), ...urls])],
-    }));
-  };
-  const clearUploadedImages = (key: ContentKey) => {
-    setUploadedImages((current) => ({ ...current, [key]: [] }));
-  };
+  const [theme, setTheme] = useState<AdminTheme>("dark");
+  const activeSection = adminSections.find((section) => pathname === `/admin/${section.slug}`)?.id;
 
   useEffect(() => {
     try {
       const savedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY);
-      if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
-
-      const savedSection = adminSections.find(
-        (section) => section.id === window.localStorage.getItem(ADMIN_SECTION_STORAGE_KEY),
-      );
-      if (savedSection) setTab(savedSection.id);
+      if (savedTheme === "light" || savedTheme === "dark") {
+        setTheme(savedTheme);
+        document.documentElement.dataset.adminTheme = savedTheme;
+      }
     } catch {
-      // Si el navegador bloquea el almacenamiento, se usa la sección inicial.
-    } finally {
-      setSectionRestored(true);
+      // Se conserva el tema inicial si el navegador bloquea el almacenamiento.
     }
   }, []);
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+    if (!activeSection) return;
+    try {
+      window.localStorage.setItem(ADMIN_SECTION_STORAGE_KEY, activeSection);
+    } catch {
+      // La navegación sigue funcionando aunque el navegador bloquee el almacenamiento.
+    }
+  }, [activeSection]);
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
-    window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, nextTheme);
+    document.documentElement.dataset.adminTheme = nextTheme;
+    try {
+      window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      // El cambio de tema sigue funcionando aunque el navegador bloquee el almacenamiento.
+    }
   }
 
   async function signOut() {
@@ -59,52 +60,44 @@ export function AdminEditor({ email }: { email: string }) {
     router.refresh();
   }
 
-  function selectSection(section: ContentKey) {
-    if (section === tab) return;
-    contentRef.current?.scrollTo({ top: 0 });
-    setTab(section);
-    window.localStorage.setItem(ADMIN_SECTION_STORAGE_KEY, section);
-  }
-
-  const currentSection = adminSections.find((section) => section.id === tab);
-
   return (
-    <div
-      data-theme={theme}
-      className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground"
-    >
-      <div className="admin-shell flex h-full w-full flex-col overflow-hidden">
+    <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground">
+      <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
         <AdminHeader email={email} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           <main
             ref={contentRef}
             id="admin-content"
             tabIndex={-1}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-10 focus:outline-none sm:px-7 lg:px-10 xl:px-12"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-7 sm:pb-10 lg:px-10 xl:px-12"
           >
-            {sectionRestored ? (
-              <div className="mx-auto max-w-[1120px]">
-                <Editor
-                  key={tab}
-                  k={tab}
-                  label={currentSection?.label ?? ""}
-                  description={currentSection?.description ?? ""}
-                  uploadedUrls={uploadedImages[tab] ?? []}
-                  onUploaded={(urls) => recordUploadedImages(tab, urls)}
-                  onSaved={() => clearUploadedImages(tab)}
-                />
-              </div>
-            ) : (
-              <AdminContentSkeleton />
-            )}
+            {children}
           </main>
-          {sectionRestored && <AdminSidebar activeSection={tab} onSelect={selectSection} />}
+          <AdminSidebar activeSection={activeSection} />
         </div>
       </div>
     </div>
   );
 }
+export function AdminSectionEditor({ section }: { section: ContentKey }) {
+  const currentSection = adminSections.find((item) => item.id === section);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const fillsPanel = section === "categories" || section === "products";
 
+  return (
+    <div className={fillsPanel ? "w-full" : "mx-auto max-w-[1120px]"}>
+      <Editor
+        key={section}
+        k={section}
+        label={currentSection?.label ?? ""}
+        description={currentSection?.description ?? ""}
+        uploadedUrls={uploadedImages}
+        onUploaded={(urls) => setUploadedImages((current) => [...new Set([...current, ...urls])])}
+        onSaved={() => setUploadedImages([])}
+      />
+    </div>
+  );
+}
 function Editor({
   k,
   label,
@@ -171,7 +164,9 @@ function Editor({
   function canSaveDraft() {
     if (k !== "categories") return true;
     const categories = draftRef.current as { name?: string }[];
-    return categories.every((category) => typeof category.name === "string" && category.name.trim().length > 0);
+    return categories.every(
+      (category) => typeof category.name === "string" && category.name.trim().length > 0,
+    );
   }
 
   async function saveAutomatically() {
@@ -198,13 +193,19 @@ function Editor({
         saveAgain.current = true;
       }
       if (result.cleanupPending) {
-        toast.error(`Se guardaron los cambios, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`);
+        toast.error(
+          `Se guardaron los cambios, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`,
+        );
       }
     } catch (error) {
       if (draftVersion.current !== version) {
         saveAgain.current = true;
       } else {
-        toast.error(error instanceof Error ? error.message : "No se pudo guardar. Revisá la conexión e intentá de nuevo.");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "No se pudo guardar. Revisá la conexión e intentá de nuevo.",
+        );
       }
     } finally {
       savingRef.current = false;
@@ -229,7 +230,7 @@ function Editor({
     return () => window.clearTimeout(timeout);
   }, [draft]);
 
-  if (draft === null) return <AdminContentSkeleton />;
+  if (draft === null) return <AdminSectionSkeleton section={k === "contact" ? "instagram" : k} />;
 
   return (
     <div>

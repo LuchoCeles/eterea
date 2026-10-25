@@ -3,6 +3,7 @@ import { CatalogPage } from "@/components/store/CatalogPage";
 import { ContentProvider } from "@/components/providers/ContentProvider";
 import { loadContentSnapshot } from "@/server/content";
 import { isCurrentUserAdmin } from "@/server/auth";
+import { loadInstagramProfile } from "@/server/instagram";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ categoria?: string | string[] }> }) {
-  const [content, params, isAdmin] = await Promise.all([loadContentSnapshot(), searchParams, isCurrentUserAdmin()]);
+  const [content, params, isAdmin, profile] = await Promise.all([loadContentSnapshot(), searchParams, isCurrentUserAdmin(), loadInstagramProfile()]);
+  if (profile) content.contact = { ...content.contact, instagramUsername: profile.username };
   const requestedCategory = Array.isArray(params.categoria) ? params.categoria[0] : params.categoria;
 
   return (

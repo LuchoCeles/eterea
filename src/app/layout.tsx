@@ -15,7 +15,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-AR">
+    <html lang="es-AR" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try {
+              if (localStorage.getItem("eterea-admin-theme") === "light") {
+                document.documentElement.dataset.adminTheme = "light";
+              }
+            } catch {}`,
+          }}
+        />
+      </head>
       <body>
         <CartProvider>{children}</CartProvider>
         <Toaster />

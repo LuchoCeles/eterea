@@ -7,6 +7,8 @@ export type StoredInstagramToken = {
   iv: string;
   tag: string;
   nextRefreshAt: number;
+  accountId?: string;
+  username?: string;
 };
 
 function encryptionKey(secret: string) {
@@ -14,7 +16,7 @@ function encryptionKey(secret: string) {
   return createHash("sha256").update("eterea-instagram-encryption:").update(secret).digest();
 }
 
-export function encryptInstagramToken(token: string, connectionId: string, nextRefreshAt: number, secret: string): StoredInstagramToken {
+export function encryptInstagramToken(token: string, connectionId: string, nextRefreshAt: number, secret: string, profile?: { accountId?: string; username?: string }): StoredInstagramToken {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
   const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
@@ -25,6 +27,7 @@ export function encryptInstagramToken(token: string, connectionId: string, nextR
     iv: iv.toString("base64"),
     tag: cipher.getAuthTag().toString("base64"),
     nextRefreshAt,
+    ...profile,
   };
 }
 

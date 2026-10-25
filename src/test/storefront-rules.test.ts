@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, productWithoutOffers, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
+import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
 
 const product = { id: "real", name: "Prenda", category: "Vestidos", price: 45000, oldPrice: 60000, tag: "-25%", image: "" };
 
@@ -37,9 +37,14 @@ describe("Reglas de lanzamiento de Etérea", () => {
     assert.equal(instagramPermalink("https://www.instagram.com/p/ABC123/"), "https://www.instagram.com/p/ABC123/");
     assert.equal(instagramPermalink("https://instagram.com.evil.test/p/ABC123/"), null);
     assert.equal(instagramPermalink("javascript:alert(1)"), null);
-    assert.equal(instagramPermalink("https://www.instagram.com/eterea.newconcept/"), null);
+    assert.equal(instagramPermalink("https://www.instagram.com/usuario.ejemplo/"), null);
     assert.equal(instagramEmbedUrl("https://www.instagram.com/reel/ABC123/?igsh=abc"), "https://www.instagram.com/reel/ABC123/embed/");
     assert.equal(instagramEmbedUrl("https://instagram.com.evil.test/p/ABC123/"), null);
+  });
+
+  it("construye el perfil desde un usuario editable sin aceptar dominios externos", () => {
+    assert.equal(instagramProfileUrl("@nuevo.usuario"), "https://www.instagram.com/nuevo.usuario/");
+    assert.equal(instagramProfileUrl("https://sitio.test/perfil"), null);
   });
 
   it("muestra solo publicaciones válidas y reconoce los reels", () => {

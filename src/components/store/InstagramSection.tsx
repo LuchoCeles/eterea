@@ -5,12 +5,13 @@ import { ArrowUpRight, Instagram, Play } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
 import { resolveImageSource } from "@/lib/image-source";
 import type { StoreProduct } from "@/lib/content";
-import { instagramEmbedUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
+import type { InstagramMediaAsset } from "@/lib/instagram-media";
+import { instagramEmbedUrl, instagramProfileUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { InstagramPost } from "@/lib/content";
 import { Button } from "@/components/ui/button";
 const flower = "/assets/eterea-placeholder.svg";
 
-function InstagramCard({ post, products }: { post: InstagramPost; products: StoreProduct[] }) {
+function InstagramCard({ post, products, unavailable, mediaAsset }: { post: InstagramPost; products: StoreProduct[]; unavailable: boolean; mediaAsset?: InstagramMediaAsset }) {
   const image = post.image || post.productId ? resolveImageSource(post, products) : "";
   const [openedImage, setOpenedImage] = useState<string | null>(null);
   const showEmbed = !image || openedImage === image;
@@ -19,7 +20,18 @@ function InstagramCard({ post, products }: { post: InstagramPost; products: Stor
 
   return (
     <article className="min-w-0">
-      {showEmbed ? (
+      {mediaAsset?.videoUrl ? (
+        <video src={mediaAsset.videoUrl} poster={image || mediaAsset.posterUrl} controls playsInline preload="metadata" className="h-[620px] w-full bg-black object-contain">
+          Tu navegador no puede reproducir este video.
+        </video>
+      ) : mediaAsset?.imageUrl ? (
+        <a href={post.url} target="_blank" rel="noreferrer"><img src={image || mediaAsset.imageUrl} alt={post.title || "Publicación de Etérea"} loading="lazy" className="aspect-[4/5] w-full bg-pearl object-cover" /></a>
+      ) : unavailable ? (
+        <a href={post.url} target="_blank" rel="noreferrer" className="flex min-h-[420px] flex-col items-center justify-center gap-5 bg-pearl px-6 text-center text-foreground">
+          {image ? <img src={image} alt={post.title || "Publicación de Etérea"} loading="lazy" className="aspect-[4/5] w-full object-cover" /> : <Instagram className="h-12 w-12" aria-hidden="true" />}
+          <span className="text-sm">Instagram no permite reproducir esta publicación acá. Abrila en Instagram.</span>
+        </a>
+      ) : showEmbed ? (
         <div className="overflow-hidden bg-white">
           <iframe
             src={embedUrl}
@@ -43,10 +55,12 @@ function InstagramCard({ post, products }: { post: InstagramPost; products: Stor
   );
 }
 
-export function InstagramSection() {
+export function InstagramSection({ unavailableUrls, mediaAssets }: { unavailableUrls: string[]; mediaAssets: Record<string, InstagramMediaAsset> }) {
   const posts = useContent("instagram");
   const products = useContent("products");
   const { homeSections } = useContent("texts");
+  const profileUsername = useContent("contact").instagramUsername;
+  const profileUrl = instagramProfileUrl(profileUsername);
   const validPosts = visibleInstagramPosts(posts);
   if (!homeSections.instagram) return null;
   return (
@@ -58,14 +72,14 @@ export function InstagramSection() {
             <div className="min-w-0">
               <span className="eyebrow">Nuestro día a día</span>
               <h2 className="mt-3 text-3xl font-normal md:text-5xl">El universo Etérea</h2>
-              <p className="mt-3 text-sm">@eterea.newconcept</p>
+              {profileUrl && <p className="mt-3 text-sm">@{profileUsername}</p>}
             </div>
           </div>
-          <Button asChild variant="outline" className="h-12 w-fit rounded-none border-sea-foreground/30 bg-transparent text-sea-foreground"><a href="https://www.instagram.com/eterea.newconcept/" target="_blank" rel="noreferrer"><Instagram /> Ver publicaciones y reels <ArrowUpRight /></a></Button>
+          {profileUrl && <Button asChild variant="outline" className="h-12 w-fit rounded-none border-sea-foreground/30 bg-transparent text-sea-foreground"><a href={profileUrl} target="_blank" rel="noreferrer"><Instagram /> Ver publicaciones y reels <ArrowUpRight /></a></Button>}
         </div>
         {validPosts.length > 0 && <>
           <div className="mt-10 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {validPosts.map((post) => <InstagramCard key={post.id} post={post} products={products} />)}
+            {validPosts.map((post) => <InstagramCard key={post.id} post={post} products={products} unavailable={unavailableUrls.includes(post.url)} mediaAsset={mediaAssets[post.url]} />)}
           </div>
         </>}
       </div>

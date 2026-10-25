@@ -47,6 +47,11 @@ export function instagramPermalink(value: string): string | null {
   }
 }
 
+export function instagramProfileUrl(value: string): string | null {
+  const username = value.trim().replace(/^@/, "");
+  return /^[a-zA-Z0-9._]{1,30}$/.test(username) ? `https://www.instagram.com/${username}/` : null;
+}
+
 export function instagramEmbedUrl(value: string): string | null {
   const permalink = instagramPermalink(value);
   return permalink ? `${permalink}embed/` : null;

@@ -80,7 +80,7 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
       </div>
 
       {categories.length === 0 && <p className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">Creá una categoría en «Categorías» antes de agregar productos.</p>}
-      <label className="flex h-11 max-w-sm items-center gap-3 rounded-md border bg-background px-3">
+      <label className="admin-product-search-field flex h-11 max-w-sm items-center gap-3 rounded-md border bg-background px-3">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar productos…" aria-label="Buscar productos" className="admin-product-search min-w-0 flex-1 bg-transparent text-sm outline-none" />
       </label>

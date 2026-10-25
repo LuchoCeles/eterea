@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequest } from "@/server/auth";
-import { hasInstagramConnection, InstagramConnectionError, saveInstagramConnection } from "@/server/instagram";
+import { instagramConnectionStatus, InstagramConnectionError, saveInstagramConnection } from "@/server/instagram";
 
 const tokenSchema = z.object({ token: z.string().trim().min(20).max(4000) });
 const privateHeaders = { "Cache-Control": "no-store" };
@@ -9,7 +9,7 @@ const privateHeaders = { "Cache-Control": "no-store" };
 export async function GET(request: Request) {
   if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401, headers: privateHeaders });
   try {
-    return NextResponse.json({ saved: await hasInstagramConnection() }, { headers: privateHeaders });
+    return NextResponse.json(await instagramConnectionStatus(), { headers: privateHeaders });
   } catch {
     return NextResponse.json({ error: "No se pudo consultar la conexión de Instagram." }, { status: 500, headers: privateHeaders });
   }
@@ -24,8 +24,8 @@ export async function PUT(request: Request) {
   }
 
   try {
-    await saveInstagramConnection(parsed.data.token);
-    return NextResponse.json({ saved: true }, { headers: privateHeaders });
+    const profile = await saveInstagramConnection(parsed.data.token);
+    return NextResponse.json({ saved: true, username: profile.username }, { headers: privateHeaders });
   } catch (error) {
     const message = error instanceof InstagramConnectionError ? error.message : "No se pudo guardar el token de Instagram.";
     return NextResponse.json({ error: message }, { status: error instanceof InstagramConnectionError ? 400 : 500, headers: privateHeaders });

@@ -8,15 +8,17 @@ import { ProductCarousel } from "@/components/store/ProductCarousel";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { InstagramSection } from "@/components/store/InstagramSection";
+import type { InstagramMediaAsset } from "@/lib/instagram-media";
 import { Button } from "@/components/ui/button";
-import { productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
+import { instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
 import { resolveImageSource } from "@/lib/image-source";
 
 const logo = "/assets/eterea-placeholder.svg";
-export function Storefront({ isAdmin }: { isAdmin: boolean }) {
+export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAssets }: { isAdmin: boolean; unavailableInstagramUrls: string[]; instagramMediaAssets: Record<string, InstagramMediaAsset> }) {
   const { items: cart, addAnimationKey, add, changeQuantity, remove: removeFromCart } = useCart();
   const T = useContent("texts");
   const contact = useContent("contact");
+  const instagramUrl = instagramProfileUrl(contact.instagramUsername);
   const products = useContent("products");
   const homeSections = T.homeSections;
   const newArrivals = products.filter((p) => p.section === "nuevo").map((p) => productWithoutOffers(p, T.offers.enabled));
@@ -126,21 +128,21 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
             <p className="mt-6 max-w-lg text-sm leading-7 text-muted-foreground">
               {T.editorial.text}
             </p>
-            <a href={homeSections.instagram ? "#instagram" : "https://www.instagram.com/eterea.newconcept/"} target={homeSections.instagram ? undefined : "_blank"} rel={homeSections.instagram ? undefined : "noreferrer"} className="mt-8 inline-flex items-center gap-2 border-b border-foreground pb-1 text-sm">
+            {(homeSections.instagram || instagramUrl) && <a href={homeSections.instagram ? "#instagram" : instagramUrl ?? "#instagram"} target={homeSections.instagram ? undefined : "_blank"} rel={homeSections.instagram ? undefined : "noreferrer"} className="mt-8 inline-flex items-center gap-2 border-b border-foreground pb-1 text-sm">
               {T.editorial.cta} <ArrowUpRight className="h-4 w-4" />
-            </a>
+            </a>}
             <img src={"/assets/eterea-placeholder.svg"} alt="La flor, la espiral y la concha nacaradas de Etérea" loading="lazy" className="mt-8 h-40 w-40 object-contain" />
           </div>
         </section>}
 
         {/* Instagram */}
-        <InstagramSection />
+        <InstagramSection unavailableUrls={unavailableInstagramUrls} mediaAssets={instagramMediaAssets} />
 
         {/* Newsletter */}
          {homeSections.newsletter && <section className="bg-primary text-primary-foreground">
           <div className="mx-auto grid max-w-[1600px] gap-8 px-4 py-16 md:grid-cols-2 md:items-end md:px-8">
             <h2 className="text-4xl font-normal md:text-5xl">Sigamos cerca.</h2>
-            <div><p className="max-w-md text-sm leading-7 text-primary-foreground/80">Encontrá novedades e inspiración en nuestro Instagram.</p><Button asChild variant="outline" className="mt-6 h-12 rounded-none border-primary-foreground/40 bg-transparent text-primary-foreground"><a href="https://www.instagram.com/eterea.newconcept/" target="_blank" rel="noreferrer">Seguir a Etérea <ArrowUpRight /></a></Button></div>
+            <div><p className="max-w-md text-sm leading-7 text-primary-foreground/80">Encontrá novedades e inspiración en nuestro Instagram.</p>{instagramUrl && <Button asChild variant="outline" className="mt-6 h-12 rounded-none border-primary-foreground/40 bg-transparent text-primary-foreground"><a href={instagramUrl} target="_blank" rel="noreferrer">Seguir a Etérea <ArrowUpRight /></a></Button>}</div>
           </div>
         </section>}
       </main>
@@ -158,7 +160,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
               ...(homeSections.editorial ? [{ name: "New Concept", href: "/#new-concept" }] : []),
               ...(homeSections.instagram ? [{ name: "Instagram", href: "/#instagram" }] : []),
             ] },
-            { t: "Contacto", l: [{ name: "Escribinos por Instagram", href: "https://www.instagram.com/eterea.newconcept/" }] },
+            { t: "Contacto", l: instagramUrl ? [{ name: "Escribinos por Instagram", href: instagramUrl }] : [] },
           ].map((c) => (
             <div key={c.t}>
               <p className="eyebrow text-muted-foreground">{c.t}</p>

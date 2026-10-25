@@ -17,4 +17,14 @@ describe("Token privado de Instagram", () => {
     const stored = encryptInstagramToken("IGAA-otro-token", "conexion-2", 12345, secret);
     assert.equal(decryptInstagramToken({ ...stored, token: "AA" }, secret), null);
   });
+
+  it("conserva el ID de cuenta aunque cambie el usuario", () => {
+    const stored = encryptInstagramToken("IGAA-token", "conexion-3", 12345, secret, {
+      accountId: "cuenta-123",
+      username: "usuario.anterior",
+    });
+    assert.equal(stored.accountId, "cuenta-123");
+    assert.equal(stored.username, "usuario.anterior");
+    assert.equal(decryptInstagramToken(stored, secret), "IGAA-token");
+  });
 });

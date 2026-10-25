@@ -6,7 +6,7 @@ export type Slide = ImageSource & { kicker: string; title: string; cta: string; 
 export type StoreProduct = Product & { section: "nuevo" | "sale" };
 export type StoreCategory = { id: string; name: string; img?: string; productId?: string };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
-export type ContactSettings = { whatsapp: string };
+export type ContactSettings = { whatsapp: string; instagramUsername: string };
 export type HomeSections = {
   promoBar: boolean;
   hero: boolean;
@@ -37,7 +37,7 @@ export const defaults = {
   promo: [
     "Etérea · New Concept",
     "El mar, la naturaleza y una forma de vestir",
-    "Nuestro universo en @eterea.newconcept",
+    "Nuestro universo en Instagram",
   ] as string[],
   hero: [
     { img: placeholder, kicker: "New Concept · Espíritu costero", title: "Etérea", cta: "Explorar prendas", align: "left", promo: "" },
@@ -50,7 +50,7 @@ export const defaults = {
   ] as StoreProduct[],
   categories: [] as StoreCategory[],
   instagram: [] as InstagramPost[],
-  contact: { whatsapp: "" } as ContactSettings,
+  contact: { whatsapp: "", instagramUsername: "" } as ContactSettings,
   texts: {
     offers: { enabled: false, showSplit: false, showClub: false },
     homeSections: {
