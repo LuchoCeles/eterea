@@ -11,7 +11,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/instagram-crypto.test.ts",
+    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/instagram-crypto.test.ts src/test/content-catalog.test.ts",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "db:import-content": "tsx scripts/import-legacy-content.ts",

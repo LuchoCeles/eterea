@@ -4,8 +4,8 @@ import { InstagramEditor } from "@/components/store/InstagramEditor";
 import { TextsEditor } from "@/components/admin/AdminTextsEditor";
 import { InstagramConnection } from "@/components/admin/InstagramConnection";
 import { WhatsAppSettings } from "@/components/admin/WhatsAppSettings";
-import { BatchImageUploader } from "@/components/admin/BatchImageUploader";
-import { ProductPaymentPricesEditor } from "@/components/admin/ProductPaymentPricesEditor";
+import { AdminProductsEditor } from "@/components/admin/AdminProductsEditor";
+import { AdminCategoriesEditor } from "@/components/admin/AdminCategoriesEditor";
 import {
   AddButton,
   CollapsibleCard,
@@ -14,7 +14,7 @@ import {
   ListControls,
   useList,
 } from "@/components/admin/AdminEditorFields";
-import type { ContentKey, InstagramPost, Slide, StoreProduct, Texts } from "@/lib/content";
+import type { ContentKey, InstagramPost, Slide, StoreCategory, StoreProduct, Texts } from "@/lib/content";
 
 export function AdminContentEditor({
   k,
@@ -38,8 +38,10 @@ export function AdminContentEditor({
     );
   if (k === "products")
     return (
-      <ProductsEditor value={draft as StoreProduct[]} onChange={onChange} onUploaded={onUploaded} />
+      <AdminProductsEditor value={draft as StoreProduct[]} onChange={onChange} onUploaded={onUploaded} />
     );
+  if (k === "categories")
+    return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
   if (k === "texts")
     return (
       <TextsEditor
@@ -181,147 +183,6 @@ function HeroEditor({
         }
       >
         Agregar banner
-      </AddButton>
-    </div>
-  );
-}
-
-function ProductsEditor({
-  value,
-  onChange,
-  onUploaded,
-}: {
-  value: StoreProduct[];
-  onChange: (value: StoreProduct[]) => void;
-  onUploaded: (urls: string[]) => void;
-}) {
-  const list = useList(value, onChange);
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <p className="text-sm text-muted-foreground">
-          Subí varias fotos juntas para crear productos que después podés completar.
-        </p>
-        <BatchImageUploader
-          section="productos"
-          onUploaded={(urls) => {
-            onUploaded(urls);
-            onChange([
-              ...value,
-              ...urls.map((image, index) => ({
-                id: crypto.randomUUID(),
-                name: `Nueva prenda ${value.length + index + 1}`,
-                category: "",
-                price: 0,
-                image,
-                section: "nuevo" as const,
-              })),
-            ]);
-          }}
-        />
-      </div>
-      {value.map((product, index) => (
-        <CollapsibleCard
-          key={product.id}
-          title={product.name || "Producto"}
-          preview={product.image}
-          summary={[
-            product.category,
-            product.price ? `$${product.price.toLocaleString("es-AR")}` : "Sin precio",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-          right={
-            <ListControls i={index} len={value.length} move={list.move} remove={list.remove} />
-          }
-        >
-          <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-            <ImageField
-              label="Foto"
-              value={product.image}
-              section="productos"
-              onUploaded={(url) => onUploaded([url])}
-              onChange={(image) => list.set(index, { image })}
-            />
-            <div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field
-                  label="Nombre"
-                  value={product.name}
-                  onChange={(next) => list.set(index, { name: next })}
-                />
-                <Field
-                  label="Categoría"
-                  value={product.category}
-                  onChange={(next) => list.set(index, { category: next })}
-                />
-                <label className="text-xs text-muted-foreground">
-                  Sección
-                  <select
-                    value={product.section}
-                    onChange={(event) =>
-                      list.set(index, { section: event.target.value as StoreProduct["section"] })
-                    }
-                    className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="nuevo">Lo nuevo</option>
-                    <option value="sale">Sale</option>
-                  </select>
-                </label>
-                <Field
-                  label="Precio ($)"
-                  type="number"
-                  value={product.price}
-                  onChange={(next) => list.set(index, { price: Number(next) || 0 })}
-                />
-                <Field
-                  label="Precio anterior ($, opcional)"
-                  type="number"
-                  value={product.oldPrice ?? ""}
-                  onChange={(next) => {
-                    const updated = { ...product };
-                    if (next) updated.oldPrice = Number(next);
-                    else delete updated.oldPrice;
-                    onChange(value.map((item, current) => (current === index ? updated : item)));
-                  }}
-                />
-                <Field
-                  label="Etiqueta (ej. Nuevo, -30%)"
-                  value={product.tag ?? ""}
-                  onChange={(next) => {
-                    const updated = { ...product };
-                    if (next) updated.tag = next;
-                    else delete updated.tag;
-                    onChange(value.map((item, current) => (current === index ? updated : item)));
-                  }}
-                />
-              </div>
-              <ProductPaymentPricesEditor
-                basePrice={product.price}
-                prices={product.paymentPrices ?? []}
-                onChange={(paymentPrices) =>
-                  list.set(index, {
-                    paymentPrices: paymentPrices.length ? paymentPrices : undefined,
-                  })
-                }
-              />
-            </div>
-          </div>
-        </CollapsibleCard>
-      ))}
-      <AddButton
-        onClick={() =>
-          list.add({
-            id: crypto.randomUUID(),
-            name: "Nueva prenda",
-            category: "",
-            price: 0,
-            image: "",
-            section: "nuevo",
-          })
-        }
-      >
-        Agregar producto
       </AddButton>
     </div>
   );

@@ -24,9 +24,9 @@ export function InstagramEditor({
   return (
     <div className="space-y-3 sm:space-y-5">
       <p className="text-sm leading-6 text-muted-foreground">
-        Cuando Instagram está conectado, la tienda muestra automáticamente sus últimas
-        publicaciones. Estos enlaces se usan como alternativa si la conexión falla. Pegá
-        publicaciones o reels reales de @eterea.newconcept; la portada es opcional.
+        Las publicaciones que cargues acá se muestran en la tienda. Si la lista está vacía
+        y Instagram está conectado, se muestran sus últimas publicaciones. Pegá enlaces
+        de publicaciones o reels reales de @eterea.newconcept; la portada es opcional.
       </p>
       {value.map((post) => (
         <CollapsibleCard
@@ -82,28 +82,29 @@ export function InstagramEditor({
               </label>
             </div>
             <div className="space-y-3">
-              <label className="block text-xs text-muted-foreground">
-                Enlace de Instagram
+              <div>
                 <input
                   value={post.url}
                   onChange={(event) => update(post.id, { url: event.target.value })}
                   placeholder="https://www.instagram.com/reel/…/"
-                  className="mt-1 w-full border bg-background px-3 py-2 text-sm"
+                  aria-label="Enlace de Instagram"
+                  className="w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
                 />
-              </label>
+              </div>
               {post.url && !instagramPermalink(post.url) && (
                 <p className="text-xs text-destructive">
                   Usá un enlace de una publicación o reel de Instagram.
                 </p>
               )}
-              <label className="block text-xs text-muted-foreground">
-                Título
+              <div>
                 <input
                   value={post.title}
                   onChange={(event) => update(post.id, { title: event.target.value })}
-                  className="mt-1 w-full border bg-background px-3 py-2 text-sm"
+                  placeholder="Título"
+                  aria-label="Título"
+                  className="w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
                 />
-              </label>
+              </div>
               <label className="block text-xs text-muted-foreground">
                 Tipo
                 <select

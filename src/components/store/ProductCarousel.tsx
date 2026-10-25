@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { formatPrice, type Product } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
+import { ProductImage } from "@/components/store/ProductImage";
 
 export function ProductCarousel({
   id,
@@ -42,7 +43,7 @@ export function ProductCarousel({
         {products.map((p) => (
           <article key={p.id + p.name} className="group w-[70%] shrink-0 snap-start sm:w-[42%] lg:w-[23.5%]">
             <div className="relative aspect-[4/5] overflow-hidden bg-card">
-              <img src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <ProductImage src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
               {p.tag && (
                 <span className={`eyebrow absolute left-3 top-3 px-2.5 py-1 ${p.oldPrice ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
                   {p.tag}

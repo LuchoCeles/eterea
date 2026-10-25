@@ -2,20 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
 import { AdminContentEditor } from "@/components/admin/AdminContentEditors";
+import { AdminContentSkeleton } from "@/components/loading/AdminSkeleton";
 import { useContent, useContentUpdater, saveContent } from "@/components/providers/ContentProvider";
 import type { ContentKey } from "@/lib/content";
 
 type AdminTheme = "light" | "dark";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
+const ADMIN_SECTION_STORAGE_KEY = "eterea-admin-section";
 
 export function AdminEditor({ email }: { email: string }) {
   const router = useRouter();
   const [tab, setTab] = useState<ContentKey>("hero");
+  const [sectionRestored, setSectionRestored] = useState(false);
   const [theme, setTheme] = useState<AdminTheme>("dark");
   const contentRef = useRef<HTMLElement>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<ContentKey, string[]>>>({});
@@ -30,8 +32,19 @@ export function AdminEditor({ email }: { email: string }) {
   };
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY);
-    if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+    try {
+      const savedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY);
+      if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+
+      const savedSection = adminSections.find(
+        (section) => section.id === window.localStorage.getItem(ADMIN_SECTION_STORAGE_KEY),
+      );
+      if (savedSection) setTab(savedSection.id);
+    } catch {
+      // Si el navegador bloquea el almacenamiento, se usa la sección inicial.
+    } finally {
+      setSectionRestored(true);
+    }
   }, []);
 
   function toggleTheme() {
@@ -50,6 +63,7 @@ export function AdminEditor({ email }: { email: string }) {
     if (section === tab) return;
     contentRef.current?.scrollTo({ top: 0 });
     setTab(section);
+    window.localStorage.setItem(ADMIN_SECTION_STORAGE_KEY, section);
   }
 
   const currentSection = adminSections.find((section) => section.id === tab);
@@ -66,21 +80,25 @@ export function AdminEditor({ email }: { email: string }) {
             ref={contentRef}
             id="admin-content"
             tabIndex={-1}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-10 pt-5 focus:outline-none sm:px-7 sm:pt-8 lg:px-10 lg:pt-10 xl:px-12"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-10 focus:outline-none sm:px-7 lg:px-10 xl:px-12"
           >
-            <div className="mx-auto max-w-[1120px]">
-              <Editor
-                key={tab}
-                k={tab}
-                label={currentSection?.label ?? ""}
-                description={currentSection?.description ?? ""}
-                uploadedUrls={uploadedImages[tab] ?? []}
-                onUploaded={(urls) => recordUploadedImages(tab, urls)}
-                onSaved={() => clearUploadedImages(tab)}
-              />
-            </div>
+            {sectionRestored ? (
+              <div className="mx-auto max-w-[1120px]">
+                <Editor
+                  key={tab}
+                  k={tab}
+                  label={currentSection?.label ?? ""}
+                  description={currentSection?.description ?? ""}
+                  uploadedUrls={uploadedImages[tab] ?? []}
+                  onUploaded={(urls) => recordUploadedImages(tab, urls)}
+                  onSaved={() => clearUploadedImages(tab)}
+                />
+              </div>
+            ) : (
+              <AdminContentSkeleton />
+            )}
           </main>
-          <AdminSidebar activeSection={tab} onSelect={selectSection} />
+          {sectionRestored && <AdminSidebar activeSection={tab} onSelect={selectSection} />}
         </div>
       </div>
     </div>
@@ -105,51 +123,134 @@ function Editor({
   const value = useContent(k);
   const updateContent = useContentUpdater();
   const [draft, setDraft] = useState<unknown>(() => structuredClone(value));
-  const [saving, setSaving] = useState(false);
+  const isProductEditor = k === "products";
+  const draftRef = useRef(draft);
+  const uploadedUrlsRef = useRef(uploadedUrls);
+  const draftVersion = useRef(0);
+  const lastSavedVersion = useRef(0);
+  const initialValue = useRef(value);
+  const skipAutoSave = useRef(false);
+  const savingRef = useRef(false);
+  const inFlightVersion = useRef(0);
+  const saveAgain = useRef(false);
+  const previousDraft = useRef(draft);
+  const autoSaveRef = useRef<() => Promise<void>>(async () => {});
 
-  useEffect(() => setDraft(structuredClone(value)), [value]);
+  useEffect(() => {
+    if (isProductEditor || Object.is(initialValue.current, value)) return;
+    const nextDraft = structuredClone(value);
+    draftRef.current = nextDraft;
+    previousDraft.current = nextDraft;
+    skipAutoSave.current = true;
+    setDraft(nextDraft);
+  }, [value, isProductEditor]);
 
-  if (draft === null) return <p className="text-muted-foreground">Cargando…</p>;
+  useEffect(() => {
+    uploadedUrlsRef.current = uploadedUrls;
+  }, [uploadedUrls]);
 
-  async function save() {
-    setSaving(true);
+  useEffect(() => {
+    autoSaveRef.current = saveAutomatically;
+  });
+
+  useEffect(() => {
+    return () => {
+      if (draftVersion.current <= lastSavedVersion.current) return;
+      if (savingRef.current) saveAgain.current = true;
+      void autoSaveRef.current();
+    };
+  }, [isProductEditor]);
+
+  function changeDraft(next: unknown) {
+    draftRef.current = next;
+    draftVersion.current += 1;
+    setDraft(next);
+    if (isProductEditor) updateContent(k, next);
+  }
+
+  function canSaveDraft() {
+    if (k !== "categories") return true;
+    const categories = draftRef.current as { name?: string }[];
+    return categories.every((category) => typeof category.name === "string" && category.name.trim().length > 0);
+  }
+
+  async function saveAutomatically() {
+    if (savingRef.current) {
+      if (draftVersion.current > inFlightVersion.current) saveAgain.current = true;
+      return;
+    }
+
+    if (!canSaveDraft()) return;
+
+    const version = draftVersion.current;
+    const data = structuredClone(draftRef.current);
+    const imageUrls = [...uploadedUrlsRef.current];
+    savingRef.current = true;
+    inFlightVersion.current = version;
+
     try {
-      const result = await saveContent(k, draft, uploadedUrls);
-      updateContent(k, draft);
-      onSaved();
-      if (result.cleanupPending)
-        toast.error(
-          `Se guardaron los cambios, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary. Volvé a guardar para reintentar.`,
-        );
-      else toast.success("Cambios guardados");
-    } catch {
-      toast.error("No se pudo guardar. Revisá la conexión e intentá de nuevo.");
+      const result = await saveContent(k, data, imageUrls);
+      lastSavedVersion.current = version;
+      if (draftVersion.current === version) {
+        updateContent(k, result.data);
+        onSaved();
+      } else {
+        saveAgain.current = true;
+      }
+      if (result.cleanupPending) {
+        toast.error(`Se guardaron los cambios, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`);
+      }
+    } catch (error) {
+      if (draftVersion.current !== version) {
+        saveAgain.current = true;
+      } else {
+        toast.error(error instanceof Error ? error.message : "No se pudo guardar. Revisá la conexión e intentá de nuevo.");
+      }
     } finally {
-      setSaving(false);
+      savingRef.current = false;
+      if (saveAgain.current && lastSavedVersion.current < draftVersion.current) {
+        saveAgain.current = false;
+        window.setTimeout(() => void autoSaveRef.current(), 200);
+      } else {
+        saveAgain.current = false;
+      }
     }
   }
 
+  useEffect(() => {
+    if (skipAutoSave.current) {
+      skipAutoSave.current = false;
+      return;
+    }
+    if (Object.is(previousDraft.current, draft)) return;
+    previousDraft.current = draft;
+
+    const timeout = window.setTimeout(() => void autoSaveRef.current(), 600);
+    return () => window.clearTimeout(timeout);
+  }, [draft]);
+
+  if (draft === null) return <AdminContentSkeleton />;
+
   return (
     <div>
-      <div className="sticky top-0 z-20 -mx-5 mb-7 flex items-center justify-between gap-4 bg-background/95 px-5 pb-5 pt-1 backdrop-blur-xl sm:-mx-7 sm:mb-8 sm:px-7 lg:-mx-10 lg:px-10 xl:-mx-12 xl:px-12">
+      <div className="sticky top-0 z-20 -mx-5 mb-7 flex items-center gap-4 bg-background/95 px-5 py-4 backdrop-blur-xl sm:-mx-7 sm:mb-8 sm:px-7 lg:-mx-10 lg:px-10 xl:-mx-12 xl:px-12">
         <div className="min-w-0 py-1">
           <h2 className="truncate font-display text-[28px] font-semibold leading-tight sm:text-[38px]">
             {label}
           </h2>
           <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-base">{description}</p>
         </div>
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          aria-label="Guardar cambios"
-          className="admin-save-button flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:min-h-[54px] sm:px-7 sm:text-base"
-        >
-          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-          Guardar
-        </button>
       </div>
-      <AdminContentEditor k={k} draft={draft} onChange={setDraft} onUploaded={onUploaded} />
+      <AdminContentEditor
+        k={k}
+        draft={draft}
+        onChange={changeDraft}
+        onUploaded={(urls) => {
+          uploadedUrlsRef.current = [...new Set([...uploadedUrlsRef.current, ...urls])];
+          onUploaded(urls);
+          if (isProductEditor) draftVersion.current += 1;
+        }}
+      />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { planCloudinaryDeletions } from "@/lib/cloudinary-media";
-import { ContentKey, ContentSnapshot, defaults, resolveContent } from "@/lib/content";
+import { catalogCategories, ContentKey, ContentSnapshot, defaults, productsWithCategoryNames, resolveContent, type StoreCategory, type StoreProduct } from "@/lib/content";
+import { prepareProductsForSave } from "@/lib/products";
 import { contentSchemas } from "@/lib/content-schema";
 import { cloudinaryPublicId, deleteCloudinaryImage } from "@/server/cloudinary";
 import { prisma } from "@/server/prisma";
@@ -10,23 +11,19 @@ const CLEANUP_QUEUE_KEY = "__cloudinary_cleanup";
 
 export const contentKeys = Object.keys(defaults) as ContentKey[];
 
+export class ContentValidationError extends Error {}
+
 export async function loadContentSnapshot(): Promise<ContentSnapshot> {
   const rows = await prisma.siteContent.findMany({ where: { key: { in: contentKeys } } }).catch(() => []);
   const saved = new Map(rows.map((row) => [row.key, row.data]));
-  return Object.fromEntries(contentKeys.map((key) => {
+  const snapshot = Object.fromEntries(contentKeys.map((key) => {
     const parsed = contentSchemas[key].safeParse(saved.get(key));
     return [key, resolveContent(key, parsed.success ? parsed.data : undefined)];
   })) as ContentSnapshot;
-}
-
-export async function saveContentValue(key: ContentKey, value: unknown) {
-  const merged = resolveContent(key, value);
-  const data = merged as Prisma.InputJsonValue;
-  return prisma.siteContent.upsert({
-    where: { key },
-    create: { key, data },
-    update: { data },
-  });
+  const parsedCategories = contentSchemas.categories.safeParse(saved.get("categories"));
+  snapshot.categories = catalogCategories(parsedCategories.success ? parsedCategories.data as StoreCategory[] : null, snapshot.texts, snapshot.products);
+  snapshot.products = productsWithCategoryNames(snapshot.products, snapshot.categories);
+  return snapshot;
 }
 
 function imageUrls(value: unknown): string[] {
@@ -54,16 +51,48 @@ async function persistCleanupQueue(urls: string[]) {
 }
 
 export async function saveContentAndCleanImages(key: ContentKey, value: unknown, uploadedUrls: string[] = []) {
-  const merged = resolveContent(key, value) as Prisma.InputJsonValue;
   const saved = await prisma.$transaction(async (transaction) => {
-    const [previous, queue] = await Promise.all([
+    const [previous, queue, textsRow, productsRow, categoriesRow] = await Promise.all([
       transaction.siteContent.findUnique({ where: { key }, select: { data: true } }),
       transaction.siteContent.findUnique({ where: { key: CLEANUP_QUEUE_KEY }, select: { data: true } }),
+      transaction.siteContent.findUnique({ where: { key: "texts" }, select: { data: true } }),
+      transaction.siteContent.findUnique({ where: { key: "products" }, select: { data: true } }),
+      transaction.siteContent.findUnique({ where: { key: "categories" }, select: { data: true } }),
     ]);
+    const currentProducts = resolveContent("products", productsRow?.data ?? defaults.products);
+    const currentTexts = resolveContent("texts", textsRow?.data);
+    const parsedCategories = contentSchemas.categories.safeParse(categoriesRow?.data);
+    const availableCategories = catalogCategories(parsedCategories.success ? parsedCategories.data as StoreCategory[] : null, currentTexts, currentProducts);
+    let merged = resolveContent(key, value);
+    if (key === "categories") {
+      const nextCategories = merged as ContentSnapshot["categories"];
+      const ids = nextCategories.map((category) => category.id);
+      const names = nextCategories.map((category) => category.name.trim().toLocaleLowerCase("es-AR"));
+      if (new Set(ids).size !== ids.length || new Set(names).size !== names.length) {
+        throw new ContentValidationError("Cada categoría debe tener un nombre y un identificador únicos.");
+      }
+      if (currentProducts.some((product) => !ids.includes(product.categoryId ?? ""))) {
+        throw new ContentValidationError("No podés borrar una categoría que tiene productos. Reasignalos primero.");
+      }
+    }
+    if (key === "products") {
+      const nextProducts = merged as StoreProduct[];
+      if (new Set(nextProducts.map((product) => product.id)).size !== nextProducts.length) {
+        throw new ContentValidationError("Hay productos con identificadores repetidos.");
+      }
+      const categories = new Map(availableCategories.map((category) => [category.id, category.name]));
+      if (nextProducts.some((product) => !categories.has(product.categoryId ?? ""))) {
+        throw new ContentValidationError("Asigná a cada producto una categoría creada en el administrador.");
+      }
+      merged = prepareProductsForSave(nextProducts.map((product) => ({
+        ...product,
+        category: categories.get(product.categoryId ?? "") ?? product.category,
+      })), currentProducts, Date.now());
+    }
     const row = await transaction.siteContent.upsert({
       where: { key },
-      create: { key, data: merged },
-      update: { data: merged },
+      create: { key, data: merged as Prisma.InputJsonValue },
+      update: { data: merged as Prisma.InputJsonValue },
     });
     const rows = await transaction.siteContent.findMany({ select: { key: true, data: true } });
     const referenced = new Set(rows.filter((item) => item.key !== CLEANUP_QUEUE_KEY).flatMap((item) => imageUrls(item.data)));

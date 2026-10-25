@@ -30,6 +30,8 @@ const product = z.object({
   id: z.string().min(1).max(191),
   name: shortText,
   category: shortText,
+  categoryId: z.string().max(191).optional(),
+  createdAt: z.iso.datetime().optional(),
   price: z.number().finite().nonnegative(),
   oldPrice: z.number().finite().nonnegative().optional(),
   paymentPrices: z.array(z.object({ label: z.string().trim().min(1).max(80), price: z.number().finite().nonnegative() })).max(20).optional(),
@@ -37,6 +39,7 @@ const product = z.object({
   image,
   section: z.enum(["nuevo", "sale"]),
 });
+const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), img: image.optional() });
 const instagramPost = z.object({
   id: z.string().min(1).max(191),
   url: z.string().max(4000),
@@ -50,13 +53,14 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
   promo: z.array(shortText).max(100),
   hero: z.array(slide).max(30),
   products: z.array(product).max(500),
+  categories: z.array(category).max(100),
   instagram: z.array(instagramPost).max(100),
   contact: z.object({ whatsapp }).partial().passthrough(),
   texts: z.object({
     offers,
     homeSections: homeSections.optional(),
     benefits: z.array(z.object({ t: shortText, d: shortText })).max(30).optional(),
-    categories: z.array(z.object({ name: shortText, img: image })).max(100).optional(),
+    categories: z.array(category).max(100).optional(),
     split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image }).partial().passthrough().optional(),
     club: z.object({ kicker: shortText, big: shortText, text: shortText, code: shortText, cta: shortText }).partial().passthrough().optional(),
     marquee: z.array(shortText).max(100).optional(),

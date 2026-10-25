@@ -29,14 +29,16 @@ export function Field({
   multiline?: boolean;
   type?: string;
 }) {
-  const className = "mt-2 min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground";
+  const className =
+    "min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground";
   return (
-    <label className="block text-xs font-medium text-muted-foreground">
-      {label}
+    <div>
       {multiline ? (
         <textarea
           rows={3}
           value={value ?? ""}
+          placeholder={label}
+          aria-label={label}
           onChange={(event) => onChange(event.target.value)}
           className={className}
         />
@@ -44,11 +46,13 @@ export function Field({
         <input
           type={type}
           value={value ?? ""}
+          placeholder={label}
+          aria-label={label}
           onChange={(event) => onChange(event.target.value)}
           className={className}
         />
       )}
-    </label>
+    </div>
   );
 }
 

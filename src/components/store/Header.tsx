@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
 import { formatPrice, type CartItem } from "@/lib/products";
+import { ProductImage } from "@/components/store/ProductImage";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import type { HomeSections } from "@/lib/content";
 
@@ -118,7 +119,7 @@ export function Header({
                 <div className="mt-6 max-h-[50vh] space-y-4 overflow-y-auto pr-1">
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex gap-3 border-b pb-4">
-                      <img src={item.image} alt="" className="h-20 w-16 object-cover" />
+                      <ProductImage src={item.image} alt="" className="h-20 w-16 object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{item.name}</p>
                         <p className="mt-1 text-xs text-muted-foreground">{formatPrice(item.price)} c/u</p>

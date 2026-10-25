@@ -9,6 +9,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
 import { hasRealDiscount, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
+import { sortProductsByCreation } from "@/lib/products";
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -16,7 +17,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   const { items: cart, addAnimationKey, add, changeQuantity, remove: removeFromCart } = useCart();
   const [category, setCategory] = useState(initialCategory);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recommended");
+  const [sort, setSort] = useState("recent");
   const [discountOnly, setDiscountOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
@@ -38,7 +39,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
         ...regularCandidates,
         ...saleCandidates.filter((product) => !regularKeys.has(productKey(product))),
       ];
-  const visibleProducts = catalogCandidates.map((product) => productWithoutOffers(product, offers.enabled));
+  const visibleProducts = sortProductsByCreation(catalogCandidates).map((product) => productWithoutOffers(product, offers.enabled));
   const categories = [...new Set(visibleProducts.map((product) => product.category).filter(Boolean))];
   const activeCategory = categories.includes(category) ? category : "";
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
@@ -70,7 +71,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
     setCategory("");
     setSearch("");
     setDiscountOnly(false);
-    setSort("recommended");
+    setSort("recent");
     setCurrentPage(1);
   }
 
@@ -131,7 +132,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     Ordenar
                     <select value={sort} onChange={(event) => { setSort(event.target.value); setCurrentPage(1); }} className="h-11 border bg-background px-3 text-sm text-foreground">
-                      <option value="recommended">Recomendados</option>
+                      <option value="recent">Más recientes</option>
                       <option value="price-asc">Menor precio</option>
                       <option value="price-desc">Mayor precio</option>
                       <option value="name">Nombre</option>

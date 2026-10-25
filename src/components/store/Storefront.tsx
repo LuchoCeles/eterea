@@ -20,7 +20,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
   const homeSections = T.homeSections;
   const newArrivals = products.filter((p) => p.section === "nuevo").map((p) => productWithoutOffers(p, T.offers.enabled));
   const sale = visibleSaleProducts(products.filter((p) => p.section === "sale"), T.offers.enabled);
-  const categories = T.categories;
+  const categories = useContent("categories");
   const icons = [Waves, Shell, Leaf];
   const benefits = T.benefits.filter((benefit) => visibleAnnouncements([`${benefit.t} ${benefit.d}`], T.offers.enabled).length);
   const marquee = visibleAnnouncements(T.marquee, T.offers.enabled);
@@ -54,7 +54,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {categories.map((c, idx) => (
               <a key={idx} href={`/productos?categoria=${encodeURIComponent(c.name)}`} className="group relative block overflow-hidden bg-card">
-                <img src={c.img} alt={c.name} loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <img src={c.img || "/assets/eterea-placeholder.svg"} alt={c.name} loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-background/90 p-4">
                   <div>
                     <span className="font-display text-xs text-muted-foreground">0{idx + 1}</span>

@@ -6,6 +6,7 @@ import {
   Megaphone,
   Package,
   PanelsTopLeft,
+  Tags,
   type LucideIcon,
 } from "lucide-react";
 import clsx from "clsx";
@@ -31,6 +32,13 @@ export const adminSections: {
     shortLabel: "Banners",
     description: "Imágenes y textos destacados.",
     icon: PanelsTopLeft,
+  },
+  {
+    id: "categories",
+    label: "Categorías",
+    shortLabel: "Categorías",
+    description: "Creá y editá las categorías de la tienda.",
+    icon: Tags,
   },
   {
     id: "products",
@@ -70,7 +78,7 @@ export function AdminSidebar({
       <nav
         id="admin-navigation"
         aria-label="Navegación principal"
-        className="mx-auto grid max-w-[780px] grid-cols-5 gap-1 py-2 sm:flex sm:flex-col sm:gap-2 sm:py-0"
+        className="mx-auto grid max-w-[780px] grid-cols-6 gap-1 py-2 sm:flex sm:flex-col sm:gap-2 sm:py-0"
       >
         {adminSections.map(({ id, label, shortLabel, icon: Icon }) => {
           const active = activeSection === id;

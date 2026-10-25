@@ -42,8 +42,7 @@ export function WhatsAppSettings() {
       summary={contact.whatsapp || "Todavía no hay un número configurado"}
     >
       <form onSubmit={save} className="space-y-4">
-        <label className="block text-xs text-muted-foreground">
-          Número de WhatsApp
+        <div>
           <input
             type="tel"
             inputMode="tel"
@@ -51,9 +50,10 @@ export function WhatsAppSettings() {
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="+54 9 11 1234-5678"
-            className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm"
+            aria-label="Número de WhatsApp"
+            className="min-h-11 w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
-        </label>
+        </div>
         <Button type="submit" disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} Guardar número
         </Button>

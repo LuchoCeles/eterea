@@ -22,7 +22,6 @@ export function TextsEditor({
   const set = <K extends keyof Texts>(key: K, next: Texts[K]) =>
     onChange({ ...value, [key]: next });
   const benefits = useList(value.benefits, (next) => set("benefits", next));
-  const categories = useList(value.categories, (next) => set("categories", next));
   const marquee = useList(value.marquee, (next) => set("marquee", next));
   return (
     <div className="space-y-2 sm:space-y-4">
@@ -64,44 +63,6 @@ export function TextsEditor({
             </CollapsibleCard>
           ))}
         </div>
-      </CollapsibleCard>
-      <CollapsibleCard title="Categorías" summary={`${value.categories.length} categorías`}>
-        <div className="space-y-2">
-          {value.categories.map((category, index) => (
-            <CollapsibleCard
-              key={index}
-              title={category.name || `Categoría ${index + 1}`}
-              summary="Foto y nombre"
-              preview={category.img}
-              right={
-                <ListControls
-                  i={index}
-                  len={value.categories.length}
-                  move={categories.move}
-                  remove={categories.remove}
-                />
-              }
-            >
-              <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-end">
-                <ImageField
-                  label="Foto"
-                  value={category.img}
-                  section="categorias"
-                  onUploaded={onUploaded}
-                  onChange={(image) => categories.set(index, { img: image })}
-                />
-                <Field
-                  label="Nombre"
-                  value={category.name}
-                  onChange={(next) => categories.set(index, { name: next })}
-                />
-              </div>
-            </CollapsibleCard>
-          ))}
-        </div>
-        <AddButton onClick={() => categories.add({ name: "Nueva", img: "" })}>
-          Agregar categoría
-        </AddButton>
       </CollapsibleCard>
       <CollapsibleCard title="Banner de oferta" summary="Banner con foto">
         <div className="grid gap-4 md:grid-cols-[auto_1fr]">

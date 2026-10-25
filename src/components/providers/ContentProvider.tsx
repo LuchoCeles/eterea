@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { ContentKey, ContentSnapshot, defaults, resolveContent } from "@/lib/content";
+import { ContentKey, ContentSnapshot, defaults, productsWithCategoryNames, resolveContent } from "@/lib/content";
 
 type ContentContextValue = {
   content: Partial<ContentSnapshot>;
@@ -22,7 +22,14 @@ export function ContentProvider({ initialContent, children }: { initialContent: 
 export function useContent<K extends ContentKey>(key: K) {
   const context = useContext(ContentContext);
   const data = context?.content[key];
-  return useMemo(() => resolveContent(key, data ?? defaults[key]), [key, data]);
+  const categories = context?.content.categories;
+  return useMemo(() => {
+    const resolved = resolveContent(key, data ?? defaults[key]);
+    if (key === "products") {
+      return productsWithCategoryNames(resolved as ContentSnapshot["products"], resolveContent("categories", categories)) as ContentSnapshot[K];
+    }
+    return resolved;
+  }, [key, data, categories]);
 }
 
 export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: string[] = []) {
@@ -31,7 +38,10 @@ export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data, uploadedUrls }),
   });
-  if (!response.ok) throw new Error("No se pudo guardar el contenido.");
+  if (!response.ok) {
+    const result = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(result?.error ?? "No se pudo guardar el contenido.");
+  }
   return response.json() as Promise<{ data: unknown; cleanupPending?: number }>;
 }
 

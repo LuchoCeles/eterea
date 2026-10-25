@@ -19,6 +19,12 @@ npm run dev
 
 Abrí `http://localhost:3000`. La primera cuenta que se registre recibe el rol de administración. Luego ingresá a `/auth` para administrar promociones, banners, productos, textos e Instagram.
 
+## Categorías y productos
+
+Creá las categorías en la sección **Categorías** del administrador: solo necesitan un nombre. Tocá **Guardar** y después asignalas a cada producto desde **Productos**. La lista de productos del administrador se muestra como tabla en escritorio. Los productos nuevos se muestran primero según su fecha de creación; ya no se reordenan manualmente. La tienda conserva sus opciones de orden por precio y nombre para cada visitante.
+
+Las categorías se guardan como un JSON independiente con la clave `categories` en `site_content`; los productos se guardan con la clave `products`. No cambia el esquema de Prisma ni hace falta aplicar una migración SQL. Si todavía no existe la fila `categories`, la aplicación recupera las categorías anteriores de `texts` y de los productos; al guardarlas desde la nueva sección crea la fila en la base de datos. Los productos anteriores conservan su orden y quedan sin fecha porque no se conoce su alta real. Al crear productos nuevos, se registra la fecha de alta en el JSON y se conserva en ediciones posteriores. Una categoría que todavía tiene productos asignados no se puede borrar: reasignalos primero.
+
 ## Publicaciones de Instagram en el home
 
 La sección «El universo Etérea» muestra hasta seis publicaciones recientes de `@eterea.newconcept` y las integra con el reproductor oficial de Instagram. La lista se actualiza cada 15 minutos. Si Meta no responde, se usa la última lista obtenida durante un día; después, se usan los enlaces cargados en la pestaña Instagram del administrador.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ContentKey } from "@/lib/content";
-import { contentKeys, saveContentAndCleanImages } from "@/server/content";
+import { ContentValidationError, contentKeys, saveContentAndCleanImages } from "@/server/content";
 import { isAdminRequest } from "@/server/auth";
 import { contentSchemas } from "@/lib/content-schema";
 
@@ -16,10 +16,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ key:
       ? body.uploadedUrls.filter((url): url is string => typeof url === "string")
       : [];
     const parsed = contentSchemas[key as ContentKey].safeParse(data);
-    if (!parsed.success) return NextResponse.json({ error: "El formato del contenido no es válido." }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: key === "categories" ? "Cada categoría necesita un nombre válido." : "El formato del contenido no es válido." }, { status: 400 });
     const result = await saveContentAndCleanImages(key as ContentKey, parsed.data, uploadedUrls);
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
+    if (error instanceof ContentValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ error: "No se pudo guardar el contenido." }, { status: 400 });
   }
 }

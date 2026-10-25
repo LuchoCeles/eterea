@@ -47,6 +47,11 @@ export function instagramPermalink(value: string): string | null {
   }
 }
 
+export function instagramEmbedUrl(value: string): string | null {
+  const permalink = instagramPermalink(value);
+  return permalink ? `${permalink}embed/` : null;
+}
+
 export function visibleInstagramPosts(posts: InstagramPost[]): InstagramPost[] {
   return posts.flatMap((post) => {
     const url = instagramPermalink(post.url);

@@ -1,35 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Script from "next/script";
+import { useState } from "react";
 import { ArrowUpRight, Instagram, Play } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
-import { visibleInstagramPosts } from "@/lib/storefront-rules";
+import { instagramEmbedUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { InstagramPost } from "@/lib/content";
 import { Button } from "@/components/ui/button";
 const flower = "/assets/eterea-placeholder.svg";
 
-function processEmbeds() {
-  const instagram = (window as Window & { instgrm?: { Embeds?: { process: () => void } } }).instgrm;
-  instagram?.Embeds?.process();
-}
-
 function InstagramCard({ post }: { post: InstagramPost }) {
   const [showEmbed, setShowEmbed] = useState(!post.image);
-
-  useEffect(() => {
-    if (showEmbed) processEmbeds();
-  }, [showEmbed]);
+  const embedUrl = instagramEmbedUrl(post.url);
+  if (!embedUrl) return null;
 
   return (
     <article className="min-w-0">
       {showEmbed ? (
-        <div className="min-h-[400px] overflow-hidden bg-white text-foreground">
-          <blockquote className="instagram-media mx-auto w-full max-w-[540px]" data-instgrm-permalink={post.url} data-instgrm-version="14">
-            <a href={post.url} target="_blank" rel="noreferrer" className="block p-6 text-sm underline">
-              Ver {post.kind === "reel" ? "reel" : "publicación"} en Instagram
-            </a>
-          </blockquote>
+        <div className="overflow-hidden bg-white">
+          <iframe
+            src={embedUrl}
+            title={post.title || (post.kind === "reel" ? "Reel de Etérea" : "Publicación de Etérea")}
+            loading="lazy"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            className="h-[620px] w-full border-0"
+          />
         </div>
       ) : (
         <button type="button" onClick={() => setShowEmbed(true)} aria-label={`Mostrar ${post.kind === "reel" ? "reel" : "publicación"} de Instagram en esta página`} className="group relative block aspect-[4/5] w-full overflow-hidden bg-pearl text-foreground">
@@ -49,11 +43,6 @@ export function InstagramSection() {
   const posts = useContent("instagram");
   const { homeSections } = useContent("texts");
   const validPosts = visibleInstagramPosts(posts);
-  const postUrls = validPosts.map((post) => post.url).join("|");
-
-  useEffect(() => {
-    processEmbeds();
-  }, [postUrls]);
   if (!homeSections.instagram) return null;
   return (
     <section id="instagram" className="border-t bg-sea py-14 text-sea-foreground md:py-20">
@@ -70,7 +59,6 @@ export function InstagramSection() {
           <Button asChild variant="outline" className="h-12 w-fit rounded-none border-sea-foreground/30 bg-transparent text-sea-foreground"><a href="https://www.instagram.com/eterea.newconcept/" target="_blank" rel="noreferrer"><Instagram /> Ver publicaciones y reels <ArrowUpRight /></a></Button>
         </div>
         {validPosts.length > 0 && <>
-          <Script src="https://www.instagram.com/embed.js" strategy="afterInteractive" onReady={processEmbeds} />
           <div className="mt-10 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {validPosts.map((post) => <InstagramCard key={post.id} post={post} />)}
           </div>

@@ -56,27 +56,28 @@ export function ProductPaymentPricesEditor({
               }
             >
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-xs text-muted-foreground">
-                  Medio de pago
+                <div>
                   <input
                     value={price.label}
                     maxLength={80}
                     onChange={(event) => update(index, { label: event.target.value })}
-                    placeholder="Transferencia, efectivo, cuotas…"
-                    className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground"
+                    placeholder="Medio de pago (transferencia, efectivo…)"
+                    aria-label="Medio de pago"
+                    className="min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                   />
-                </label>
-                <label className="text-xs text-muted-foreground">
-                  Precio ($)
+                </div>
+                <div>
                   <input
                     type="number"
                     min="0"
                     step="1"
                     value={price.price}
                     onChange={(event) => update(index, { price: Number(event.target.value) || 0 })}
-                    className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground"
+                    placeholder="Precio ($)"
+                    aria-label="Precio ($)"
+                    className="min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                   />
-                </label>
+                </div>
               </div>
             </CollapsibleCard>
           ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { AddToCartButton } from "@/components/store/AddToCartButton";
+import { ProductImage } from "@/components/store/ProductImage";
 import { formatPrice, type Product } from "@/lib/products";
 import { hasRealDiscount, visiblePaymentPrices } from "@/lib/storefront-rules";
 
@@ -12,7 +13,7 @@ export function CatalogProductCard({ product, onAdd, offersEnabled }: { product:
   return (
     <article className="group min-w-0">
       <div className="relative aspect-[4/5] overflow-hidden bg-card">
-        <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+        <ProductImage src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
         {(discounted || product.tag) && (
           <span className={`eyebrow absolute left-3 top-3 px-3 py-1.5 ${discounted ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
             {discounted ? `−${discount}%` : product.tag}

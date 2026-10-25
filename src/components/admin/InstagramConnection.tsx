@@ -63,17 +63,17 @@ export function InstagramConnection() {
           {status === "missing" && "Todavía no hay un token guardado."}
           {status === "error" && "No se pudo consultar el estado de la conexión."}
         </p>
-        <label className="block text-xs text-muted-foreground">
-          Token de acceso de Instagram
+        <div>
           <input
             type="password"
             autoComplete="new-password"
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder="Pegá el token de Meta"
-            className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm"
+            aria-label="Token de acceso de Instagram"
+            className="min-h-11 w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
-        </label>
+        </div>
         <Button type="submit" disabled={saving || !token.trim()}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}{" "}
           {status === "saved" ? "Reemplazar token" : "Guardar token"}

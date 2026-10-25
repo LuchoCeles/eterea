@@ -1,8 +1,9 @@
-import { newArrivals, sale, type Product } from "@/lib/products";
+import { categoryIdForName, newArrivals, sale, sortProductsByCreation, type Product } from "@/lib/products";
 import type { Offers } from "@/lib/storefront-rules";
 
 export type Slide = { img: string; kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
 export type StoreProduct = Product & { section: "nuevo" | "sale" };
+export type StoreCategory = { id: string; name: string; img?: string };
 export type InstagramPost = { id: string; url: string; image: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string };
 export type HomeSections = {
@@ -22,7 +23,7 @@ export type Texts = {
   offers: Offers;
   homeSections: HomeSections;
   benefits: { t: string; d: string }[];
-  categories: { name: string; img: string }[];
+  categories: StoreCategory[];
   split: { kicker: string; big: string; sub: string; cta: string; img: string };
   club: { kicker: string; big: string; text: string; code: string; cta: string };
   marquee: string[];
@@ -46,6 +47,7 @@ export const defaults = {
     ...newArrivals.map((product) => ({ ...product, section: "nuevo" as const })),
     ...sale.map((product) => ({ ...product, section: "sale" as const })),
   ] as StoreProduct[],
+  categories: [] as StoreCategory[],
   instagram: [] as InstagramPost[],
   contact: { whatsapp: "" } as ContactSettings,
   texts: {
@@ -68,12 +70,7 @@ export const defaults = {
       { t: "Inspiración europea", d: "Una mirada delicada y actual" },
       { t: "Frescura natural", d: "Belleza que se lleva con comodidad" },
     ],
-    categories: [
-      { name: "Vestidos", img: placeholder },
-      { name: "Tops", img: placeholder },
-      { name: "Faldas", img: placeholder },
-      { name: "Noche", img: placeholder },
-    ],
+    categories: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), name, img: placeholder })),
     split: { kicker: "", big: "", sub: "", cta: "Ver prendas", img: placeholder },
     club: { kicker: "", big: "", text: "", code: "", cta: "Ver prendas" },
     marquee: ["Espíritu costero", "Etérea New Concept", "Frescura natural", "Inspiración europea"],
@@ -92,7 +89,10 @@ export type ContentOf<K extends ContentKey> = (typeof defaults)[K];
 export type ContentSnapshot = { [K in ContentKey]: ContentOf<K> };
 
 export function resolveContent<K extends ContentKey>(key: K, data: unknown): ContentOf<K> {
-  if (data == null) return structuredClone(defaults[key]);
+  if (data == null) {
+    if (key === "products") return resolveContent(key, structuredClone(defaults.products));
+    return structuredClone(defaults[key]);
+  }
   if (key === "contact") {
     return { ...defaults.contact, ...(data as Partial<ContactSettings>) } as ContentOf<K>;
   }
@@ -106,7 +106,38 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
       split: { ...defaults.texts.split, ...saved.split },
       club: { ...defaults.texts.club, ...saved.club },
       editorial: { ...defaults.texts.editorial, ...saved.editorial },
+      categories: (saved.categories ?? defaults.texts.categories).map((category) => ({ ...category, id: category.id || categoryIdForName(category.name) })),
     } as ContentOf<K>;
   }
+  if (key === "products") {
+    return sortProductsByCreation((data as StoreProduct[]).map((product) => ({
+      ...product,
+      categoryId: product.categoryId || categoryIdForName(product.category),
+    }))) as ContentOf<K>;
+  }
+  if (key === "categories") {
+    return (data as StoreCategory[]).map((category) => ({ ...category, id: category.id || categoryIdForName(category.name) })) as ContentOf<K>;
+  }
   return data as ContentOf<K>;
+}
+
+export function categoriesForProducts(initialCategories: StoreCategory[], products: StoreProduct[]): StoreCategory[] {
+  const categories = [...initialCategories];
+  for (const product of products) {
+    if (!product.category?.trim()) continue;
+    const id = product.categoryId || categoryIdForName(product.category);
+    if (!categories.some((category) => category.id === id)) {
+      categories.push({ id, name: product.category });
+    }
+  }
+  return categories;
+}
+
+export function catalogCategories(saved: StoreCategory[] | null, texts: Texts, products: StoreProduct[]): StoreCategory[] {
+  return saved === null ? categoriesForProducts(texts.categories, products) : resolveContent("categories", saved);
+}
+
+export function productsWithCategoryNames(products: StoreProduct[], categories: StoreCategory[]): StoreProduct[] {
+  const names = new Map(categories.map((category) => [category.id, category.name]));
+  return products.map((product) => ({ ...product, category: names.get(product.categoryId ?? "") ?? product.category }));
 }

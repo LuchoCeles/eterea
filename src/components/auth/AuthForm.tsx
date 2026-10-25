@@ -40,8 +40,8 @@ export function AuthForm() {
           <h1 className="mt-2 text-3xl font-semibold">{mode === "in" ? "Ingresar" : "Crear cuenta"}</h1>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">Acceso para administrar la tienda. No necesitás una cuenta para explorar las prendas.</p>
         </div>
-        <input type="email" required maxLength={191} placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border bg-background px-3 py-2.5 text-sm" />
-        <input type="password" required minLength={mode === "up" ? 8 : 1} maxLength={128} placeholder="Contraseña" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full border bg-background px-3 py-2.5 text-sm" />
+        <input type="email" required maxLength={191} placeholder="Email" aria-label="Email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full border bg-background px-3 py-2.5 text-sm" />
+        <input type="password" required minLength={mode === "up" ? 8 : 1} maxLength={128} placeholder="Contraseña" aria-label="Contraseña" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full border bg-background px-3 py-2.5 text-sm" />
         {message && <p role="alert" className="text-sm text-accent">{message}</p>}
         <Button disabled={busy} className="h-11 w-full">{busy ? "Un momento…" : mode === "in" ? "Ingresar" : "Crear cuenta"}</Button>
         <Button variant="link" type="button" onClick={() => { setMode(mode === "in" ? "up" : "in"); setMessage(null); }} className="w-full text-xs text-muted-foreground underline">

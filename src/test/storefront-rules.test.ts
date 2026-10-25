@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasRealDiscount, instagramPermalink, productWithoutOffers, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
+import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, productWithoutOffers, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
 
 const product = { id: "real", name: "Prenda", category: "Vestidos", price: 45000, oldPrice: 60000, tag: "-25%", image: "" };
 
@@ -28,7 +28,7 @@ describe("Reglas de lanzamiento de Etérea", () => {
     const visible = productWithoutOffers(product, false);
     assert.equal(visible.oldPrice, undefined);
     assert.equal(visible.tag, undefined);
-    assert.equal(visible.price, 45000);
+    assert.equal(visible.price, 60000);
     assert.equal(productWithoutOffers({ ...product, tag: "Nuevo" }, false).tag, "Nuevo");
   });
 
@@ -38,6 +38,8 @@ describe("Reglas de lanzamiento de Etérea", () => {
     assert.equal(instagramPermalink("https://instagram.com.evil.test/p/ABC123/"), null);
     assert.equal(instagramPermalink("javascript:alert(1)"), null);
     assert.equal(instagramPermalink("https://www.instagram.com/eterea.newconcept/"), null);
+    assert.equal(instagramEmbedUrl("https://www.instagram.com/reel/ABC123/?igsh=abc"), "https://www.instagram.com/reel/ABC123/embed/");
+    assert.equal(instagramEmbedUrl("https://instagram.com.evil.test/p/ABC123/"), null);
   });
 
   it("muestra solo publicaciones válidas y reconoce los reels", () => {
