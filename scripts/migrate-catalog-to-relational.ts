@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 import { paymentPriceId } from "@/lib/catalog-ids";
 import { catalogCategories, defaults, legacyHomeCategoryCards, resolveContent, type StoreCategory, type StoreProduct } from "@/lib/content";
 import { contentSchemas } from "@/lib/content-schema";
@@ -8,21 +8,28 @@ import { createMariaDbAdapter } from "@/server/prisma-adapter";
 const MARKER_KEY = "__catalog_relational_v1";
 const prisma = new PrismaClient({ adapter: createMariaDbAdapter() });
 
+async function legacyRow(db: PrismaClient | Prisma.TransactionClient, key: string): Promise<{ data: unknown } | null> {
+  const rows = await db.$queryRaw<{ data: unknown }[]>`SELECT data FROM SiteContent WHERE \`key\` = ${key}`;
+  const row = rows[0];
+  return row ? { data: Buffer.isBuffer(row.data) ? JSON.parse(row.data.toString("utf8")) as unknown
+    : typeof row.data === "string" ? JSON.parse(row.data) as unknown : row.data } : null;
+}
+
 function parseSaved<K extends "products" | "categories" | "texts">(key: K, data: unknown) {
   if (data === undefined) return undefined;
-  const parsed = contentSchemas[key].safeParse(data);
+  const parsed = contentSchemas[key].safeParse(typeof data === "string" ? JSON.parse(data) as unknown : data);
   if (!parsed.success) throw new Error(`El contenido heredado de «${key}» no es válido. Revisalo antes de migrar.`);
   return parsed.data;
 }
 
 try {
   const [marker, productRow, categoryRow, textsRow] = await Promise.all([
-    prisma.siteContent.findUnique({ where: { key: MARKER_KEY } }),
-    prisma.siteContent.findUnique({ where: { key: "products" } }),
-    prisma.siteContent.findUnique({ where: { key: "categories" } }),
-    prisma.siteContent.findUnique({ where: { key: "texts" } }),
+    legacyRow(prisma, MARKER_KEY),
+    legacyRow(prisma, "products"),
+    legacyRow(prisma, "categories"),
+    legacyRow(prisma, "texts"),
   ]);
-  if (marker?.data === true) {
+  if (marker && (typeof marker.data === "string" ? JSON.parse(marker.data) : marker.data) === true) {
     console.info("El catálogo ya está migrado a tablas propias.");
     process.exitCode = 0;
   } else {
@@ -72,7 +79,7 @@ try {
           img: card.img, hidden: card.hidden !== false, position,
         } });
       }
-      await transaction.siteContent.create({ data: { key: MARKER_KEY, data: true } });
+      await transaction.$executeRaw`INSERT INTO SiteContent (\`key\`, data, updatedAt) VALUES (${MARKER_KEY}, ${JSON.stringify(true)}, NOW(3))`;
     }, { timeout: 120_000 });
     console.info(`Catálogo migrado: ${categories.length} categorías, ${products.length} productos y ${cards.length} destacados.`);
   }

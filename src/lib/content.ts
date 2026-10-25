@@ -32,6 +32,7 @@ export type Texts = {
   marquee: string[];
   editorial: ImageSource & { kicker: string; title: string; text: string; cta: string };
 };
+export type TextSectionKey = "homeSections" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
 
 const placeholder = "/assets/eterea-placeholder.svg";
 
@@ -74,7 +75,7 @@ export const defaults = {
       { t: "Frescura natural", d: "Belleza que se lleva con comodidad" },
     ],
     categories: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), name })),
-    homeCategoryCards: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), categoryId: categoryIdForName(name), img: placeholder, hidden: true })),
+    homeCategoryCards: [] as HomeCategoryCard[],
     split: { kicker: "", big: "", sub: "", cta: "Ver prendas", img: placeholder },
     club: { kicker: "", big: "", text: "", code: "", cta: "Ver prendas" },
     marquee: ["Espíritu costero", "Etérea New Concept", "Frescura natural", "Inspiración europea"],
@@ -110,6 +111,8 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
       split: { ...defaults.texts.split, ...saved.split },
       club: { ...defaults.texts.club, ...saved.club },
       editorial: { ...defaults.texts.editorial, ...saved.editorial },
+      benefits: saved.benefits ?? defaults.texts.benefits,
+      marquee: saved.marquee ?? defaults.texts.marquee,
       categories: (saved.categories ?? defaults.texts.categories).map((category) => ({ id: category.id || categoryIdForName(category.name), name: category.name, hidden: category.hidden === true })),
       homeCategoryCards: (saved.homeCategoryCards ?? defaults.texts.homeCategoryCards).map((card) => ({ ...card, hidden: card.hidden !== false })),
     } as ContentOf<K>;
@@ -124,6 +127,10 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
     return (data as StoreCategory[]).map((category) => ({ id: category.id || categoryIdForName(category.name), name: category.name, hidden: category.hidden === true })) as ContentOf<K>;
   }
   return data as ContentOf<K>;
+}
+
+export function mergeTextSection<K extends TextSectionKey>(current: unknown, section: K, value: Texts[K]): Texts {
+  return resolveContent("texts", { ...resolveContent("texts", current), [section]: value });
 }
 
 export function categoriesForProducts(initialCategories: StoreCategory[], products: StoreProduct[]): StoreCategory[] {

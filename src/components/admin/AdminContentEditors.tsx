@@ -27,7 +27,7 @@ export function AdminContentEditor({
 }: {
   k: ContentKey;
   draft: unknown;
-  onChange: (value: unknown, saveImmediately?: boolean) => void;
+  onChange: (value: unknown) => void;
   onUploaded: (urls: string[]) => void;
 }) {
   if (k === "promo") return <PromoEditor value={draft as string[]} onChange={onChange} />;
@@ -45,14 +45,7 @@ export function AdminContentEditor({
     );
   if (k === "categories")
     return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
-  if (k === "texts")
-    return (
-      <TextsEditor
-        value={draft as Texts}
-        onChange={onChange}
-        onUploaded={(url) => onUploaded([url])}
-      />
-    );
+  if (k === "texts") return <TextsEditor value={draft as Texts} />;
   return (
     <div className="space-y-3 sm:space-y-5">
       <WhatsAppSettings />

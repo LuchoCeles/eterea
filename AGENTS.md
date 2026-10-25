@@ -30,7 +30,7 @@
 
 ## Reglas de negocio y seguridad
 
-- Todo contenido editable del storefront (promos, banners, productos, textos e Instagram) se guarda como JSON en `site_content`, identificado por clave. Los valores por defecto viven en `src/lib/content.ts`.
+- Todo contenido editable del storefront (promos, banners, productos, textos e Instagram) se guarda en tablas relacionales con columnas tipadas. `ContentSection` registra qué secciones fueron guardadas para distinguirlas de los valores por defecto de `src/lib/content.ts`. No agregues columnas JSON ni restaures `SiteContent`.
 - Resolvé siempre el contenido guardado con `resolveContent`, tanto en el storefront como en el borrador del administrador. Al combinar textos anidados, completá los valores por defecto sin activar secciones nuevas por accidente.
 - Las promociones persistidas, incluso las heredadas, obedecen el mismo interruptor de ofertas que los valores por defecto. No permitas que mensajes promocionales aparezcan con ofertas desactivadas.
 - Mantené la validación segura de enlaces y la visibilidad de Instagram en `src/lib/storefront-rules.ts`. Instagram es curado manualmente, tiene una lista vacía por defecto y solo acepta enlaces válidos a publicaciones o reels reales.

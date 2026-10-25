@@ -1,50 +1,53 @@
 import "server-only";
-import { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { planCloudinaryDeletions } from "@/lib/cloudinary-media";
-import { catalogCategories, ContentKey, ContentSnapshot, defaults, legacyHomeCategoryCards, productsWithCategoryNames, resolveContent, type StoreCategory, type StoreProduct } from "@/lib/content";
-import { prepareProductsForSave } from "@/lib/products";
+import { catalogCategories, defaults, productsWithCategoryNames, resolveContent, type ContentKey, type ContentSnapshot, type HomeCategoryCard, type StoreProduct, type TextSectionKey } from "@/lib/content";
+import { contentSchemas, textSectionSchemas } from "@/lib/content-schema";
 import { referencedProductIds } from "@/lib/image-source";
-import { contentSchemas } from "@/lib/content-schema";
-import { loadRelationalCatalog, saveCategoryRows, saveHomeCategoryCardRows, saveProductRows } from "@/server/catalog";
+import { prepareProductsForSave } from "@/lib/products";
+import { instagramPermalink } from "@/lib/storefront-rules";
+import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
 import { cloudinaryPublicId, deleteCloudinaryImage } from "@/server/cloudinary";
+import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
 import { prisma } from "@/server/prisma";
+import { loadRelationalContent, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
 
-const CLEANUP_QUEUE_KEY = "__cloudinary_cleanup";
-const CATALOG_MARKER_KEY = "__catalog_relational_v1";
-const IMAGE_REFERENCE_KEYS: ContentKey[] = ["hero", "texts", "instagram"];
-
+type Db = Prisma.TransactionClient;
 export const contentKeys = Object.keys(defaults) as ContentKey[];
-
 export class ContentValidationError extends Error {}
 
-export async function loadContentSnapshot(): Promise<ContentSnapshot> {
-  const rows = await prisma.siteContent.findMany({ where: { key: { in: [...contentKeys, CATALOG_MARKER_KEY] } } }).catch(() => []);
-  const saved = new Map(rows.map((row) => [row.key, row.data]));
-  const snapshot = Object.fromEntries(contentKeys.map((key) => {
-    const parsed = contentSchemas[key].safeParse(saved.get(key));
-    return [key, resolveContent(key, parsed.success ? parsed.data : undefined)];
-  })) as ContentSnapshot;
-  if (saved.get(CATALOG_MARKER_KEY) === true) {
-    const catalog = await loadRelationalCatalog(prisma);
-    snapshot.categories = resolveContent("categories", catalog.categories);
-    snapshot.products = resolveContent("products", catalog.products);
-    snapshot.texts = resolveContent("texts", { ...snapshot.texts, homeCategoryCards: catalog.homeCategoryCards });
-  } else {
-    const parsedCategories = contentSchemas.categories.safeParse(saved.get("categories"));
-    snapshot.categories = catalogCategories(parsedCategories.success ? parsedCategories.data as StoreCategory[] : null, snapshot.texts, snapshot.products);
-    const legacyCards = legacyHomeCategoryCards(snapshot.categories, saved.get("texts"), saved.get("categories"), snapshot.products);
-    if (legacyCards) snapshot.texts = resolveContent("texts", { ...snapshot.texts, homeCategoryCards: legacyCards });
+async function readSnapshot(db: Db): Promise<ContentSnapshot> {
+  const [saved, catalog, sectionRows] = await Promise.all([
+    loadRelationalContent(db), loadRelationalCatalog(db),
+    db.contentSection.findMany({ where: { key: { in: ["categories", "products", "homeCategoryCards"] } }, select: { key: true } }),
+  ]);
+  const sections = new Set(sectionRows.map((row) => row.key));
+  const products = sections.has("products") ? resolveContent("products", catalog.products) : resolveContent("products", undefined);
+  const categories = sections.has("categories") ? resolveContent("categories", catalog.categories)
+    : catalogCategories(null, saved.texts, products);
+  const snapshot: ContentSnapshot = {
+    ...saved, categories, products: productsWithCategoryNames(products, categories),
+    texts: resolveContent("texts", {
+      ...saved.texts,
+      homeCategoryCards: sections.has("homeCategoryCards") ? catalog.homeCategoryCards : defaults.texts.homeCategoryCards,
+    }),
+  };
+  for (const key of contentKeys) {
+    if (!contentSchemas[key].safeParse(snapshot[key]).success) {
+      throw new ContentValidationError(`El contenido guardado de ${key} no tiene un formato válido.`);
+    }
   }
-  snapshot.products = productsWithCategoryNames(snapshot.products, snapshot.categories);
   return snapshot;
 }
 
-function withoutCatalogFields(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const { categories: _categories, homeCategoryCards: _homeCategoryCards, ...rest } = value as Record<string, unknown>;
-  void _categories;
-  void _homeCategoryCards;
-  return rest;
+export async function loadContentSnapshot({ strict = false }: { strict?: boolean } = {}): Promise<ContentSnapshot> {
+  if (strict) return readSnapshot(prisma);
+  return readSnapshot(prisma).catch(() => ({
+    promo: resolveContent("promo", undefined), hero: resolveContent("hero", undefined),
+    products: resolveContent("products", undefined), categories: resolveContent("categories", undefined),
+    instagram: resolveContent("instagram", undefined), contact: resolveContent("contact", undefined),
+    texts: resolveContent("texts", undefined),
+  }));
 }
 
 function imageUrls(value: unknown): string[] {
@@ -54,178 +57,158 @@ function imageUrls(value: unknown): string[] {
   return [];
 }
 
-function queuedUrls(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((url): url is string => typeof url === "string" && cloudinaryPublicId(url) !== null))];
-}
-
-async function referencedImageUrls(rows: { key: string; data: unknown }[]) {
-  const migrated = rows.some((row) => row.key === CATALOG_MARKER_KEY && row.data === true);
-  const catalog = migrated ? await loadRelationalCatalog(prisma) : null;
+function referencedUrls(snapshot: ContentSnapshot) {
   return new Set([
-    ...rows.filter((row) => row.key !== CLEANUP_QUEUE_KEY && (!migrated || (row.key !== "products" && row.key !== "categories")))
-      .flatMap((row) => imageUrls(row.key === "texts" && migrated ? withoutCatalogFields(row.data) : row.data)),
-    ...imageUrls(catalog?.products), ...imageUrls(catalog?.homeCategoryCards),
+    ...imageUrls(snapshot.hero), ...imageUrls(snapshot.instagram), ...imageUrls(snapshot.products),
+    ...imageUrls(snapshot.texts.split), ...imageUrls(snapshot.texts.editorial),
+    ...imageUrls(snapshot.texts.homeCategoryCards),
   ]);
 }
 
-async function persistCleanupQueue(urls: string[]) {
-  if (urls.length) {
-    await prisma.siteContent.upsert({
-      where: { key: CLEANUP_QUEUE_KEY },
-      create: { key: CLEANUP_QUEUE_KEY, data: urls },
-      update: { data: urls },
-    });
-  } else {
-    await prisma.siteContent.deleteMany({ where: { key: CLEANUP_QUEUE_KEY } });
+async function queueUnusedImages(db: Db, candidates: string[], snapshot: ContentSnapshot) {
+  const referenced = referencedUrls(snapshot);
+  const queued = await db.cloudinaryCleanup.findMany({ select: { url: true } });
+  const unused = [...new Set([...queued.map((item) => item.url), ...candidates])]
+    .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
+  await db.cloudinaryCleanup.deleteMany({ where: { url: { notIn: unused } } });
+  if (unused.length) await db.cloudinaryCleanup.createMany({ data: unused.map((url) => ({ url })), skipDuplicates: true });
+  return unused.length;
+}
+
+function checkProductReferences(value: unknown, products: StoreProduct[]) {
+  const ids = new Set(products.map((product) => product.id));
+  if (referencedProductIds(value).some((id) => !ids.has(id))) {
+    throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+  }
+}
+
+function checkCards(cards: HomeCategoryCard[], categoryIds: Set<string>) {
+  if (new Set(cards.map((card) => card.id)).size !== cards.length
+    || new Set(cards.map((card) => card.categoryId)).size !== cards.length) {
+    throw new ContentValidationError("Cada categoría destacada debe aparecer una sola vez en el inicio.");
+  }
+  if (cards.some((card) => !categoryIds.has(card.categoryId))) {
+    throw new ContentValidationError("Elegí una categoría existente para cada tarjeta del inicio.");
   }
 }
 
 export async function saveContentAndCleanImages(key: ContentKey, value: unknown, uploadedUrls: string[] = []) {
-  const saved = await prisma.$transaction(async (transaction) => {
-    const [previous, queue, textsRow, productsRow, categoriesRow, marker] = await Promise.all([
-      transaction.siteContent.findUnique({ where: { key }, select: { data: true } }),
-      transaction.siteContent.findUnique({ where: { key: CLEANUP_QUEUE_KEY }, select: { data: true } }),
-      transaction.siteContent.findUnique({ where: { key: "texts" }, select: { data: true } }),
-      transaction.siteContent.findUnique({ where: { key: "products" }, select: { data: true } }),
-      transaction.siteContent.findUnique({ where: { key: "categories" }, select: { data: true } }),
-      transaction.siteContent.findUnique({ where: { key: CATALOG_MARKER_KEY }, select: { data: true } }),
-    ]);
-    const relational = marker?.data === true ? await loadRelationalCatalog(transaction) : null;
-    if (!relational && (key === "categories" || key === "products" || key === "texts")) {
-      throw new ContentValidationError("Primero hay que migrar el catálogo a las tablas de la base de datos.");
-    }
-    const currentProducts = relational?.products ?? resolveContent("products", productsRow?.data ?? defaults.products);
-    const currentTexts = resolveContent("texts", textsRow?.data);
-    const parsedCategories = contentSchemas.categories.safeParse(categoriesRow?.data);
-    const availableCategories = relational?.categories ?? catalogCategories(parsedCategories.success ? parsedCategories.data as StoreCategory[] : null, currentTexts, currentProducts);
-    const homeCategoryCards = relational?.homeCategoryCards ?? legacyHomeCategoryCards(availableCategories, textsRow?.data, categoriesRow?.data, currentProducts) ?? currentTexts.homeCategoryCards;
-    let merged = resolveContent(key, value);
+  const parsed = contentSchemas[key].safeParse(value);
+  if (!parsed.success) throw new ContentValidationError("El formato del contenido no es válido.");
+  return prisma.$transaction(async (db) => {
+    const current = await readSnapshot(db);
+    let next = resolveContent(key, parsed.data);
     if (key === "categories") {
-      const nextCategories = merged as ContentSnapshot["categories"];
-      const ids = nextCategories.map((category) => category.id);
-      const names = nextCategories.map((category) => category.name.trim().toLocaleLowerCase("es-AR"));
+      const categories = next as ContentSnapshot["categories"];
+      const ids = categories.map((category) => category.id);
+      const names = categories.map((category) => category.name.trim().toLocaleLowerCase("es-AR"));
       if (new Set(ids).size !== ids.length || new Set(names).size !== names.length) {
         throw new ContentValidationError("Cada categoría debe tener un nombre y un identificador únicos.");
       }
-      if (relational?.categories.some((category) => !ids.includes(category.id))) {
+      if (current.categories.some((category) => !ids.includes(category.id))) {
         throw new ContentValidationError("Para quitar una categoría de la tienda, ocultala. No se borran categorías desde este editor.");
       }
     }
-    if (key === "texts") {
-      const cards = (merged as ContentSnapshot["texts"]).homeCategoryCards;
-      const categoryIds = new Set(availableCategories.map((category) => category.id));
-      if (new Set(cards.map((card) => card.id)).size !== cards.length || new Set(cards.map((card) => card.categoryId)).size !== cards.length) {
-        throw new ContentValidationError("Cada categoría destacada debe aparecer una sola vez en el inicio.");
-      }
-      if (relational?.homeCategoryCards.some((card) => !cards.some((next) => next.id === card.id))) {
-        throw new ContentValidationError("Para quitar una tarjeta del inicio, ocultala.");
-      }
-      if (cards.some((card) => !categoryIds.has(card.categoryId))) {
-        throw new ContentValidationError("Elegí una categoría existente para cada tarjeta del inicio.");
-      }
-    }
     if (key === "products") {
-      const nextProducts = merged as StoreProduct[];
-      if (new Set(nextProducts.map((product) => product.id)).size !== nextProducts.length) {
+      const products = next as StoreProduct[];
+      if (new Set(products.map((product) => product.id)).size !== products.length) {
         throw new ContentValidationError("Hay productos con identificadores repetidos.");
       }
-      if (relational?.products.some((product) => !nextProducts.some((next) => next.id === product.id))) {
+      if (current.products.some((product) => !products.some((item) => item.id === product.id))) {
         throw new ContentValidationError("Para quitar un producto de la tienda, ocultalo.");
       }
-      const categories = new Map(availableCategories.map((category) => [category.id, category.name]));
-      if (nextProducts.some((product) => !categories.has(product.categoryId ?? ""))) {
+      const categories = new Map(current.categories.map((category) => [category.id, category.name]));
+      if (products.some((product) => !categories.has(product.categoryId ?? ""))) {
         throw new ContentValidationError("Asigná a cada producto una categoría creada en el administrador.");
       }
-      const imageSections = await transaction.siteContent.findMany({ where: { key: { in: IMAGE_REFERENCE_KEYS } }, select: { data: true } });
-      const remainingIds = new Set(nextProducts.map((product) => product.id));
-      if (imageSections.some((section) => referencedProductIds(withoutCatalogFields(section.data)).some((id) => !remainingIds.has(id)))) {
-        throw new ContentValidationError("Hay productos usados como foto en otras secciones. Quitá esas referencias antes de borrar el producto.");
-      }
-      if (homeCategoryCards.some((card) => card.productId && !remainingIds.has(card.productId))) {
-        throw new ContentValidationError("Hay productos usados como foto en el inicio. Quitá esas referencias antes de borrarlos.");
-      }
-      merged = prepareProductsForSave(nextProducts.map((product) => ({
-        ...product,
-        category: categories.get(product.categoryId ?? "") ?? product.category,
-      })), currentProducts, Date.now());
+      next = prepareProductsForSave(products.map((product) => ({
+        ...product, category: categories.get(product.categoryId ?? "") ?? product.category,
+      })), current.products, Date.now());
     }
-    if (IMAGE_REFERENCE_KEYS.includes(key)) {
-      const availableIds = new Set(currentProducts.map((product) => product.id));
-      if (referencedProductIds(merged).some((id) => !availableIds.has(id))) {
-        throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+    if (key === "texts") {
+      const texts = next as ContentSnapshot["texts"];
+      checkCards(texts.homeCategoryCards, new Set(current.categories.map((category) => category.id)));
+      checkProductReferences([texts.split, texts.editorial, texts.homeCategoryCards], current.products);
+    }
+    if (key === "hero" || key === "instagram") checkProductReferences(next, current.products);
+    if (key === "instagram") {
+      const posts = next as ContentSnapshot["instagram"];
+      if (posts.some((post) => !instagramPermalink(post.url))) {
+        throw new ContentValidationError("Usá enlaces válidos a publicaciones o reels de Instagram.");
+      }
+      if (new Set(posts.map((post) => post.id)).size !== posts.length) {
+        throw new ContentValidationError("Hay publicaciones de Instagram repetidas.");
       }
     }
-    const previousValue = key === "products" ? relational?.products
-      : key === "categories" ? relational?.categories
-      : key === "texts" ? { ...currentTexts, homeCategoryCards } : previous?.data;
-    let savedData: unknown = merged;
     if (key === "categories") {
-      await saveCategoryRows(transaction, merged as StoreCategory[], relational?.categories ?? []);
+      const stored = await loadRelationalCatalog(db);
+      await saveCategoryRows(db, next as ContentSnapshot["categories"], stored.categories);
     } else if (key === "products") {
-      await saveProductRows(transaction, merged as StoreProduct[], relational?.products ?? []);
-    } else {
-      if (key === "texts") await saveHomeCategoryCardRows(transaction, (merged as ContentSnapshot["texts"]).homeCategoryCards, relational?.homeCategoryCards ?? []);
-      const data = (key === "texts" ? withoutCatalogFields(merged) : merged) as Prisma.InputJsonValue;
-      const row = await transaction.siteContent.upsert({ where: { key }, create: { key, data }, update: { data } });
-      if (key !== "texts") savedData = row.data;
+      const stored = await loadRelationalCatalog(db);
+      await saveProductRows(db, next as StoreProduct[], stored.products);
     }
-    const rows = await transaction.siteContent.findMany({ select: { key: true, data: true } });
-    const currentCatalog = relational ? await loadRelationalCatalog(transaction) : null;
-    const referenced = new Set([
-      ...rows.filter((item) => item.key !== CLEANUP_QUEUE_KEY && (!relational || (item.key !== "products" && item.key !== "categories")))
-        .flatMap((item) => imageUrls(item.key === "texts" && relational ? withoutCatalogFields(item.data) : item.data)),
-      ...imageUrls(currentCatalog?.products), ...imageUrls(currentCatalog?.homeCategoryCards),
-    ]);
-    const candidates = new Set([...queuedUrls(queue?.data), ...imageUrls(previousValue), ...uploadedUrls.filter((url) => cloudinaryPublicId(url))]);
-    const cleanup = [...candidates].filter((url) => !referenced.has(url));
-    if (cleanup.length) {
-      await transaction.siteContent.upsert({
-        where: { key: CLEANUP_QUEUE_KEY },
-        create: { key: CLEANUP_QUEUE_KEY, data: cleanup },
-        update: { data: cleanup },
-      });
-    } else if (queue) {
-      await transaction.siteContent.delete({ where: { key: CLEANUP_QUEUE_KEY } });
+    else {
+      if (key === "texts") {
+        await saveHomeCategoryCardRows(db, (next as ContentSnapshot["texts"]).homeCategoryCards);
+        await db.contentSection.upsert({ where: { key: "homeCategoryCards" }, create: { key: "homeCategoryCards" }, update: {} });
+      }
+      await saveRelationalContent(db, key, next);
     }
-    return savedData;
+    if (key === "categories" || key === "products") {
+      await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
+    }
+    const updated = await readSnapshot(db);
+    const cleanupPending = await queueUnusedImages(db, [...imageUrls(current), ...uploadedUrls], updated);
+    return { data: updated[key], cleanupPending };
   }, { timeout: 120_000 });
+}
 
-  const cleanupPending = await drainCloudinaryCleanupQueue().catch(() => 1);
-  return { data: saved, cleanupPending };
+export async function saveTextSection(section: TextSectionKey, value: unknown, uploadedUrls: string[] = []) {
+  const parsed = textSectionSchemas[section].safeParse(value);
+  if (!parsed.success) throw new ContentValidationError("El formato de esta sección no es válido.");
+  return prisma.$transaction(async (db) => {
+    const current = await readSnapshot(db);
+    const nextValue = resolveContent("texts", { [section]: parsed.data })[section];
+    checkProductReferences(nextValue, current.products);
+    if (section === "homeCategoryCards") {
+      const cards = nextValue as HomeCategoryCard[];
+      checkCards(cards, new Set(current.categories.map((category) => category.id)));
+      await saveHomeCategoryCardRows(db, cards);
+    } else {
+      await saveRelationalTextSection(db, section, nextValue);
+    }
+    await db.contentSection.upsert({ where: { key: section }, create: { key: section }, update: {} });
+    const updated = await readSnapshot(db);
+    const cleanupUrls = [...new Set([...imageUrls(current.texts[section]), ...uploadedUrls])]
+      .filter((url) => !referencedUrls(updated).has(url) && cloudinaryPublicId(url) !== null);
+    return { section, data: updated.texts[section], cleanupUrls };
+  }, { timeout: 120_000 });
 }
 
 export async function deleteUnreferencedImages(urls: string[]) {
-  const rows = await prisma.siteContent.findMany({ select: { key: true, data: true } });
-  const referenced = await referencedImageUrls(rows);
-  const candidates = planCloudinaryDeletions(urls, referenced, process.env.CLOUDINARY_PROJECT_FOLDER ?? "eterea");
-  const results = await Promise.allSettled(candidates.map(deleteCloudinaryImage));
-  const failedUrls = candidates.filter((_, index) => results[index]?.status === "rejected");
-  const currentQueue = queuedUrls(rows.find((row) => row.key === CLEANUP_QUEUE_KEY)?.data);
-  await persistCleanupQueue([...new Set([...currentQueue, ...failedUrls])]);
-  const cleanupPending = await drainCloudinaryCleanupQueue();
-  return { deleted: results.filter((result) => result.status === "fulfilled").length, failed: cleanupPending };
+  const snapshot = await readSnapshot(prisma);
+  const candidates = planCloudinaryDeletions(urls, referencedUrls(snapshot), process.env.CLOUDINARY_PROJECT_FOLDER ?? "eterea");
+  if (candidates.length) await prisma.cloudinaryCleanup.createMany({ data: candidates.map((url) => ({ url })), skipDuplicates: true });
+  const failed = await drainCloudinaryCleanupQueue();
+  const remaining = await prisma.cloudinaryCleanup.findMany({ where: { url: { in: candidates } }, select: { url: true } });
+  return { deleted: candidates.length - remaining.length, failed };
 }
 
 export async function drainCloudinaryCleanupQueue() {
-  const rows = await prisma.siteContent.findMany({ select: { key: true, data: true } });
-  const queue = queuedUrls(rows.find((row) => row.key === CLEANUP_QUEUE_KEY)?.data);
-  const referenced = await referencedImageUrls(rows);
-  const candidates = queue.filter((url) => !referenced.has(url));
-  const deleted = new Set<string>();
-  for (const url of candidates) {
+  const snapshot = await readSnapshot(prisma);
+  const referenced = referencedUrls(snapshot);
+  const queue = await prisma.cloudinaryCleanup.findMany({ select: { url: true } });
+  for (const item of queue) {
+    if (referenced.has(item.url)) {
+      await prisma.cloudinaryCleanup.delete({ where: { url: item.url } });
+      continue;
+    }
     try {
-      await deleteCloudinaryImage(url);
-      deleted.add(url);
+      await deleteCloudinaryImage(item.url);
+      await prisma.cloudinaryCleanup.delete({ where: { url: item.url } });
     } catch {
-      // Se conserva la URL en la cola para reintentar en el próximo guardado.
+      // Se conserva la URL para reintentar la limpieza en el próximo guardado.
     }
   }
-
-  const remainingRows = await prisma.siteContent.findMany({ select: { key: true, data: true } });
-  const remainingQueue = queuedUrls(remainingRows.find((row) => row.key === CLEANUP_QUEUE_KEY)?.data);
-  const remainingReferences = await referencedImageUrls(remainingRows);
-  const nextQueue = remainingQueue.filter((url) => !deleted.has(url) && !remainingReferences.has(url));
-  await persistCleanupQueue(nextQueue);
-  return nextQueue.length;
+  return prisma.cloudinaryCleanup.count();
 }

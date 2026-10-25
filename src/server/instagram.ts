@@ -1,54 +1,15 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import { z } from "zod";
 import type { InstagramPost } from "@/lib/content";
 import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-media";
 import { instagramPermalink, instagramProfileUrl } from "@/lib/storefront-rules";
-import { decryptInstagramToken, encryptInstagramToken, type StoredInstagramToken } from "@/server/instagram-crypto";
-import { prisma } from "@/server/prisma";
+import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
+import { readFeedCache, readMediaCache, readStoredConnection, replaceStoredConnection, updateStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
 const api = "https://graph.instagram.com/v25.0";
 const refreshSeconds = 15 * 60;
-const tokenKey = "__instagram_access_token";
-const feedKey = "__instagram_feed_cache";
-const mediaCacheKey = "__instagram_media_cache";
 const day = 24 * 60 * 60 * 1000;
-
-const storedTokenSchema = z.object({
-  version: z.literal(2),
-  connectionId: z.string(),
-  token: z.string(),
-  iv: z.string(),
-  tag: z.string(),
-  nextRefreshAt: z.number(),
-  accountId: z.string().optional(),
-  username: z.string().optional(),
-});
-
-const feedCacheSchema = z.object({
-  connectionId: z.string(),
-  fetchedAt: z.number(),
-  posts: z.array(z.object({
-    id: z.string(),
-    url: z.string(),
-    image: z.string(),
-    title: z.string(),
-    kind: z.enum(["post", "reel"]),
-  })).max(6),
-});
-
-const mediaCacheSchema = z.object({
-  connectionId: z.string(),
-  fetchedAt: z.number(),
-  checkedUrls: z.array(z.string()),
-  mediaIds: z.record(z.string(), z.string()),
-  assets: z.record(z.string(), z.object({
-    videoUrl: z.string().optional(),
-    imageUrl: z.string().optional(),
-    posterUrl: z.string().optional(),
-  })),
-});
 
 type InstagramMedia = {
   id?: unknown;
@@ -65,11 +26,11 @@ function encryptionSecret() {
 type InstagramConnection = { token: string; connectionId: string; nextRefreshAt: number; updatedAt: Date; accountId?: string; username?: string };
 
 async function storedConnection(): Promise<InstagramConnection | null> {
-  const row = await prisma.siteContent.findUnique({ where: { key: tokenKey }, select: { data: true, updatedAt: true } });
-  const saved = storedTokenSchema.safeParse(row?.data);
-  if (!saved.success) return null;
-  const token = decryptInstagramToken(saved.data as StoredInstagramToken, encryptionSecret());
-  return token && row ? { token, connectionId: saved.data.connectionId, nextRefreshAt: saved.data.nextRefreshAt, updatedAt: row.updatedAt, accountId: saved.data.accountId, username: saved.data.username } : null;
+  const row = await readStoredConnection();
+  if (!row) return null;
+  const token = decryptInstagramToken(row.data, encryptionSecret());
+  return token ? { token, connectionId: row.data.connectionId, nextRefreshAt: row.data.nextRefreshAt,
+    updatedAt: row.updatedAt, accountId: row.data.accountId, username: row.data.username } : null;
 }
 
 export async function hasInstagramConnection() {
@@ -97,10 +58,8 @@ async function accessToken(connection: InstagramConnection): Promise<string> {
   }
 
   const data = encryptInstagramToken(refreshed, connectionId, nextRefreshAt, encryptionSecret(), { accountId: connection.accountId, username: connection.username });
-  await prisma.siteContent.updateMany({
-    where: { key: tokenKey, updatedAt: connection.updatedAt },
-    data: { data },
-  }).catch(() => console.error("No se pudo guardar el token renovado de Instagram."));
+  await updateStoredConnection(data, connection.updatedAt)
+    .catch(() => console.error("No se pudo guardar el token renovado de Instagram."));
 
   return refreshed;
 }
@@ -166,9 +125,7 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<
   const connection = await storedConnection().catch(() => null);
   if (!connection) return {};
 
-  const row = await prisma.siteContent.findUnique({ where: { key: mediaCacheKey }, select: { data: true } }).catch(() => null);
-  const parsed = mediaCacheSchema.safeParse(row?.data);
-  const cache = parsed.success && parsed.data.connectionId === connection.connectionId ? parsed.data : null;
+  const cache = await readMediaCache(connection.connectionId).catch(() => null);
   if (cache && Date.now() - cache.fetchedAt < refreshSeconds * 1000 && urls.every((url) => cache.checkedUrls.includes(url))) {
     return Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []));
   }
@@ -219,12 +176,8 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<
       }
     }));
 
-    const data = { connectionId: connection.connectionId, fetchedAt: Date.now(), checkedUrls: urls, mediaIds, assets };
-    await prisma.siteContent.upsert({
-      where: { key: mediaCacheKey },
-      create: { key: mediaCacheKey, data },
-      update: { data },
-    }).catch(() => console.error("No se pudo guardar la caché de videos de Instagram."));
+    await writeMediaCache(connection.connectionId, Date.now(), urls, mediaIds, assets)
+      .catch(() => console.error("No se pudo guardar la caché de videos de Instagram."));
     return assets;
   } catch (error) {
     console.error("No se pudieron cargar los videos de Instagram.", error);
@@ -253,14 +206,7 @@ export async function saveInstagramConnection(token: string) {
   }
 
   const data = encryptInstagramToken(token, randomBytes(16).toString("hex"), Date.now() + day, encryptionSecret(), { accountId: profile.id, username: profile.username });
-  await prisma.$transaction([
-    prisma.siteContent.upsert({
-      where: { key: tokenKey },
-      create: { key: tokenKey, data },
-      update: { data },
-    }),
-    prisma.siteContent.deleteMany({ where: { key: { in: [feedKey, mediaCacheKey] } } }),
-  ]);
+  await replaceStoredConnection(data);
   return { id: profile.id, username: profile.username };
 }
 
@@ -271,11 +217,7 @@ export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null
   });
   if (!connection) return null;
 
-  const row = await prisma.siteContent.findUnique({ where: { key: feedKey }, select: { data: true } }).catch(() => null);
-  const parsedCache = feedCacheSchema.safeParse(row?.data);
-  const cache = parsedCache.success && parsedCache.data.connectionId === connection.connectionId
-    ? parsedCache.data
-    : null;
+  const cache = await readFeedCache(connection.connectionId).catch(() => null);
   if (cache && Date.now() - cache.fetchedAt < refreshSeconds * 1000) return cache.posts;
   const fallback = cache && Date.now() - cache.fetchedAt < day ? cache.posts : null;
 
@@ -307,12 +249,8 @@ export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null
       })
       .slice(0, 6);
 
-    const data = { connectionId: connection.connectionId, fetchedAt: Date.now(), posts };
-    await prisma.siteContent.upsert({
-      where: { key: feedKey },
-      create: { key: feedKey, data },
-      update: { data },
-    }).catch(() => console.error("No se pudo guardar la lista reciente de Instagram."));
+    await writeFeedCache(connection.connectionId, Date.now(), posts)
+      .catch(() => console.error("No se pudo guardar la lista reciente de Instagram."));
     return posts;
   } catch (error) {
     console.error("No se pudieron cargar las publicaciones de Instagram.", error);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ImageSection } from "@/lib/media";
 import { uploadImages } from "@/lib/media-client";
@@ -14,6 +14,8 @@ export function BatchImageUploader({
   onUploaded: (urls: string[]) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const onUploadedRef = useRef(onUploaded);
+  onUploadedRef.current = onUploaded;
   return (
     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -40,8 +42,8 @@ export function BatchImageUploader({
           setBusy(true);
           try {
             const urls = await uploadImages(files, section);
-            onUploaded(urls);
-            toast.success(`Se subieron ${urls.length} fotos`);
+            onUploadedRef.current(urls);
+            toast.success(`Se cargaron ${urls.length} fotos. Guardá los cambios para publicarlas.`);
           } catch {
             toast.error(
               "No se pudieron subir todas las fotos. Revisá la conexión e intentá de nuevo.",

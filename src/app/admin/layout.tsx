@@ -21,7 +21,7 @@ async function AdminLayoutContent({ children }: Readonly<{ children: React.React
   const user = await getCurrentUser();
   if (!user) redirect("/auth");
   if (!(await isAdmin(user.id))) redirect("/");
-  const content = await loadContentSnapshot();
+  const content = await loadContentSnapshot({ strict: true });
 
   return (
     <ContentProvider initialContent={content}>

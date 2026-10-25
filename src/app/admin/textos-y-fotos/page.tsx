@@ -1,5 +1,5 @@
-import { AdminSectionEditor } from "@/components/admin/AdminEditor";
+import { redirect } from "next/navigation";
 
 export default function AdminPage() {
-  return <AdminSectionEditor section="texts" />;
+  redirect("/admin/contenido");
 }

@@ -9,7 +9,7 @@ export function AdminSectionRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    let slug = "textos-y-fotos";
+    let slug = "contenido";
     try {
       const saved = window.localStorage.getItem("eterea-admin-section");
       slug = adminSections.find((item) => item.id === saved)?.slug ?? slug;

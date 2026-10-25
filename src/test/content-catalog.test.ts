@@ -1,11 +1,26 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryCards, productsWithCategoryNames, resolveContent, visibleStoreProducts } from "../lib/content";
+import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryCards, mergeTextSection, productsWithCategoryNames, resolveContent, visibleStoreProducts } from "../lib/content";
 import { categoryIdForName, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
 import { referencedProductIds, resolveImageSource } from "../lib/image-source";
-import { contentSchemas } from "../lib/content-schema";
+import { contentSchemas, textSectionSchemas } from "../lib/content-schema";
 
 describe("Catálogo y categorías heredadas", () => {
+  it("guarda un apartado del inicio sin alterar los demás ni activar ofertas", () => {
+    const original = resolveContent("texts", { benefits: [{ t: "Original", d: "" }], offers: { enabled: false } });
+    const updated = mergeTextSection(original, "marquee", ["Nuevo texto"]);
+    assert.deepEqual(updated.marquee, ["Nuevo texto"]);
+    assert.deepEqual(updated.benefits, original.benefits);
+    assert.deepEqual(updated.offers, original.offers);
+    assert.deepEqual(original.marquee, defaults.texts.marquee);
+    assert.deepEqual(resolveContent("texts", { benefits: [], marquee: [] }).benefits, []);
+    assert.deepEqual(resolveContent("texts", { benefits: [], marquee: [] }).marquee, []);
+    assert.deepEqual(resolveContent("texts", { homeSections: { hero: false } }).benefits, defaults.texts.benefits);
+    assert.equal(contentSchemas.texts.safeParse({ homeSections: { otra: true } }).success, false);
+    assert.equal(textSectionSchemas.marquee.safeParse(["Nuevo texto"]).success, true);
+    assert.equal(textSectionSchemas.marquee.safeParse({ benefits: [] }).success, false);
+  });
+
   it("conserva la categoría de productos anteriores y permite renombrarla sin reasignarlos", () => {
     const [product] = resolveContent("products", [{
       id: "old", name: "Vestido", category: "Vestidos", price: 100, image: "", section: "nuevo",
@@ -46,6 +61,13 @@ describe("Catálogo y categorías heredadas", () => {
     assert.equal(legacyHomeCategoryCards(categories, { homeCategoryCards: [] }, [], products), null);
     assert.deepEqual(resolveContent("texts", { ...defaults.texts, homeCategoryCards: [] }).homeCategoryCards, []);
     assert.deepEqual(contentSchemas.texts.parse({ homeCategoryCards: legacyCards }).homeCategoryCards, legacyCards);
+  });
+
+  it("inicia las categorías destacadas vacías y conserva las seleccionadas", () => {
+    assert.deepEqual(resolveContent("texts", {}).homeCategoryCards, []);
+    const selected = [{ id: "tarjeta-uno", categoryId: "vestidos", img: "", hidden: false }];
+    assert.deepEqual(resolveContent("texts", { homeCategoryCards: selected }).homeCategoryCards, selected);
+    assert.deepEqual(resolveContent("texts", { homeCategoryCards: [] }).homeCategoryCards, []);
   });
 
   it("oculta productos individuales y todos los de una categoría oculta", () => {

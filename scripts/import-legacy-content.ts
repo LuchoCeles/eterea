@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import "dotenv/config";
-import { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient } from "@/generated/prisma/client";
 import { createMariaDbAdapter } from "@/server/prisma-adapter";
 import { defaults } from "@/lib/content";
 import { contentSchemas } from "@/lib/content-schema";
@@ -18,8 +18,10 @@ const rows: ExportedRow[] = Array.isArray(raw)
   ? raw as ExportedRow[]
   : Object.entries(raw as Record<string, unknown>).map(([key, data]) => ({ key, data }));
 
-const catalogMigrated = await prisma.siteContent.findUnique({ where: { key: "__catalog_relational_v1" }, select: { data: true } });
-if (catalogMigrated?.data === true && rows.some((row) => row.key === "products" || row.key === "categories" || row.key === "texts")) {
+const markerRows = await prisma.$queryRaw<{ data: unknown }[]>`SELECT data FROM SiteContent WHERE \`key\` = '__catalog_relational_v1'`;
+const catalogMigrated = markerRows[0];
+if (catalogMigrated && (typeof catalogMigrated.data === "string" ? JSON.parse(catalogMigrated.data) : catalogMigrated.data) === true
+  && rows.some((row) => row.key === "products" || row.key === "categories" || row.key === "texts")) {
   throw new Error("El catálogo ya usa tablas propias. Importá el contenido heredado antes de ejecutar db:migrate-catalog.");
 }
 
@@ -32,8 +34,10 @@ for (const row of rows) {
     console.warn(`Se omitió la sección «${key}»: el JSON no coincide con el formato actual.`);
     continue;
   }
-  const merged = resolveContent(key, parsed.data) as Prisma.InputJsonValue;
-  await prisma.siteContent.upsert({ where: { key }, create: { key, data: merged }, update: { data: merged } });
+  const merged = resolveContent(key, parsed.data);
+  await prisma.$executeRaw`INSERT INTO SiteContent (\`key\`, data, updatedAt)
+    VALUES (${key}, ${JSON.stringify(merged)}, NOW(3))
+    ON DUPLICATE KEY UPDATE data = VALUES(data), updatedAt = NOW(3)`;
   imported += 1;
 }
 

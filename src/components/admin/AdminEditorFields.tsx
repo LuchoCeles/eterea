@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -70,6 +70,8 @@ export function ImageField({
   onUploaded: (url: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const callbacks = useRef({ onChange, onUploaded });
+  callbacks.current = { onChange, onUploaded };
   return (
     <div className="text-xs text-muted-foreground">
       {label}
@@ -85,19 +87,22 @@ export function ImageField({
           <input
             type="file"
             accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+            disabled={busy}
             className="hidden"
             onChange={async (event) => {
               const file = event.target.files?.[0];
+              event.target.value = "";
               if (!file) return;
               setBusy(true);
               try {
                 const url = await uploadImage(file, section);
-                onUploaded(url);
-                onChange(url);
+                callbacks.current.onUploaded(url);
+                callbacks.current.onChange(url);
               } catch {
                 toast.error("No se pudo subir la foto");
+              } finally {
+                setBusy(false);
               }
-              setBusy(false);
             }}
           />
         </label>

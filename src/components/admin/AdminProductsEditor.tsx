@@ -105,9 +105,9 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
 
       <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setEditingId(null); }}>
         <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Editar producto</DialogTitle><DialogDescription>Editá los datos de la prenda.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Editar producto</DialogTitle><DialogDescription>Editá la prenda y después tocá «Guardar cambios» en Productos.</DialogDescription></DialogHeader>
           {selected && <ProductFields product={selected} categories={categories} onChange={(patch) => update(selected.id, patch)} onUploaded={(url) => onUploaded([url])} />}
-          <button type="button" onClick={() => setEditingId(null)} className="min-h-11 rounded-xl border px-4 text-sm font-medium hover:bg-secondary">Cerrar</button>
+          <button type="button" onClick={() => setEditingId(null)} className="min-h-11 rounded-xl border px-4 text-sm font-medium hover:bg-secondary">Volver a productos</button>
         </DialogContent>
       </Dialog>
     </div>

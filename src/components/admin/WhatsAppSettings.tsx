@@ -26,8 +26,8 @@ export function WhatsAppSettings() {
     setMessage("");
     try {
       const data = { ...contact, whatsapp: phone.trim() };
-      await saveContent("contact", data);
-      updateContent("contact", data);
+      const result = await saveContent("contact", data);
+      updateContent("contact", result.data);
       setMessage(data.whatsapp ? "Número de WhatsApp guardado." : "Número de WhatsApp eliminado.");
     } catch {
       setMessage("No se pudo guardar el número. Revisá la conexión e intentá de nuevo.");
@@ -45,6 +45,7 @@ export function WhatsAppSettings() {
         <div>
           <input
             type="tel"
+            disabled={saving}
             inputMode="tel"
             autoComplete="tel"
             value={phone}

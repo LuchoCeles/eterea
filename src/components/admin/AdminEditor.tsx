@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { Check, Loader2, Save } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
 import { AdminContentEditor } from "@/components/admin/AdminContentEditors";
+import { AdminSaveProvider, useAdminSave } from "@/components/admin/AdminSaveProvider";
 import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
-import { useContent, useContentUpdater, saveContent } from "@/components/providers/ContentProvider";
+import { useContent } from "@/components/providers/ContentProvider";
 import type { ContentKey } from "@/lib/content";
 
 type AdminTheme = "light" | "dark";
-type SaveStatus = "saved" | "pending" | "saving" | "error";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
 const ADMIN_SECTION_STORAGE_KEY = "eterea-admin-section";
 
 export function AdminEditor({ email, children }: { email: string; children: ReactNode }) {
+  return (
+    <AdminSaveProvider>
+      <AdminEditorShell email={email}>{children}</AdminEditorShell>
+    </AdminSaveProvider>
+  );
+}
+
+function AdminEditorShell({ email, children }: { email: string; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const contentRef = useRef<HTMLElement>(null);
   const [theme, setTheme] = useState<AdminTheme>("dark");
-  const activeSection = adminSections.find((section) => pathname === `/admin/${section.slug}`)?.id;
+  const { drafts, textDrafts, hasPendingChanges } = useAdminSave();
+  const activeSection = adminSections.find((section) => pathname === "/admin/" + section.slug)?.id;
+  const pendingSections = adminSections
+    .filter((section) => {
+      const entry = drafts[section.id];
+      return (entry && entry.version > entry.savedVersion) || (section.id === "texts"
+        && Object.values(textDrafts).some((textEntry) => textEntry && textEntry.version > textEntry.savedVersion));
+    })
+    .map((section) => section.id);
 
   useEffect(() => {
     try {
@@ -55,14 +71,28 @@ export function AdminEditor({ email, children }: { email: string; children: Reac
     }
   }
 
+  function confirmLeaving() {
+    return !hasPendingChanges() || window.confirm("Hay cambios sin guardar. ¿Querés salir y descartarlos?");
+  }
+
+  function handleLinkClick(event: MouseEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const link = target.closest<HTMLAnchorElement>("a[href]");
+    if (!link || link.getAttribute("href")?.startsWith("/admin") || link.target === "_blank"
+      || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (!confirmLeaving()) event.preventDefault();
+  }
+
   async function signOut() {
+    if (!confirmLeaving()) return;
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/auth");
     router.refresh();
   }
 
   return (
-    <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground">
+    <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground" onClickCapture={handleLinkClick}>
       <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
         <AdminHeader email={email} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
@@ -74,251 +104,72 @@ export function AdminEditor({ email, children }: { email: string; children: Reac
           >
             {children}
           </main>
-          <AdminSidebar activeSection={activeSection} />
+          <AdminSidebar activeSection={activeSection} pendingSections={pendingSections} />
         </div>
       </div>
     </div>
   );
 }
+
 export function AdminSectionEditor({ section }: { section: ContentKey }) {
   const currentSection = adminSections.find((item) => item.id === section);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fillsPanel = section === "categories" || section === "products";
 
   return (
     <div className={fillsPanel ? "w-full" : "mx-auto max-w-[1120px]"}>
       <Editor
-        key={section}
         k={section}
         label={currentSection?.label ?? ""}
         description={currentSection?.description ?? ""}
-        uploadedUrls={uploadedImages}
-        onUploaded={(urls) => setUploadedImages((current) => [...new Set([...current, ...urls])])}
-        onSaved={() => setUploadedImages([])}
       />
     </div>
   );
 }
-function Editor({
-  k,
-  label,
-  description,
-  uploadedUrls,
-  onUploaded,
-  onSaved,
-}: {
-  k: ContentKey;
-  label: string;
-  description: string;
-  uploadedUrls: string[];
-  onUploaded: (urls: string[]) => void;
-  onSaved: () => void;
-}) {
+
+function Editor({ k, label, description }: { k: ContentKey; label: string; description: string }) {
   const value = useContent(k);
-  const updateContent = useContentUpdater();
-  const [draft, setDraft] = useState<unknown>(() => structuredClone(value));
-  const isProductEditor = k === "products";
-  const saveStatus = useRef<SaveStatus>("saved");
-  const saveToastId = useRef<string | number | undefined>(undefined);
-  const draftRef = useRef(draft);
-  const uploadedUrlsRef = useRef(uploadedUrls);
-  const draftVersion = useRef(0);
-  const lastSavedVersion = useRef(0);
-  const initialValue = useRef(value);
-  const skipAutoSave = useRef(false);
-  const savingRef = useRef(false);
-  const inFlightVersion = useRef(0);
-  const saveAgain = useRef(false);
-  const previousDraft = useRef(draft);
-  const autoSaveRef = useRef<() => Promise<void>>(async () => {});
-
-  useEffect(() => {
-    if (isProductEditor || Object.is(initialValue.current, value)) return;
-    if (draftVersion.current > lastSavedVersion.current) return;
-    const nextDraft = structuredClone(value);
-    draftRef.current = nextDraft;
-    previousDraft.current = nextDraft;
-    skipAutoSave.current = true;
-    setDraft(nextDraft);
-  }, [value, isProductEditor]);
-
-  useEffect(() => {
-    uploadedUrlsRef.current = uploadedUrls;
-  }, [uploadedUrls]);
-
-  useEffect(() => {
-    autoSaveRef.current = saveAutomatically;
-  });
-
-  useEffect(() => {
-    return () => {
-      if (draftVersion.current <= lastSavedVersion.current) return;
-      if (savingRef.current) saveAgain.current = true;
-      void autoSaveRef.current();
-    };
-  }, [isProductEditor]);
-
-  useEffect(() => {
-    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
-      if (draftVersion.current <= lastSavedVersion.current && !savingRef.current) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const saveWhenHidden = () => {
-      if (document.visibilityState === "hidden" && draftVersion.current > lastSavedVersion.current) {
-        void autoSaveRef.current();
-      }
-    };
-    window.addEventListener("beforeunload", warnBeforeLeaving);
-    document.addEventListener("visibilitychange", saveWhenHidden);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeLeaving);
-      document.removeEventListener("visibilitychange", saveWhenHidden);
-    };
-  }, []);
-
-  function changeDraft(next: unknown, saveImmediately = false) {
-    draftRef.current = next;
-    draftVersion.current += 1;
-    setDraft(next);
-    if (isProductEditor) updateContent(k, next);
-    if (saveImmediately) {
-      void saveAutomatically();
-    } else {
-      showPendingToast();
-    }
-  }
-
-  function showPendingToast() {
-    if (saveStatus.current === "pending") return;
-    saveStatus.current = "pending";
-    saveToastId.current = toast.info("Cambios sin guardar", {
-      id: saveToastId.current,
-      duration: Infinity,
-      action: null,
-    });
-  }
-
-  function showSaveError(message: string) {
-    saveStatus.current = "error";
-    saveToastId.current = toast.error(message, {
-      id: saveToastId.current,
-      duration: Infinity,
-      action: {
-        label: "Reintentar",
-        onClick: (event) => {
-          event.preventDefault();
-          void autoSaveRef.current();
-        },
-      },
-    });
-  }
-
-  function canSaveDraft() {
-    if (k !== "categories") return true;
-    const categories = draftRef.current as { name?: string }[];
-    return categories.every(
-      (category) => typeof category.name === "string" && category.name.trim().length > 0,
-    );
-  }
-
-  async function saveAutomatically() {
-    if (savingRef.current) {
-      if (draftVersion.current > inFlightVersion.current) saveAgain.current = true;
-      return;
-    }
-
-    if (draftVersion.current <= lastSavedVersion.current) return;
-
-    if (!canSaveDraft()) {
-      showSaveError("Cada categoría necesita un nombre válido antes de guardar.");
-      return;
-    }
-
-    const version = draftVersion.current;
-    const data = structuredClone(draftRef.current);
-    const imageUrls = [...uploadedUrlsRef.current];
-    savingRef.current = true;
-    inFlightVersion.current = version;
-    saveStatus.current = "saving";
-    saveToastId.current = toast.loading("Guardando cambios…", {
-      id: saveToastId.current,
-      duration: Infinity,
-      action: null,
-    });
-
-    try {
-      const result = await saveContent(k, data, imageUrls);
-      lastSavedVersion.current = version;
-      if (draftVersion.current === version) {
-        updateContent(k, result.data);
-        onSaved();
-        saveStatus.current = "saved";
-        saveToastId.current = result.cleanupPending
-          ? toast.warning(
-              `Cambios guardados, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`,
-              { id: saveToastId.current, duration: 5000, action: null },
-            )
-          : toast.success("Cambios guardados", { id: saveToastId.current, duration: 3000, action: null });
-      } else {
-        saveAgain.current = true;
-        showPendingToast();
-      }
-    } catch (error) {
-      if (draftVersion.current !== version) {
-        saveAgain.current = true;
-        showPendingToast();
-      } else {
-        showSaveError(
-          error instanceof Error
-            ? error.message
-            : "No se pudo guardar. Revisá la conexión e intentá de nuevo.",
-        );
-      }
-    } finally {
-      savingRef.current = false;
-      if (saveAgain.current && lastSavedVersion.current < draftVersion.current) {
-        saveAgain.current = false;
-        window.setTimeout(() => void autoSaveRef.current(), k === "texts" ? 0 : 200);
-      } else {
-        saveAgain.current = false;
-      }
-    }
-  }
-
-  useEffect(() => {
-    if (skipAutoSave.current) {
-      skipAutoSave.current = false;
-      return;
-    }
-    if (Object.is(previousDraft.current, draft)) return;
-    previousDraft.current = draft;
-
-    const timeout = window.setTimeout(() => void autoSaveRef.current(), 600);
-    return () => window.clearTimeout(timeout);
-  }, [draft]);
+  const { drafts, textDrafts, change, uploaded, save } = useAdminSave();
+  const entry = drafts[k];
+  const draft = entry?.data ?? value;
+  const dirty = !!entry && entry.version > entry.savedVersion;
+  const saving = entry?.saving === true;
+  const postsOnly = k === "instagram";
+  const textPending = k === "texts" && Object.values(textDrafts).some((item) => item && item.version > item.savedVersion);
 
   if (draft === null) return <AdminSectionSkeleton section={k === "contact" ? "instagram" : k} />;
 
   return (
     <div>
-      <div className="sticky top-0 z-20 -mx-5 mb-7 flex items-center gap-4 bg-background/95 px-5 py-4 backdrop-blur-xl sm:-mx-7 sm:mb-8 sm:px-7 lg:-mx-10 lg:px-10 xl:-mx-12 xl:px-12">
-        <div className="min-w-0 py-1">
+      <div className="sticky top-0 z-20 -mx-5 mb-7 flex flex-wrap items-center justify-between gap-4 bg-background/95 px-5 py-4 backdrop-blur-xl sm:-mx-7 sm:mb-8 sm:px-7 lg:-mx-10 lg:px-10 xl:-mx-12 xl:px-12">
+        <div className="min-w-0 flex-1 py-1">
           <h2 className="truncate font-display text-[28px] font-semibold leading-tight sm:text-[38px]">
             {label}
           </h2>
           <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-base">{description}</p>
         </div>
+        {k === "texts" ? <span role="status" aria-live="polite" className="text-xs text-muted-foreground sm:text-sm">
+          {textPending ? "Hay apartados sin guardar" : "Guardá cada apartado desde su tarjeta"}
+        </span> : <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <span role="status" aria-live="polite" className={"text-xs font-medium sm:text-sm " + (entry?.error ? "text-destructive" : "text-muted-foreground")}>
+            {saving ? "Guardando…" : entry?.error ? "No se guardaron los cambios" : dirty ? (postsOnly ? "Publicaciones sin guardar" : "Cambios sin guardar") : (postsOnly ? "Publicaciones guardadas" : "Todos los cambios guardados")}
+          </span>
+          <button
+            type="button"
+            onClick={() => void save(k, value)}
+            disabled={!dirty || saving}
+            className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+            {saving ? "Guardando…" : postsOnly ? "Guardar publicaciones" : "Guardar cambios"}
+          </button>
+        </div>}
+        {k !== "texts" && entry?.error && <p role="alert" className="w-full text-sm text-destructive">{entry.error}</p>}
       </div>
       <AdminContentEditor
         k={k}
         draft={draft}
-        onChange={changeDraft}
-        onUploaded={(urls) => {
-          uploadedUrlsRef.current = [...new Set([...uploadedUrlsRef.current, ...urls])];
-          onUploaded(urls);
-          if (isProductEditor) draftVersion.current += 1;
-        }}
+        onChange={(next) => change(k, value, next)}
+        onUploaded={(urls) => uploaded(k, value, urls)}
       />
     </div>
   );

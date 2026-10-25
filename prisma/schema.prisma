@@ -27,10 +27,156 @@ model UserRole {
   @@index([role])
 }
 
-model SiteContent {
+model ContentSection {
   key       String   @id @db.VarChar(64)
-  data      Json
   updatedAt DateTime @updatedAt @db.DateTime(3)
+}
+
+model ContactSettings {
+  id                Int    @id @default(1)
+  whatsapp          String @default("") @db.VarChar(30)
+  instagramUsername String @default("") @db.VarChar(31)
+}
+
+model OfferSettings {
+  id        Int     @id @default(1)
+  enabled   Boolean @default(false)
+  showSplit Boolean @default(false)
+  showClub  Boolean @default(false)
+}
+
+model HomeSectionSetting {
+  section String  @id @db.VarChar(32)
+  enabled Boolean @default(true)
+}
+
+model SplitBanner {
+  id        Int     @id @default(1)
+  kicker    String  @db.Text
+  big       String  @db.Text
+  sub       String  @db.Text
+  cta       String  @db.Text
+  img       String  @db.Text
+  productId String? @db.VarChar(191)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+}
+
+model ClubBanner {
+  id     Int    @id @default(1)
+  kicker String @db.Text
+  big    String @db.Text
+  text   String @db.Text
+  code   String @db.Text
+  cta    String @db.Text
+}
+
+model EditorialBanner {
+  id        Int     @id @default(1)
+  kicker    String  @db.Text
+  title     String  @db.Text
+  text      String  @db.Text
+  cta       String  @db.Text
+  img       String  @db.Text
+  productId String? @db.VarChar(191)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+}
+
+model PromoLine {
+  id       Int    @id @default(autoincrement())
+  position Int
+  text     String @db.Text
+}
+
+model HeroSlide {
+  id        Int     @id @default(autoincrement())
+  position  Int
+  img       String  @db.Text
+  productId String? @db.VarChar(191)
+  kicker    String  @db.Text
+  title     String  @db.Text
+  cta       String  @db.Text
+  promo     String  @db.Text
+  align     String  @db.VarChar(5)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+}
+
+model Benefit {
+  id          Int    @id @default(autoincrement())
+  position    Int
+  title       String @db.Text
+  description String @db.Text
+}
+
+model MarqueeLine {
+  id       Int    @id @default(autoincrement())
+  position Int
+  text     String @db.Text
+}
+
+model CuratedInstagramPost {
+  id        String  @id @db.VarChar(191)
+  position  Int
+  url       String  @db.Text
+  image     String  @db.Text
+  productId String? @db.VarChar(191)
+  title     String  @db.Text
+  kind      String  @db.VarChar(4)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+}
+
+model CloudinaryCleanup {
+  url       String   @id @db.VarChar(512)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+}
+
+model InstagramConnection {
+  id            Int      @id @default(1)
+  connectionId  String   @db.VarChar(64)
+  encryptedToken String  @db.Text
+  iv            String   @db.VarChar(64)
+  tag           String   @db.VarChar(64)
+  nextRefreshAt DateTime @db.DateTime(3)
+  accountId     String?  @db.VarChar(191)
+  username      String?  @db.VarChar(31)
+  updatedAt     DateTime @updatedAt @db.DateTime(3)
+}
+
+model InstagramFeedState {
+  id           Int      @id @default(1)
+  connectionId String   @db.VarChar(64)
+  fetchedAt    DateTime @db.DateTime(3)
+}
+
+model InstagramFeedPost {
+  id       String @id @db.VarChar(191)
+  position Int
+  url      String @db.Text
+  image    String @db.Text
+  title    String @db.Text
+  kind     String @db.VarChar(4)
+}
+
+model InstagramMediaState {
+  id           Int      @id @default(1)
+  connectionId String   @db.VarChar(64)
+  fetchedAt    DateTime @db.DateTime(3)
+}
+
+model InstagramMediaEntry {
+  url       String  @id @db.VarChar(512)
+  checked   Boolean @default(false)
+  mediaId   String? @db.VarChar(191)
+  videoUrl  String? @db.Text
+  imageUrl  String? @db.Text
+  posterUrl String? @db.Text
 }
 
 model Media {
@@ -64,6 +210,10 @@ model Product {
   category      Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   paymentPrices ProductPaymentPrice[]
   homeCards     HomeCategoryCard[]
+  heroSlides    HeroSlide[]
+  curatedPosts  CuratedInstagramPost[]
+  splitBanners  SplitBanner[]
+  editorialBanners EditorialBanner[]
 
   @@index([categoryId])
 }

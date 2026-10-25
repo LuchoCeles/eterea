@@ -11,11 +11,12 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/instagram-crypto.test.ts src/test/instagram-media.test.ts src/test/content-catalog.test.ts",
+    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/instagram-crypto.test.ts src/test/instagram-media.test.ts src/test/content-catalog.test.ts src/test/home-category-cards.test.ts",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "db:import-content": "tsx scripts/import-legacy-content.ts",
     "db:migrate-catalog": "tsx scripts/migrate-catalog-to-relational.ts",
+    "db:migrate-content": "tsx scripts/migrate-content-to-relational.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

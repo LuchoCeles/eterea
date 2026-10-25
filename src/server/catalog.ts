@@ -56,6 +56,7 @@ function sameProduct(a: StoreProduct, b: StoreProduct) {
 }
 
 export async function saveProductRows(db: CatalogDb, products: StoreProduct[], current: StoreProduct[]) {
+  const currentById = new Map(current.map((product) => [product.id, product]));
   for (const [position, product] of products.entries()) {
     if (current[position] && sameProduct(current[position], product)) continue;
     const data = {
@@ -65,6 +66,7 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
       createdAt: product.createdAt ? new Date(product.createdAt) : null, position,
     };
     await db.product.upsert({ where: { id: product.id }, create: { id: product.id, ...data }, update: data });
+    if (JSON.stringify(currentById.get(product.id)?.paymentPrices ?? []) === JSON.stringify(product.paymentPrices ?? [])) continue;
     const currentPrices = await db.productPaymentPrice.findMany({ where: { productId: product.id, active: true }, select: { id: true } });
     const nextPriceIds = new Set((product.paymentPrices ?? []).map((_, index) => paymentPriceId(product.id, index)));
     for (const oldPrice of currentPrices) {
@@ -81,12 +83,3 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
   }
 }
 
-export async function saveHomeCategoryCardRows(db: CatalogDb, cards: HomeCategoryCard[], current: HomeCategoryCard[]) {
-  for (const [position, card] of cards.entries()) {
-    const previous = current[position];
-    if (previous?.id === card.id && previous.categoryId === card.categoryId && previous.img === card.img
-      && previous.productId === card.productId && !!previous.hidden === !!card.hidden) continue;
-    const data = { categoryId: card.categoryId, productId: card.productId ?? null, img: card.img, hidden: card.hidden !== false, position };
-    await db.homeCategoryCard.upsert({ where: { id: card.id }, create: { id: card.id, ...data }, update: data });
-  }
-}

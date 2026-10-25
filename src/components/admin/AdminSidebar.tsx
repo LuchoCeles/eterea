@@ -26,7 +26,7 @@ export const adminSections: {
 }[] = [
   {
     id: "texts",
-    slug: "textos-y-fotos",
+    slug: "contenido",
     label: "Diseño del inicio",
     shortLabel: "Inicio",
     description: "Secciones, tarjetas destacadas, textos y fotos del home.",
@@ -80,7 +80,7 @@ export const adminSections: {
   },
 ];
 
-export function AdminSidebar({ activeSection }: { activeSection?: ContentKey }) {
+export function AdminSidebar({ activeSection, pendingSections = [] }: { activeSection?: ContentKey; pendingSections?: ContentKey[] }) {
   const pathname = usePathname();
   const currentSection =
     activeSection ?? adminSections.find((section) => pathname === `/admin/${section.slug}`)?.id;
@@ -97,13 +97,14 @@ export function AdminSidebar({ activeSection }: { activeSection?: ContentKey }) 
       >
         {adminSections.map(({ id, slug, label, shortLabel, group, icon: Icon }, index) => {
           const active = currentSection === id;
+          const pending = pendingSections.includes(id);
           return (
             <Fragment key={id}>
               {(index === 0 || adminSections[index - 1].group !== group) && <p className="mt-4 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground first:mt-0 sm:block">{group}</p>}
               <Link
                 href={`/admin/${slug}`}
-                title={label}
-                aria-label={label}
+                title={pending ? label + " · Cambios sin guardar" : label}
+                aria-label={pending ? label + ", con cambios sin guardar" : label}
                 aria-current={active ? "page" : undefined}
                 className={clsx(
                   "relative flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-[19px] px-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-[52px] sm:flex-row sm:justify-start sm:gap-3 sm:rounded-xl sm:px-3 sm:text-left lg:px-4",
@@ -123,6 +124,7 @@ export function AdminSidebar({ activeSection }: { activeSection?: ContentKey }) 
                   strokeWidth={active ? 2 : 1.7}
                   aria-hidden="true"
                 />
+                {pending && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-500 sm:right-3 sm:top-3" aria-hidden="true" />}
                 <span className="w-full truncate text-[10px] leading-tight sm:hidden">
                   {shortLabel}
                 </span>
