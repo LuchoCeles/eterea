@@ -1,6 +1,7 @@
 "use client";
 
 import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility";
+import { AdminHomeCategoriesEditor } from "@/components/admin/AdminHomeCategoriesEditor";
 import { SharedImageField } from "@/components/admin/SharedImageField";
 import {
   AddButton,
@@ -16,13 +17,13 @@ export function TextsEditor({
   onUploaded,
 }: {
   value: Texts;
-  onChange: (value: Texts) => void;
+  onChange: (value: Texts, saveImmediately?: boolean) => void;
   onUploaded: (url: string) => void;
 }) {
-  const set = <K extends keyof Texts>(key: K, next: Texts[K]) =>
-    onChange({ ...value, [key]: next });
+  const set = <K extends keyof Texts>(key: K, next: Texts[K], saveImmediately = false) =>
+    onChange({ ...value, [key]: next }, saveImmediately);
   const benefits = useList(value.benefits, (next) => set("benefits", next));
-  const marquee = useList(value.marquee, (next) => set("marquee", next));
+  const marquee = useList(value.marquee, (next) => set("marquee", next, true));
   return (
     <div className="space-y-2 sm:space-y-4">
       <CollapsibleCard
@@ -34,7 +35,17 @@ export function TextsEditor({
         </p>
         <HomeSectionVisibility
           value={value.homeSections}
-          onChange={(homeSections) => set("homeSections", homeSections)}
+          onChange={(homeSections) => set("homeSections", homeSections, true)}
+        />
+      </CollapsibleCard>
+      <CollapsibleCard
+        title="Categorías destacadas del inicio"
+        summary={`${value.homeCategoryCards.filter((card) => !card.hidden).length} destacadas de ${value.homeCategoryCards.length} disponibles`}
+      >
+        <AdminHomeCategoriesEditor
+          value={value.homeCategoryCards}
+          onChange={(cards, saveImmediately) => set("homeCategoryCards", cards, saveImmediately)}
+          onUploaded={onUploaded}
         />
       </CollapsibleCard>
       <CollapsibleCard
@@ -72,7 +83,7 @@ export function TextsEditor({
             productId={value.split.productId}
             section="ofertas"
             onUploaded={onUploaded}
-            onChange={({ image, productId }) => set("split", { ...value.split, img: image, productId })}
+            onChange={({ image, productId }) => set("split", { ...value.split, img: image, productId }, true)}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field
@@ -169,7 +180,7 @@ export function TextsEditor({
             productId={value.editorial.productId}
             section="marca"
             onUploaded={onUploaded}
-            onChange={({ image, productId }) => set("editorial", { ...value.editorial, img: image, productId })}
+            onChange={({ image, productId }) => set("editorial", { ...value.editorial, img: image, productId }, true)}
           />
           <div className="grid gap-3">
             <Field

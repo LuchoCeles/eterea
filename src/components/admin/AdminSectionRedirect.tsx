@@ -9,12 +9,12 @@ export function AdminSectionRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    let slug = "banners";
+    let slug = "textos-y-fotos";
     try {
       const saved = window.localStorage.getItem("eterea-admin-section");
       slug = adminSections.find((item) => item.id === saved)?.slug ?? slug;
     } catch {
-      // Se abre Banners si el navegador bloquea el almacenamiento.
+      // Se abre Diseño del inicio si el navegador bloquea el almacenamiento.
     }
     router.replace(`/admin/${slug}`);
   }, [router]);

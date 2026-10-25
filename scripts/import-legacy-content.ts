@@ -18,6 +18,11 @@ const rows: ExportedRow[] = Array.isArray(raw)
   ? raw as ExportedRow[]
   : Object.entries(raw as Record<string, unknown>).map(([key, data]) => ({ key, data }));
 
+const catalogMigrated = await prisma.siteContent.findUnique({ where: { key: "__catalog_relational_v1" }, select: { data: true } });
+if (catalogMigrated?.data === true && rows.some((row) => row.key === "products" || row.key === "categories" || row.key === "texts")) {
+  throw new Error("El catálogo ya usa tablas propias. Importá el contenido heredado antes de ejecutar db:migrate-catalog.");
+}
+
 let imported = 0;
 for (const row of rows) {
   if (!contentKeys.includes(row.key as ContentKey)) continue;

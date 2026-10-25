@@ -15,6 +15,7 @@
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "db:import-content": "tsx scripts/import-legacy-content.ts",
+    "db:migrate-catalog": "tsx scripts/migrate-catalog-to-relational.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

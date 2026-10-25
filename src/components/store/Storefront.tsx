@@ -12,6 +12,7 @@ import type { InstagramMediaAsset } from "@/lib/instagram-media";
 import { Button } from "@/components/ui/button";
 import { instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
 import { resolveImageSource } from "@/lib/image-source";
+import { visibleStoreProducts } from "@/lib/content";
 
 const logo = "/assets/eterea-placeholder.svg";
 export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAssets }: { isAdmin: boolean; unavailableInstagramUrls: string[]; instagramMediaAssets: Record<string, InstagramMediaAsset> }) {
@@ -20,10 +21,16 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
   const products = useContent("products");
-  const homeSections = T.homeSections;
-  const newArrivals = products.filter((p) => p.section === "nuevo").map((p) => productWithoutOffers(p, T.offers.enabled));
-  const sale = visibleSaleProducts(products.filter((p) => p.section === "sale"), T.offers.enabled);
   const categories = useContent("categories");
+  const visibleProducts = visibleStoreProducts(products, categories);
+  const homeSections = T.homeSections;
+  const newArrivals = visibleProducts.filter((p) => p.section === "nuevo").map((p) => productWithoutOffers(p, T.offers.enabled));
+  const sale = visibleSaleProducts(visibleProducts.filter((p) => p.section === "sale"), T.offers.enabled);
+  const visibleHomeSections = { ...homeSections, newArrivals: homeSections.newArrivals && newArrivals.length > 0 };
+  const homeCategoryCards = T.homeCategoryCards.filter((card) => !card.hidden).flatMap((card) => {
+    const category = categories.find((item) => item.id === card.categoryId);
+    return category && !category.hidden && visibleProducts.some((product) => product.categoryId === category.id) ? [{ ...card, category }] : [];
+  });
   const icons = [Waves, Shell, Leaf];
   const benefits = T.benefits.filter((benefit) => visibleAnnouncements([`${benefit.t} ${benefit.d}`], T.offers.enabled).length);
   const marquee = visibleAnnouncements(T.marquee, T.offers.enabled);
@@ -32,7 +39,7 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
     <div className="min-h-screen">
       <div className="sticky top-0 z-40">
         {homeSections.promoBar && <PromoBar />}
-        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={homeSections} hasSale={homeSections.sale && sale.length > 0} isAdmin={isAdmin} />
+        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={visibleHomeSections} hasSale={homeSections.sale && sale.length > 0} isAdmin={isAdmin} />
       </div>
       <main>
         <HeroCarousel />
@@ -53,26 +60,28 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
         </div>}
 
         {/* Categorías */}
-        {homeSections.categories && <section id="prendas" className="mx-auto max-w-[1600px] px-4 pt-16 md:px-8">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {categories.map((c, idx) => (
-              <a key={idx} href={`/productos?categoria=${encodeURIComponent(c.name)}`} className="group relative block overflow-hidden bg-card">
-                <img src={resolveImageSource(c, products)} alt={c.name} loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-background/90 p-4">
-                  <div>
-                    <span className="font-display text-xs text-muted-foreground">0{idx + 1}</span>
-                     <h3 className="text-2xl font-normal md:text-3xl">{c.name}</h3>
-                  </div>
-                  <span className="grid h-10 w-10 place-items-center bg-background transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                    <ArrowUpRight className="h-4 w-4" />
-                  </span>
+        {homeSections.categories && homeCategoryCards.length > 0 && <section id="prendas" className="mx-auto max-w-[1600px] px-4 pt-16 md:px-8">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <span className="eyebrow text-muted-foreground">Explorá la tienda</span>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">Prendas por categoría</h2>
+            </div>
+            <a href="/productos" className="hidden items-center gap-2 text-sm hover:text-accent sm:inline-flex">Ver todas <ArrowUpRight className="h-4 w-4" /></a>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {homeCategoryCards.map((card) => (
+              <a key={card.id} href={`/productos?categoria=${encodeURIComponent(card.category.id)}`} className="group relative block overflow-hidden bg-card">
+                <img src={resolveImageSource(card, products)} alt="" loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-background/90 p-4">
+                  <h3 className="font-display text-xl md:text-2xl">{card.category.name}</h3>
+                  <ArrowUpRight className="h-5 w-5 shrink-0" />
                 </div>
               </a>
             ))}
           </div>
         </section>}
 
-        {homeSections.newArrivals && <ProductCarousel id="nuevo" kicker="Nuestra selección" title="Lo nuevo de esta semana" products={newArrivals} onAdd={add} />}
+        {visibleHomeSections.newArrivals && <ProductCarousel id="nuevo" kicker="Nuestra selección" title="Lo nuevo de esta semana" products={newArrivals} onAdd={add} />}
 
         {/* Banner promo partido */}
         {homeSections.offerBanners && T.offers.enabled && (T.offers.showSplit || T.offers.showClub) && <section className="mx-auto grid max-w-[1600px] gap-4 px-4 md:grid-cols-2 md:px-8">
@@ -152,7 +161,7 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
           <img src={logo} alt="Etérea New Concept" className="h-24 w-48 object-contain" />
           {[
             { t: "Tienda", l: [
-              ...(homeSections.newArrivals ? [{ name: "Lo nuevo", href: "/#nuevo" }] : []),
+              ...(visibleHomeSections.newArrivals ? [{ name: "Lo nuevo", href: "/#nuevo" }] : []),
               { name: "Prendas", href: "/productos" },
               ...(homeSections.sale && sale.length ? [{ name: "Descuentos", href: "/#descuentos" }] : []),
             ] },

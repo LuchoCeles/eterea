@@ -14,6 +14,7 @@ Storefront y panel de administración construidos con Next.js App Router, React,
 npm install
 npm run db:generate
 npm run db:migrate
+npm run db:migrate-catalog
 npm run dev
 ```
 
@@ -21,9 +22,11 @@ Abrí `http://localhost:3000`. La primera cuenta que se registre recibe el rol d
 
 ## Categorías y productos
 
-Creá las categorías en la sección **Categorías** del administrador: solo necesitan un nombre. Tocá **Guardar** y después asignalas a cada producto desde **Productos**. La lista de productos del administrador se muestra como tabla en escritorio. Los productos nuevos se muestran primero según su fecha de creación; ya no se reordenan manualmente. La tienda conserva sus opciones de orden por precio y nombre para cada visitante.
+Creá las categorías en **Catálogo → Categorías** y asignalas a los productos. Podés ocultar una categoría sin borrarla: todos sus productos dejan de aparecer en el inicio, el catálogo y los filtros. También podés ocultar un producto individual. Los registros anteriores se consideran visibles hasta que el administrador cambie su estado.
 
-Las categorías se guardan como un JSON independiente con la clave `categories` en `site_content`; los productos se guardan con la clave `products`. No cambia el esquema de Prisma ni hace falta aplicar una migración SQL. Si todavía no existe la fila `categories`, la aplicación recupera las categorías anteriores de `texts` y de los productos; al guardarlas desde la nueva sección crea la fila en la base de datos. Los productos anteriores conservan su orden y quedan sin fecha porque no se conoce su alta real. Al crear productos nuevos, se registra la fecha de alta en el JSON y se conserva en ediciones posteriores. Una categoría que todavía tiene productos asignados no se puede borrar: reasignalos primero.
+Las categorías, los productos, sus precios por medio de pago y las tarjetas destacadas del inicio se guardan en las tablas `Category`, `Product`, `ProductPaymentPrice` y `HomeCategoryCard`. El administrador elige qué tarjetas destacar en **Inicio → Diseño del inicio**; las anteriores quedan ocultas hasta que se elijan. Los demás textos y secciones siguen en `site_content`. Los productos anteriores conservan su orden y quedan sin fecha cuando no se conoce su alta real.
+
+Para una base existente, aplicá primero la migración SQL versionada y después ejecutá `npm run db:migrate-catalog` antes de desplegar el código nuevo. El segundo comando copia el catálogo heredado desde `site_content` dentro de una transacción y marca la importación como terminada. Conserva las filas JSON originales como respaldo y no modifica usuarios ni roles. Hacé una copia de seguridad de la base antes de aplicar la migración en un entorno compartido; según `AGENTS.md`, prepará el SQL y obtené autorización explícita antes de ejecutarla allí. Si los datos heredados tienen nombres o identificadores repetidos, el importador se detiene sin completar la marca de migración.
 
 ## Publicaciones de Instagram en el home
 
@@ -59,10 +62,11 @@ Al guardar cambios, las imágenes anteriores que ya no están referenciadas se b
 - `npm run db:migrate`: aplica migraciones pendientes en el entorno local configurado.
 - `npm run db:migrate:deploy`: aplica migraciones versionadas en el entorno de despliegue.
 - `npm run db:import-content -- ./legacy-site-content.json`: importa filas exportadas de contenido JSON.
+- `npm run db:migrate-catalog`: copia categorías, productos y destacados heredados a sus tablas propias después de aplicar el SQL.
 
 ## Datos existentes
 
-La aplicación nueva no necesita filas iniciales para mostrar la tienda: `src/lib/content.ts` define valores por defecto. Para conservar ajustes del sitio anterior, exportá las filas de `site_content` como JSON antes de retirar ese servicio y cargalas con `npm run db:import-content -- ./archivo.json`. El importador conserva solo las claves conocidas y completa ajustes de texto con `resolveContent`. Las fotos vinculadas a URLs antiguas deben copiarse y actualizarse a enlaces firmados del nuevo almacén. Los hashes de contraseñas del proveedor anterior no son portables; las cuentas deben registrarse de nuevo.
+La aplicación nueva no necesita filas iniciales para mostrar la tienda: `src/lib/content.ts` define valores por defecto. Para conservar ajustes del sitio anterior, exportá las filas de `site_content` como JSON antes de retirar ese servicio, cargalas con `npm run db:import-content -- ./archivo.json` y ejecutá `npm run db:migrate-catalog`. El importador de JSON debe correr antes de la migración del catálogo. Los roles actuales de administrador no se modifican. Las fotos vinculadas a URLs antiguas deben copiarse y actualizarse a enlaces del almacén configurado.
 
 ## Recursos gráficos
 

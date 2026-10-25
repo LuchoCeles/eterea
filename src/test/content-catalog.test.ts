@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catalogCategories, categoriesForProducts, defaults, productsWithCategoryNames, resolveContent } from "../lib/content";
+import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryCards, productsWithCategoryNames, resolveContent, visibleStoreProducts } from "../lib/content";
 import { categoryIdForName, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
 import { referencedProductIds, resolveImageSource } from "../lib/image-source";
 import { contentSchemas } from "../lib/content-schema";
@@ -17,11 +17,14 @@ describe("Catálogo y categorías heredadas", () => {
       categories: [{ name: "Vestidos", img: "/vestidos.jpg" }],
     });
     const categories = categoriesForProducts(texts.categories, [product]);
-    assert.equal(categories[0]?.img, "/vestidos.jpg");
+    assert.deepEqual(categories[0], { id: categoryIdForName("Vestidos"), name: "Vestidos", hidden: false });
     assert.equal(productsWithCategoryNames([product], [{ ...categories[0], name: "Vestidos de lino" }])[0]?.category, "Vestidos de lino");
     assert.deepEqual(resolveContent("categories", categories), categories);
     assert.deepEqual(catalogCategories(null, texts, [product]), categories);
     assert.deepEqual(catalogCategories([], texts, [product]), []);
+    assert.deepEqual(contentSchemas.categories.parse([{ id: "vestidos", name: "Vestidos", img: "/vestidos.jpg", productId: "old" }]), [
+      { id: "vestidos", name: "Vestidos" },
+    ]);
   });
 
   it("pone primero los productos nuevos y mantiene el orden heredado cuando no hay fechas", () => {
@@ -31,6 +34,31 @@ describe("Catálogo y categorías heredadas", () => {
       { id: "new", name: "C", category: "Tops", price: 100, image: "", section: "nuevo", createdAt: "2026-10-24T12:00:00.000Z" },
     ]);
     assert.deepEqual(sortProductsByCreation(products).map((product) => product.id), ["new", "old-a", "old-b"]);
+  });
+
+  it("separa las tarjetas del inicio y conserva sus fotos heredadas", () => {
+    const categories = [{ id: "vestidos", name: "Vestidos" }];
+    const products = resolveContent("products", [{ id: "uno", name: "Vestido", category: "Vestidos", categoryId: "vestidos", price: 100, image: "", section: "nuevo" }]);
+    const legacyCards = legacyHomeCategoryCards(categories, { categories: [{ name: "Vestidos", img: "/vieja.jpg" }] }, [
+      { id: "vestidos", name: "Vestidos", img: "/actual.jpg", productId: "uno" },
+    ], products);
+    assert.deepEqual(legacyCards, [{ id: "vestidos", categoryId: "vestidos", img: "/actual.jpg", hidden: true, productId: "uno" }]);
+    assert.equal(legacyHomeCategoryCards(categories, { homeCategoryCards: [] }, [], products), null);
+    assert.deepEqual(resolveContent("texts", { ...defaults.texts, homeCategoryCards: [] }).homeCategoryCards, []);
+    assert.deepEqual(contentSchemas.texts.parse({ homeCategoryCards: legacyCards }).homeCategoryCards, legacyCards);
+  });
+
+  it("oculta productos individuales y todos los de una categoría oculta", () => {
+    const products = resolveContent("products", [
+      { id: "a", name: "A", category: "Vestidos", categoryId: "vestidos", price: 100, image: "", section: "nuevo" },
+      { id: "b", name: "B", category: "Vestidos", categoryId: "vestidos", price: 100, image: "", section: "nuevo", hidden: true },
+      { id: "c", name: "C", category: "Tops", categoryId: "tops", price: 100, image: "", section: "sale" },
+    ]);
+    const categories = resolveContent("categories", [{ id: "vestidos", name: "Vestidos" }, { id: "tops", name: "Tops", hidden: true }]);
+    assert.deepEqual(visibleStoreProducts(products, categories).map((product) => product.id), ["a"]);
+    assert.deepEqual(visibleStoreProducts(products, categories.map((category) => ({ ...category, hidden: false }))).map((product) => product.id), ["a", "c"]);
+    assert.equal(resolveContent("texts", {}).homeCategoryCards.every((card) => card.hidden), true);
+    assert.equal(resolveContent("texts", { homeCategoryCards: [{ id: "uno", categoryId: "vestidos", img: "" }] }).homeCategoryCards[0]?.hidden, true);
   });
 
   it("ignora fechas enviadas por el cliente y no permite reordenar productos anteriores", () => {
@@ -60,13 +88,12 @@ describe("Fotos compartidas con productos", () => {
     assert.equal(resolveImageSource({ img: "/propia.jpg" }, products), "/propia.jpg");
   });
 
-  it("detecta referencias en banners, categorías, textos y portadas", () => {
+  it("detecta referencias en banners, textos y portadas", () => {
     assert.deepEqual(referencedProductIds({
       hero: [{ img: "", productId: "vestido" }],
-      categories: [{ img: "", productId: "camisa" }],
       texts: { split: { productId: "vestido" } },
       instagram: [{ image: "", productId: "falda" }],
-    }), ["vestido", "camisa", "vestido", "falda"]);
+    }), ["vestido", "vestido", "falda"]);
   });
 
   it("conserva la referencia al validar y resolver contenido guardado", () => {

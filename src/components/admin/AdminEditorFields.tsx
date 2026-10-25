@@ -115,7 +115,7 @@ export function ListControls({
   i: number;
   len: number;
   move: (from: number, to: number) => void;
-  remove: (index: number) => void;
+  remove?: (index: number) => void;
 }) {
   const buttonClass =
     "grid h-10 w-10 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-30 sm:h-11 sm:w-11";
@@ -139,14 +139,14 @@ export function ListControls({
       >
         <ArrowDown className="h-4 w-4" />
       </button>
-      <button
+      {remove && <button
         type="button"
         aria-label="Borrar"
         onClick={() => remove(i)}
         className={`${buttonClass} bg-red-500/15 text-red-300 hover:bg-red-500/25`}
       >
         <Trash2 className="h-4 w-4" />
-      </button>
+      </button>}
     </div>
   );
 }

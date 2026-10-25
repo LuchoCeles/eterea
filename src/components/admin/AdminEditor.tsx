@@ -11,6 +11,7 @@ import { useContent, useContentUpdater, saveContent } from "@/components/provide
 import type { ContentKey } from "@/lib/content";
 
 type AdminTheme = "light" | "dark";
+type SaveStatus = "saved" | "pending" | "saving" | "error";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
 const ADMIN_SECTION_STORAGE_KEY = "eterea-admin-section";
 
@@ -117,6 +118,8 @@ function Editor({
   const updateContent = useContentUpdater();
   const [draft, setDraft] = useState<unknown>(() => structuredClone(value));
   const isProductEditor = k === "products";
+  const saveStatus = useRef<SaveStatus>("saved");
+  const saveToastId = useRef<string | number | undefined>(undefined);
   const draftRef = useRef(draft);
   const uploadedUrlsRef = useRef(uploadedUrls);
   const draftVersion = useRef(0);
@@ -131,6 +134,7 @@ function Editor({
 
   useEffect(() => {
     if (isProductEditor || Object.is(initialValue.current, value)) return;
+    if (draftVersion.current > lastSavedVersion.current) return;
     const nextDraft = structuredClone(value);
     draftRef.current = nextDraft;
     previousDraft.current = nextDraft;
@@ -154,11 +158,60 @@ function Editor({
     };
   }, [isProductEditor]);
 
-  function changeDraft(next: unknown) {
+  useEffect(() => {
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (draftVersion.current <= lastSavedVersion.current && !savingRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const saveWhenHidden = () => {
+      if (document.visibilityState === "hidden" && draftVersion.current > lastSavedVersion.current) {
+        void autoSaveRef.current();
+      }
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    document.addEventListener("visibilitychange", saveWhenHidden);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeLeaving);
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+    };
+  }, []);
+
+  function changeDraft(next: unknown, saveImmediately = false) {
     draftRef.current = next;
     draftVersion.current += 1;
     setDraft(next);
     if (isProductEditor) updateContent(k, next);
+    if (saveImmediately) {
+      void saveAutomatically();
+    } else {
+      showPendingToast();
+    }
+  }
+
+  function showPendingToast() {
+    if (saveStatus.current === "pending") return;
+    saveStatus.current = "pending";
+    saveToastId.current = toast.info("Cambios sin guardar", {
+      id: saveToastId.current,
+      duration: Infinity,
+      action: null,
+    });
+  }
+
+  function showSaveError(message: string) {
+    saveStatus.current = "error";
+    saveToastId.current = toast.error(message, {
+      id: saveToastId.current,
+      duration: Infinity,
+      action: {
+        label: "Reintentar",
+        onClick: (event) => {
+          event.preventDefault();
+          void autoSaveRef.current();
+        },
+      },
+    });
   }
 
   function canSaveDraft() {
@@ -175,13 +228,24 @@ function Editor({
       return;
     }
 
-    if (!canSaveDraft()) return;
+    if (draftVersion.current <= lastSavedVersion.current) return;
+
+    if (!canSaveDraft()) {
+      showSaveError("Cada categoría necesita un nombre válido antes de guardar.");
+      return;
+    }
 
     const version = draftVersion.current;
     const data = structuredClone(draftRef.current);
     const imageUrls = [...uploadedUrlsRef.current];
     savingRef.current = true;
     inFlightVersion.current = version;
+    saveStatus.current = "saving";
+    saveToastId.current = toast.loading("Guardando cambios…", {
+      id: saveToastId.current,
+      duration: Infinity,
+      action: null,
+    });
 
     try {
       const result = await saveContent(k, data, imageUrls);
@@ -189,19 +253,23 @@ function Editor({
       if (draftVersion.current === version) {
         updateContent(k, result.data);
         onSaved();
+        saveStatus.current = "saved";
+        saveToastId.current = result.cleanupPending
+          ? toast.warning(
+              `Cambios guardados, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`,
+              { id: saveToastId.current, duration: 5000, action: null },
+            )
+          : toast.success("Cambios guardados", { id: saveToastId.current, duration: 3000, action: null });
       } else {
         saveAgain.current = true;
-      }
-      if (result.cleanupPending) {
-        toast.error(
-          `Se guardaron los cambios, pero quedan ${result.cleanupPending} fotos pendientes de borrar en Cloudinary.`,
-        );
+        showPendingToast();
       }
     } catch (error) {
       if (draftVersion.current !== version) {
         saveAgain.current = true;
+        showPendingToast();
       } else {
-        toast.error(
+        showSaveError(
           error instanceof Error
             ? error.message
             : "No se pudo guardar. Revisá la conexión e intentá de nuevo.",
@@ -211,7 +279,7 @@ function Editor({
       savingRef.current = false;
       if (saveAgain.current && lastSavedVersion.current < draftVersion.current) {
         saveAgain.current = false;
-        window.setTimeout(() => void autoSaveRef.current(), 200);
+        window.setTimeout(() => void autoSaveRef.current(), k === "texts" ? 0 : 200);
       } else {
         saveAgain.current = false;
       }

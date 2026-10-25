@@ -7,7 +7,7 @@ const sectionLabels: { key: keyof HomeSections; label: string }[] = [
   { key: "promoBar", label: "Barra de promociones" },
   { key: "hero", label: "Banners principales" },
   { key: "benefits", label: "Franja publicitaria" },
-  { key: "categories", label: "Categorías" },
+  { key: "categories", label: "Categorías destacadas" },
   { key: "newArrivals", label: "Lo nuevo" },
   { key: "offerBanners", label: "Banners de ofertas" },
   { key: "marquee", label: "Cinta en movimiento" },

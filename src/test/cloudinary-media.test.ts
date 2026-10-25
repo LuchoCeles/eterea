@@ -11,6 +11,8 @@ describe("Gestión de imágenes de Cloudinary", () => {
       cloudName: "eterea-demo",
       publicId: "eterea/productos/imagenes/123e4567-e89b-12d3-a456-426614174000",
     });
+    assert.equal(parseCloudinaryAssetUrl(image.replace("/productos/", "/inicio/"), "eterea")?.publicId,
+      "eterea/inicio/imagenes/123e4567-e89b-12d3-a456-426614174000");
   });
 
   it("rechaza URLs externas, parámetros y rutas fuera de la carpeta del proyecto", () => {

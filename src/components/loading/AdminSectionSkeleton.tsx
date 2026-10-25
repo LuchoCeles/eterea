@@ -6,9 +6,9 @@ type AdminSection = Exclude<ContentKey, "contact">;
 const sectionDetails: Record<AdminSection, { title: string; description: string }> = {
   promo: { title: "Promociones", description: "Mensajes que aparecen en la tienda." },
   hero: { title: "Banners", description: "Imágenes y textos destacados." },
-  categories: { title: "Categorías", description: "Creá y editá las categorías de la tienda." },
+  categories: { title: "Categorías", description: "Agrupá productos y definí los filtros del catálogo." },
   products: { title: "Productos", description: "Prendas, precios y categorías." },
-  texts: { title: "Textos y fotos", description: "Secciones y contenido de la tienda." },
+  texts: { title: "Diseño del inicio", description: "Secciones, tarjetas destacadas, textos y fotos del home." },
   instagram: { title: "Redes y contacto", description: "Instagram y datos de contacto." },
 };
 
@@ -33,13 +33,13 @@ function TableRows({ kind }: { kind: "categories" | "products" }) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border bg-card/30" aria-hidden="true">
       <div className="hidden border-b bg-secondary/40 px-4 py-3 lg:flex lg:gap-5">
-        {(kind === "products" ? [28, 18, 12, 12, 12, 10] : [22, 20, 20, 12]).map((width, index) => (
+        {(kind === "products" ? [24, 17, 11, 11, 11, 15, 11] : [50, 30, 20]).map((width, index) => (
           <Skeleton key={index} className="h-3 rounded-none" style={{ width: `${width}%` }} />
         ))}
       </div>
       {Array.from({ length: kind === "products" ? 5 : 3 }, (_, index) => (
         <div key={index} className="flex min-h-20 flex-1 items-center gap-3 border-b p-3 last:border-b-0 sm:p-4">
-          <Skeleton className="h-14 w-14 shrink-0 rounded-lg" />
+          {kind === "products" && <Skeleton className="h-14 w-14 shrink-0 rounded-lg" />}
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-4 w-40 max-w-full rounded-none" />
             <Skeleton className="h-3 w-28 max-w-full rounded-none" />

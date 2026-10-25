@@ -3,8 +3,9 @@ import type { Offers } from "@/lib/storefront-rules";
 
 export type ImageSource = { img: string; productId?: string };
 export type Slide = ImageSource & { kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
-export type StoreProduct = Product & { section: "nuevo" | "sale" };
-export type StoreCategory = { id: string; name: string; img?: string; productId?: string };
+export type StoreProduct = Product & { section: "nuevo" | "sale"; hidden?: boolean };
+export type StoreCategory = { id: string; name: string; hidden?: boolean };
+export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string; instagramUsername: string };
 export type HomeSections = {
@@ -25,6 +26,7 @@ export type Texts = {
   homeSections: HomeSections;
   benefits: { t: string; d: string }[];
   categories: StoreCategory[];
+  homeCategoryCards: HomeCategoryCard[];
   split: ImageSource & { kicker: string; big: string; sub: string; cta: string };
   club: { kicker: string; big: string; text: string; code: string; cta: string };
   marquee: string[];
@@ -71,7 +73,8 @@ export const defaults = {
       { t: "Inspiración europea", d: "Una mirada delicada y actual" },
       { t: "Frescura natural", d: "Belleza que se lleva con comodidad" },
     ],
-    categories: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), name, img: placeholder })),
+    categories: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), name })),
+    homeCategoryCards: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), categoryId: categoryIdForName(name), img: placeholder, hidden: true })),
     split: { kicker: "", big: "", sub: "", cta: "Ver prendas", img: placeholder },
     club: { kicker: "", big: "", text: "", code: "", cta: "Ver prendas" },
     marquee: ["Espíritu costero", "Etérea New Concept", "Frescura natural", "Inspiración europea"],
@@ -107,7 +110,8 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
       split: { ...defaults.texts.split, ...saved.split },
       club: { ...defaults.texts.club, ...saved.club },
       editorial: { ...defaults.texts.editorial, ...saved.editorial },
-      categories: (saved.categories ?? defaults.texts.categories).map((category) => ({ ...category, id: category.id || categoryIdForName(category.name) })),
+      categories: (saved.categories ?? defaults.texts.categories).map((category) => ({ id: category.id || categoryIdForName(category.name), name: category.name, hidden: category.hidden === true })),
+      homeCategoryCards: (saved.homeCategoryCards ?? defaults.texts.homeCategoryCards).map((card) => ({ ...card, hidden: card.hidden !== false })),
     } as ContentOf<K>;
   }
   if (key === "products") {
@@ -117,7 +121,7 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
     }))) as ContentOf<K>;
   }
   if (key === "categories") {
-    return (data as StoreCategory[]).map((category) => ({ ...category, id: category.id || categoryIdForName(category.name) })) as ContentOf<K>;
+    return (data as StoreCategory[]).map((category) => ({ id: category.id || categoryIdForName(category.name), name: category.name, hidden: category.hidden === true })) as ContentOf<K>;
   }
   return data as ContentOf<K>;
 }
@@ -141,4 +145,31 @@ export function catalogCategories(saved: StoreCategory[] | null, texts: Texts, p
 export function productsWithCategoryNames(products: StoreProduct[], categories: StoreCategory[]): StoreProduct[] {
   const names = new Map(categories.map((category) => [category.id, category.name]));
   return products.map((product) => ({ ...product, category: names.get(product.categoryId ?? "") ?? product.category }));
+}
+
+export function visibleStoreProducts(products: StoreProduct[], categories: StoreCategory[]): StoreProduct[] {
+  const visibleCategoryIds = new Set(categories.filter((category) => !category.hidden).map((category) => category.id));
+  return products.filter((product) => !product.hidden && visibleCategoryIds.has(product.categoryId ?? ""));
+}
+
+export function legacyHomeCategoryCards(categories: StoreCategory[], rawTexts: unknown, rawCategories: unknown, products: StoreProduct[]): HomeCategoryCard[] | null {
+  const texts = rawTexts && typeof rawTexts === "object" && !Array.isArray(rawTexts) ? rawTexts as Record<string, unknown> : {};
+  if (Array.isArray(texts.homeCategoryCards)) return null;
+  const legacyTexts = Array.isArray(texts.categories) ? texts.categories : [];
+  const legacyCategories = Array.isArray(rawCategories) ? rawCategories : [];
+  const productIds = new Set(products.map((product) => product.id));
+  return categories.map((category) => {
+    const sources = [...legacyCategories, ...legacyTexts].filter((item): item is Record<string, unknown> =>
+      !!item && typeof item === "object" && !Array.isArray(item) && (item.id === category.id || item.name === category.name),
+    );
+    const imageSource = sources.find((source) => typeof source.productId === "string" && productIds.has(source.productId))
+      ?? sources.find((source) => typeof source.img === "string" && source.img.length > 0);
+    return {
+      id: category.id,
+      categoryId: category.id,
+      img: typeof imageSource?.img === "string" ? imageSource.img : "",
+      hidden: true,
+      ...(typeof imageSource?.productId === "string" && productIds.has(imageSource.productId) ? { productId: imageSource.productId } : {}),
+    };
+  });
 }

@@ -39,3 +39,57 @@ model Media {
   bytes       Bytes    @db.LongBlob
   createdAt   DateTime @default(now()) @db.DateTime(3)
 }
+
+model Category {
+  id        String             @id @db.VarChar(191)
+  name      String             @unique @db.VarChar(100)
+  hidden    Boolean            @default(false)
+  position  Int
+  products  Product[]
+  homeCards HomeCategoryCard[]
+}
+
+model Product {
+  id            String                @id @db.VarChar(191)
+  categoryId    String                @db.VarChar(191)
+  name          String                @db.Text
+  price         Decimal               @db.Decimal(14, 2)
+  oldPrice      Decimal?              @db.Decimal(14, 2)
+  tag           String?               @db.Text
+  image         String                @db.Text
+  section       String                @db.VarChar(20)
+  hidden        Boolean               @default(false)
+  createdAt     DateTime?             @db.DateTime(3)
+  position      Int
+  category      Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentPrices ProductPaymentPrice[]
+  homeCards     HomeCategoryCard[]
+
+  @@index([categoryId])
+}
+
+model ProductPaymentPrice {
+  id        String  @id @default(cuid()) @db.VarChar(191)
+  productId String  @db.VarChar(191)
+  label     String  @db.VarChar(80)
+  price     Decimal @db.Decimal(14, 2)
+  position  Int
+  active    Boolean @default(true)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model HomeCategoryCard {
+  id         String   @id @db.VarChar(191)
+  categoryId String   @db.VarChar(191)
+  productId  String?  @db.VarChar(191)
+  img        String   @db.Text
+  hidden     Boolean  @default(true)
+  position   Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([categoryId])
+  @@index([productId])
+}

@@ -27,7 +27,7 @@ export function AdminContentEditor({
 }: {
   k: ContentKey;
   draft: unknown;
-  onChange: (value: unknown) => void;
+  onChange: (value: unknown, saveImmediately?: boolean) => void;
   onUploaded: (urls: string[]) => void;
 }) {
   if (k === "promo") return <PromoEditor value={draft as string[]} onChange={onChange} />;
@@ -44,7 +44,7 @@ export function AdminContentEditor({
       <AdminProductsEditor value={draft as StoreProduct[]} onChange={onChange} onUploaded={onUploaded} />
     );
   if (k === "categories")
-    return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} onUploaded={(url) => onUploaded([url])} />;
+    return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
   if (k === "texts")
     return (
       <TextsEditor

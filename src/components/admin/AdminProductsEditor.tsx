@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
 import { BatchImageUploader } from "@/components/admin/BatchImageUploader";
 import { Field, ImageField } from "@/components/admin/AdminEditorFields";
 import { ProductPaymentPricesEditor } from "@/components/admin/ProductPaymentPricesEditor";
 import { ProductImage } from "@/components/store/ProductImage";
 import { useContent } from "@/components/providers/ContentProvider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
 import { formatPrice, sortProductsByCreation } from "@/lib/products";
-import { referencedProductIds } from "@/lib/image-source";
 
 export function AdminProductsEditor({ value, onChange, onUploaded }: {
   value: StoreProduct[];
@@ -19,10 +18,6 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
   onUploaded: (urls: string[]) => void;
 }) {
   const categories = useContent("categories");
-  const hero = useContent("hero");
-  const texts = useContent("texts");
-  const instagram = useContent("instagram");
-  const referencedIds = new Set(referencedProductIds({ hero, categories, texts, instagram }));
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const selected = value.find((product) => product.id === editingId);
@@ -35,14 +30,6 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
     onChange(value.map((product) => product.id === id ? { ...product, ...patch } : product));
   }
 
-  function remove(id: string) {
-    if (referencedIds.has(id)) {
-      toast.error("Este producto se usa como foto en otra sección. Quitá esa referencia antes de borrarlo.");
-      return;
-    }
-    onChange(value.filter((product) => product.id !== id));
-  }
-
   function add(image = "") {
     const product: StoreProduct = {
       id: crypto.randomUUID(),
@@ -53,6 +40,7 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
       price: 0,
       image,
       section: "nuevo",
+      hidden: false,
     };
     onChange([product, ...value]);
     if (!image) setEditingId(product.id);
@@ -70,7 +58,7 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
               id: crypto.randomUUID(), name: `Nueva prenda ${value.length + index + 1}`,
               categoryId: categories[0].id, category: categories[0].name,
               createdAt: new Date(createdAt + index).toISOString(),
-              price: 0, image, section: "nuevo" as const,
+              price: 0, image, section: "nuevo" as const, hidden: false,
             })), ...value]);
           }} />}
           <button type="button" onClick={() => add()} disabled={categories.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
@@ -87,9 +75,9 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
 
       <div className="overflow-hidden rounded-2xl border bg-card/30">
         <div className="hidden overflow-x-auto lg:block">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[940px] text-left text-sm">
             <thead className="border-b bg-secondary/40 text-xs text-muted-foreground">
-              <tr><th scope="col" className="px-4 py-3 font-medium">Producto</th><th scope="col" className="px-4 py-3 font-medium">Categoría</th><th scope="col" className="px-4 py-3 font-medium">Precio</th><th scope="col" className="px-4 py-3 font-medium">Sección</th><th scope="col" className="px-4 py-3 font-medium">Creado</th><th scope="col" className="px-4 py-3 text-right font-medium">Acciones</th></tr>
+              <tr><th scope="col" className="px-4 py-3 font-medium">Producto</th><th scope="col" className="px-4 py-3 font-medium">Categoría</th><th scope="col" className="px-4 py-3 font-medium">Precio</th><th scope="col" className="px-4 py-3 font-medium">Sección</th><th scope="col" className="px-4 py-3 font-medium">Creado</th><th scope="col" className="px-4 py-3 font-medium">Producto activo</th><th scope="col" className="px-4 py-3 text-right font-medium">Acciones</th></tr>
             </thead>
             <tbody className="divide-y">
               {rows.map((product) => <tr key={product.id} className="hover:bg-secondary/25">
@@ -98,7 +86,8 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
                 <td className="px-4 py-3 tabular-nums">{formatPrice(product.price)}</td>
                 <td className="px-4 py-3 text-muted-foreground">{product.section === "sale" ? "Sale" : "Lo nuevo"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{formatCreatedAt(product.createdAt)}</td>
-                <td className="px-4 py-3"><RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => remove(product.id)} /></td>
+                <td className="px-4 py-3"><Switch checked={!product.hidden} onCheckedChange={(checked) => update(product.id, { hidden: !checked })} aria-label={`${product.hidden ? "Mostrar" : "Ocultar"} ${product.name} en la tienda`} />{categories.find((category) => category.id === product.categoryId)?.hidden && <span className="ml-2 text-xs text-muted-foreground">Categoría oculta</span>}</td>
+                <td className="px-4 py-3"><RowActions product={product} onEdit={() => setEditingId(product.id)} /></td>
               </tr>)}
             </tbody>
           </table>
@@ -106,8 +95,9 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
         <div className="divide-y lg:hidden">
           {rows.map((product) => <div key={product.id} className="flex items-center gap-3 p-3 sm:p-4">
             <ProductThumbnail product={product} />
-            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="truncate text-xs text-muted-foreground">{product.category || "Sin asignar"} · {formatPrice(product.price)}</p></div>
-            <RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => remove(product.id)} />
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="truncate text-xs text-muted-foreground">{product.category || "Sin asignar"} · {formatPrice(product.price)}</p>{categories.find((category) => category.id === product.categoryId)?.hidden && <p className="text-xs text-muted-foreground">Categoría oculta</p>}</div>
+            <Switch checked={!product.hidden} onCheckedChange={(checked) => update(product.id, { hidden: !checked })} aria-label={`${product.hidden ? "Mostrar" : "Ocultar"} ${product.name} en la tienda`} />
+            <RowActions product={product} onEdit={() => setEditingId(product.id)} />
           </div>)}
         </div>
         {rows.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">{search ? "No hay productos que coincidan con la búsqueda." : "Todavía no hay productos."}</p>}
@@ -128,16 +118,15 @@ function ProductThumbnail({ product }: { product: StoreProduct }) {
   return <ProductImage src={product.image} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />;
 }
 
-function RowActions({ product, onEdit, onRemove }: { product: StoreProduct; onEdit: () => void; onRemove: () => void }) {
+function RowActions({ product, onEdit }: { product: StoreProduct; onEdit: () => void }) {
   return <div className="flex justify-end gap-1">
     <button type="button" onClick={onEdit} aria-label={`Editar ${product.name}`} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-secondary"><Pencil className="h-4 w-4" /></button>
-    <button type="button" onClick={onRemove} aria-label={`Borrar ${product.name}`} className="grid h-10 w-10 place-items-center rounded-lg text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button>
   </div>;
 }
 
 function ProductFields({ product, categories, onChange, onUploaded }: {
   product: StoreProduct;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; hidden?: boolean }[];
   onChange: (patch: Partial<StoreProduct>) => void;
   onUploaded: (url: string) => void;
 }) {
@@ -151,7 +140,7 @@ function ProductFields({ product, categories, onChange, onUploaded }: {
           onChange({ categoryId: category?.id ?? "", category: category?.name ?? "" });
         }} className="mt-2 min-h-11 w-full border bg-background px-3 py-2 text-sm text-foreground">
           <option value="">Elegí una categoría</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.hidden ? " (oculta)" : ""}</option>)}
         </select>
       </label>
       <label className="text-xs font-medium text-muted-foreground">Sección

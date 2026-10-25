@@ -10,6 +10,7 @@ import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
 import { hasRealDiscount, instagramProfileUrl, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
 import { sortProductsByCreation } from "@/lib/products";
+import { visibleStoreProducts, type StoreCategory } from "@/lib/content";
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -21,13 +22,15 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   const [discountOnly, setDiscountOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
+  const storeCategories = useContent("categories");
   const { offers, homeSections } = useContent("texts");
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
-  const regularCandidates = products.filter((product) => product.section === "nuevo");
-  const saleCandidates = products.filter((product) => product.section === "sale");
-  const productKey = (product: (typeof products)[number]) => `${product.category.toLocaleLowerCase("es-AR")}|${product.name.toLocaleLowerCase("es-AR")}`;
+  const availableProducts = visibleStoreProducts(products, storeCategories);
+  const regularCandidates = availableProducts.filter((product) => product.section === "nuevo");
+  const saleCandidates = availableProducts.filter((product) => product.section === "sale");
+  const productKey = (product: (typeof products)[number]) => `${product.categoryId}|${product.name.toLocaleLowerCase("es-AR")}`;
   const regularKeys = new Set(regularCandidates.map(productKey));
   const discountedProducts = visibleSaleProducts(saleCandidates, offers.enabled);
   const discountedKeys = new Set(discountedProducts.map(productKey));
@@ -41,11 +44,16 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
         ...saleCandidates.filter((product) => !regularKeys.has(productKey(product))),
       ];
   const visibleProducts = sortProductsByCreation(catalogCandidates).map((product) => productWithoutOffers(product, offers.enabled));
-  const categories = [...new Set(visibleProducts.map((product) => product.category).filter(Boolean))];
-  const activeCategory = categories.includes(category) ? category : "";
+  const categoryCounts = new Map<string, number>();
+  visibleProducts.forEach((product) => {
+    const id = product.categoryId ?? "";
+    categoryCounts.set(id, (categoryCounts.get(id) ?? 0) + 1);
+  });
+  const categories = storeCategories.filter((item) => categoryCounts.has(item.id));
+  const activeCategory = categories.find((item) => item.id === category || item.name === category)?.id ?? "";
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
   const filteredProducts = visibleProducts.filter((product) => {
-    const matchesCategory = !activeCategory || product.category === activeCategory;
+    const matchesCategory = !activeCategory || product.categoryId === activeCategory;
     const matchesSearch = !normalizedSearch || `${product.name} ${product.category}`.toLocaleLowerCase("es-AR").includes(normalizedSearch);
     return matchesCategory && matchesSearch && (!discountOnly || hasRealDiscount(product));
   });
@@ -59,8 +67,6 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   const pageProducts = sortedProducts.slice((visiblePage - 1) * PRODUCTS_PER_PAGE, visiblePage * PRODUCTS_PER_PAGE);
   const firstVisibleProduct = sortedProducts.length === 0 ? 0 : (visiblePage - 1) * PRODUCTS_PER_PAGE + 1;
   const lastVisibleProduct = Math.min(visiblePage * PRODUCTS_PER_PAGE, sortedProducts.length);
-  const categoryCounts = new Map<string, number>();
-  visibleProducts.forEach((product) => categoryCounts.set(product.category, (categoryCounts.get(product.category) ?? 0) + 1));
 
   function selectCategory(value: string) {
     setCategory(value);
@@ -80,7 +86,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
     <div className="min-h-screen">
       <div className="sticky top-0 z-40">
         <PromoBar />
-        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={homeSections} hasSale={homeSections.sale && saleCount > 0} isAdmin={isAdmin} />
+        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={{ ...homeSections, newArrivals: homeSections.newArrivals && regularCandidates.length > 0 }} hasSale={homeSections.sale && saleCount > 0} isAdmin={isAdmin} />
       </div>
       <main>
         <section className="border-b bg-sand/60">
@@ -222,7 +228,7 @@ function CategoryAccordion({
   activeCategory,
   onSelect,
 }: {
-  categories: string[];
+  categories: StoreCategory[];
   categoryCounts: Map<string, number>;
   totalCount: number;
   activeCategory: string;
@@ -247,7 +253,7 @@ function CategoryAccordion({
         aria-label="Filtrar prendas por categoría"
         className={`space-y-1 pb-4 ${isOpen ? "block" : "hidden"}`}
       >
-        {[{ label: "Todas", value: "", count: totalCount }, ...categories.map((item) => ({ label: item, value: item, count: categoryCounts.get(item) ?? 0 }))].map((item) => {
+        {[{ label: "Todas", value: "", count: totalCount }, ...categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 }))].map((item) => {
           const active = activeCategory === item.value;
           return (
             <button
