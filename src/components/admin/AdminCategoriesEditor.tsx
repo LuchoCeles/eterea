@@ -2,11 +2,13 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
+import { SharedImageField } from "@/components/admin/SharedImageField";
 import type { StoreCategory } from "@/lib/content";
 
-export function AdminCategoriesEditor({ value, onChange }: {
+export function AdminCategoriesEditor({ value, onChange, onUploaded }: {
   value: StoreCategory[];
   onChange: (value: StoreCategory[]) => void;
+  onUploaded: (url: string) => void;
 }) {
   const products = useContent("products");
   const counts = new Map<string, number>();
@@ -30,6 +32,7 @@ export function AdminCategoriesEditor({ value, onChange }: {
             <thead className="border-b bg-secondary/40 text-xs text-muted-foreground">
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">Nombre</th>
+                <th scope="col" className="px-4 py-3 font-medium">Foto</th>
                 <th scope="col" className="px-4 py-3 font-medium">Productos asignados</th>
                 <th scope="col" className="px-4 py-3 text-right font-medium">Acciones</th>
               </tr>
@@ -41,6 +44,7 @@ export function AdminCategoriesEditor({ value, onChange }: {
                   <td className="px-4 py-3">
                     <input value={category.name} onChange={(event) => update(category.id, { name: event.target.value })} placeholder="Ej. Vestidos" maxLength={100} aria-label={`Nombre de ${category.name || "nueva categoría"}`} className="min-h-11 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground" />
                   </td>
+                  <td className="w-64 px-4 py-3"><SharedImageField label="Foto" image={category.img ?? ""} productId={category.productId} section="categorias" onUploaded={onUploaded} onChange={({ image, productId }) => update(category.id, { img: image, productId })} /></td>
                   <td className="px-4 py-3 text-muted-foreground">{count} {count === 1 ? "producto" : "productos"}</td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => onChange(value.filter((item) => item.id !== category.id))} disabled={count > 0} title={count > 0 ? "Reasigná sus productos antes de borrarla" : "Borrar categoría"} aria-label={`Borrar ${category.name || "categoría"}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40">
@@ -59,6 +63,7 @@ export function AdminCategoriesEditor({ value, onChange }: {
               <label className="block text-xs font-medium text-muted-foreground">Nombre
                 <input value={category.name} onChange={(event) => update(category.id, { name: event.target.value })} placeholder="Ej. Vestidos" maxLength={100} className="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground" />
               </label>
+              <SharedImageField label="Foto" image={category.img ?? ""} productId={category.productId} section="categorias" onUploaded={onUploaded} onChange={({ image, productId }) => update(category.id, { img: image, productId })} />
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">{count} {count === 1 ? "producto asignado" : "productos asignados"}</span>
                 <button type="button" onClick={() => onChange(value.filter((item) => item.id !== category.id))} disabled={count > 0} title={count > 0 ? "Reasigná sus productos antes de borrarla" : "Borrar categoría"} aria-label={`Borrar ${category.name || "categoría"}`} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40">

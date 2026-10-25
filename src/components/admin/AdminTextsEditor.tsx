@@ -1,11 +1,11 @@
 "use client";
 
 import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility";
+import { SharedImageField } from "@/components/admin/SharedImageField";
 import {
   AddButton,
   CollapsibleCard,
   Field,
-  ImageField,
   ListControls,
   useList,
 } from "@/components/admin/AdminEditorFields";
@@ -66,12 +66,13 @@ export function TextsEditor({
       </CollapsibleCard>
       <CollapsibleCard title="Banner de oferta" summary="Banner con foto">
         <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-          <ImageField
+          <SharedImageField
             label="Foto"
-            value={value.split.img}
+            image={value.split.img}
+            productId={value.split.productId}
             section="ofertas"
             onUploaded={onUploaded}
-            onChange={(image) => set("split", { ...value.split, img: image })}
+            onChange={({ image, productId }) => set("split", { ...value.split, img: image, productId })}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field
@@ -162,12 +163,13 @@ export function TextsEditor({
         summary={value.editorial.title || "Foto y texto institucional"}
       >
         <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-          <ImageField
+          <SharedImageField
             label="Foto"
-            value={value.editorial.img}
+            image={value.editorial.img}
+            productId={value.editorial.productId}
             section="marca"
             onUploaded={onUploaded}
-            onChange={(image) => set("editorial", { ...value.editorial, img: image })}
+            onChange={({ image, productId }) => set("editorial", { ...value.editorial, img: image, productId })}
           />
           <div className="grid gap-3">
             <Field

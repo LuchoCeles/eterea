@@ -3,11 +3,13 @@ import { Prisma } from "@/generated/prisma/client";
 import { planCloudinaryDeletions } from "@/lib/cloudinary-media";
 import { catalogCategories, ContentKey, ContentSnapshot, defaults, productsWithCategoryNames, resolveContent, type StoreCategory, type StoreProduct } from "@/lib/content";
 import { prepareProductsForSave } from "@/lib/products";
+import { referencedProductIds } from "@/lib/image-source";
 import { contentSchemas } from "@/lib/content-schema";
 import { cloudinaryPublicId, deleteCloudinaryImage } from "@/server/cloudinary";
 import { prisma } from "@/server/prisma";
 
 const CLEANUP_QUEUE_KEY = "__cloudinary_cleanup";
+const IMAGE_REFERENCE_KEYS: ContentKey[] = ["hero", "categories", "texts", "instagram"];
 
 export const contentKeys = Object.keys(defaults) as ContentKey[];
 
@@ -84,10 +86,21 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       if (nextProducts.some((product) => !categories.has(product.categoryId ?? ""))) {
         throw new ContentValidationError("Asigná a cada producto una categoría creada en el administrador.");
       }
+      const imageSections = await transaction.siteContent.findMany({ where: { key: { in: IMAGE_REFERENCE_KEYS } }, select: { data: true } });
+      const remainingIds = new Set(nextProducts.map((product) => product.id));
+      if (imageSections.some((section) => referencedProductIds(section.data).some((id) => !remainingIds.has(id)))) {
+        throw new ContentValidationError("Hay productos usados como foto en otras secciones. Quitá esas referencias antes de borrar el producto.");
+      }
       merged = prepareProductsForSave(nextProducts.map((product) => ({
         ...product,
         category: categories.get(product.categoryId ?? "") ?? product.category,
       })), currentProducts, Date.now());
+    }
+    if (IMAGE_REFERENCE_KEYS.includes(key)) {
+      const availableIds = new Set(currentProducts.map((product) => product.id));
+      if (referencedProductIds(merged).some((id) => !availableIds.has(id))) {
+        throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+      }
     }
     const row = await transaction.siteContent.upsert({
       where: { key },

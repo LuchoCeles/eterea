@@ -10,6 +10,7 @@ import { useCart } from "@/components/providers/CartProvider";
 import { InstagramSection } from "@/components/store/InstagramSection";
 import { Button } from "@/components/ui/button";
 import { productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
+import { resolveImageSource } from "@/lib/image-source";
 
 const logo = "/assets/eterea-placeholder.svg";
 export function Storefront({ isAdmin }: { isAdmin: boolean }) {
@@ -54,7 +55,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {categories.map((c, idx) => (
               <a key={idx} href={`/productos?categoria=${encodeURIComponent(c.name)}`} className="group relative block overflow-hidden bg-card">
-                <img src={c.img || "/assets/eterea-placeholder.svg"} alt={c.name} loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <img src={resolveImageSource(c, products)} alt={c.name} loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-background/90 p-4">
                   <div>
                     <span className="font-display text-xs text-muted-foreground">0{idx + 1}</span>
@@ -74,7 +75,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
         {/* Banner promo partido */}
         {homeSections.offerBanners && T.offers.enabled && (T.offers.showSplit || T.offers.showClub) && <section className="mx-auto grid max-w-[1600px] gap-4 px-4 md:grid-cols-2 md:px-8">
           {T.offers.showSplit && T.split.big && <div className="relative min-h-[480px] overflow-hidden">
-            <img src={T.split.img} alt={T.split.sub} loading="lazy" className="absolute inset-0 h-full w-full object-cover object-left" />
+            <img src={resolveImageSource(T.split, products)} alt={T.split.sub} loading="lazy" className="absolute inset-0 h-full w-full object-cover object-left" />
             <div className="absolute inset-0 flex flex-col justify-end p-8 text-primary-foreground md:p-12">
               <span className="eyebrow">{T.split.kicker}</span>
               <p className="mt-3 font-display text-7xl font-semibold leading-none md:text-9xl">{T.split.big}</p>
@@ -115,7 +116,7 @@ export function Storefront({ isAdmin }: { isAdmin: boolean }) {
         {/* Editorial */}
         {homeSections.editorial && <section id="new-concept" className="mx-auto grid max-w-[1600px] items-center gap-10 px-4 py-20 md:grid-cols-12 md:px-8">
           <div className="md:col-span-5">
-            <img src={T.editorial.img} alt="Editorial Etérea" loading="lazy" className="aspect-[4/5] w-full object-cover" />
+            <img src={resolveImageSource(T.editorial, products)} alt="Editorial Etérea" loading="lazy" className="aspect-[4/5] w-full object-cover" />
           </div>
           <div className="md:col-span-6 md:col-start-7">
             <span className="eyebrow text-muted-foreground">{T.editorial.kicker}</span>

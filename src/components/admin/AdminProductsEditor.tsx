@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { BatchImageUploader } from "@/components/admin/BatchImageUploader";
 import { Field, ImageField } from "@/components/admin/AdminEditorFields";
@@ -10,6 +11,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { StoreProduct } from "@/lib/content";
 import { formatPrice, sortProductsByCreation } from "@/lib/products";
+import { referencedProductIds } from "@/lib/image-source";
 
 export function AdminProductsEditor({ value, onChange, onUploaded }: {
   value: StoreProduct[];
@@ -17,6 +19,10 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
   onUploaded: (urls: string[]) => void;
 }) {
   const categories = useContent("categories");
+  const hero = useContent("hero");
+  const texts = useContent("texts");
+  const instagram = useContent("instagram");
+  const referencedIds = new Set(referencedProductIds({ hero, categories, texts, instagram }));
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const selected = value.find((product) => product.id === editingId);
@@ -27,6 +33,14 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
 
   function update(id: string, patch: Partial<StoreProduct>) {
     onChange(value.map((product) => product.id === id ? { ...product, ...patch } : product));
+  }
+
+  function remove(id: string) {
+    if (referencedIds.has(id)) {
+      toast.error("Este producto se usa como foto en otra sección. Quitá esa referencia antes de borrarlo.");
+      return;
+    }
+    onChange(value.filter((product) => product.id !== id));
   }
 
   function add(image = "") {
@@ -84,7 +98,7 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
                 <td className="px-4 py-3 tabular-nums">{formatPrice(product.price)}</td>
                 <td className="px-4 py-3 text-muted-foreground">{product.section === "sale" ? "Sale" : "Lo nuevo"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{formatCreatedAt(product.createdAt)}</td>
-                <td className="px-4 py-3"><RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => onChange(value.filter((item) => item.id !== product.id))} /></td>
+                <td className="px-4 py-3"><RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => remove(product.id)} /></td>
               </tr>)}
             </tbody>
           </table>
@@ -93,7 +107,7 @@ export function AdminProductsEditor({ value, onChange, onUploaded }: {
           {rows.map((product) => <div key={product.id} className="flex items-center gap-3 p-3 sm:p-4">
             <ProductThumbnail product={product} />
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{product.name}</p><p className="truncate text-xs text-muted-foreground">{product.category || "Sin asignar"} · {formatPrice(product.price)}</p></div>
-            <RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => onChange(value.filter((item) => item.id !== product.id))} />
+            <RowActions product={product} onEdit={() => setEditingId(product.id)} onRemove={() => remove(product.id)} />
           </div>)}
         </div>
         {rows.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">{search ? "No hay productos que coincidan con la búsqueda." : "Todavía no hay productos."}</p>}

@@ -1,10 +1,11 @@
 import { categoryIdForName, newArrivals, sale, sortProductsByCreation, type Product } from "@/lib/products";
 import type { Offers } from "@/lib/storefront-rules";
 
-export type Slide = { img: string; kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
+export type ImageSource = { img: string; productId?: string };
+export type Slide = ImageSource & { kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
 export type StoreProduct = Product & { section: "nuevo" | "sale" };
-export type StoreCategory = { id: string; name: string; img?: string };
-export type InstagramPost = { id: string; url: string; image: string; title: string; kind: "post" | "reel" };
+export type StoreCategory = { id: string; name: string; img?: string; productId?: string };
+export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string };
 export type HomeSections = {
   promoBar: boolean;
@@ -24,10 +25,10 @@ export type Texts = {
   homeSections: HomeSections;
   benefits: { t: string; d: string }[];
   categories: StoreCategory[];
-  split: { kicker: string; big: string; sub: string; cta: string; img: string };
+  split: ImageSource & { kicker: string; big: string; sub: string; cta: string };
   club: { kicker: string; big: string; text: string; code: string; cta: string };
   marquee: string[];
-  editorial: { kicker: string; title: string; text: string; cta: string; img: string };
+  editorial: ImageSource & { kicker: string; title: string; text: string; cta: string };
 };
 
 const placeholder = "/assets/eterea-placeholder.svg";

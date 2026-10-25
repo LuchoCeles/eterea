@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { ArrowUpRight, Instagram, Play } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
+import { resolveImageSource } from "@/lib/image-source";
+import type { StoreProduct } from "@/lib/content";
 import { instagramEmbedUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { InstagramPost } from "@/lib/content";
 import { Button } from "@/components/ui/button";
 const flower = "/assets/eterea-placeholder.svg";
 
-function InstagramCard({ post }: { post: InstagramPost }) {
-  const [showEmbed, setShowEmbed] = useState(!post.image);
+function InstagramCard({ post, products }: { post: InstagramPost; products: StoreProduct[] }) {
+  const image = post.image || post.productId ? resolveImageSource(post, products) : "";
+  const [openedImage, setOpenedImage] = useState<string | null>(null);
+  const showEmbed = !image || openedImage === image;
   const embedUrl = instagramEmbedUrl(post.url);
   if (!embedUrl) return null;
 
@@ -26,8 +30,8 @@ function InstagramCard({ post }: { post: InstagramPost }) {
           />
         </div>
       ) : (
-        <button type="button" onClick={() => setShowEmbed(true)} aria-label={`Mostrar ${post.kind === "reel" ? "reel" : "publicación"} de Instagram en esta página`} className="group relative block aspect-[4/5] w-full overflow-hidden bg-pearl text-foreground">
-          <img src={post.image} alt={post.title || "Publicación de Etérea"} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+        <button type="button" onClick={() => setOpenedImage(image)} aria-label={`Mostrar ${post.kind === "reel" ? "reel" : "publicación"} de Instagram en esta página`} className="group relative block aspect-[4/5] w-full overflow-hidden bg-pearl text-foreground">
+          <img src={image} alt={post.title || "Publicación de Etérea"} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
           <span className="absolute bottom-4 left-4 flex items-center gap-2 bg-primary px-4 py-3 text-sm text-primary-foreground"><Play className="h-4 w-4" /> Ver acá</span>
         </button>
       )}
@@ -41,6 +45,7 @@ function InstagramCard({ post }: { post: InstagramPost }) {
 
 export function InstagramSection() {
   const posts = useContent("instagram");
+  const products = useContent("products");
   const { homeSections } = useContent("texts");
   const validPosts = visibleInstagramPosts(posts);
   if (!homeSections.instagram) return null;
@@ -60,7 +65,7 @@ export function InstagramSection() {
         </div>
         {validPosts.length > 0 && <>
           <div className="mt-10 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {validPosts.map((post) => <InstagramCard key={post.id} post={post} />)}
+            {validPosts.map((post) => <InstagramCard key={post.id} post={post} products={products} />)}
           </div>
         </>}
       </div>

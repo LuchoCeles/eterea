@@ -6,11 +6,13 @@ import { InstagramConnection } from "@/components/admin/InstagramConnection";
 import { WhatsAppSettings } from "@/components/admin/WhatsAppSettings";
 import { AdminProductsEditor } from "@/components/admin/AdminProductsEditor";
 import { AdminCategoriesEditor } from "@/components/admin/AdminCategoriesEditor";
+import { SharedImageField } from "@/components/admin/SharedImageField";
+import { useContent } from "@/components/providers/ContentProvider";
+import { resolveImageSource } from "@/lib/image-source";
 import {
   AddButton,
   CollapsibleCard,
   Field,
-  ImageField,
   ListControls,
   useList,
 } from "@/components/admin/AdminEditorFields";
@@ -41,7 +43,7 @@ export function AdminContentEditor({
       <AdminProductsEditor value={draft as StoreProduct[]} onChange={onChange} onUploaded={onUploaded} />
     );
   if (k === "categories")
-    return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
+    return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} onUploaded={(url) => onUploaded([url])} />;
   if (k === "texts")
     return (
       <TextsEditor
@@ -111,6 +113,7 @@ function HeroEditor({
   onUploaded: (url: string) => void;
 }) {
   const list = useList(value, onChange);
+  const products = useContent("products");
   return (
     <div className="space-y-3 sm:space-y-4">
       {value.map((slide, index) => (
@@ -118,19 +121,20 @@ function HeroEditor({
           key={index}
           title={`Banner ${index + 1}`}
           summary={slide.title || slide.promo || "Sin título"}
-          preview={slide.img}
+          preview={resolveImageSource(slide, products)}
           badge="Imagen + texto"
           right={
             <ListControls i={index} len={value.length} move={list.move} remove={list.remove} />
           }
         >
           <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-            <ImageField
+            <SharedImageField
               label="Foto"
-              value={slide.img}
+              image={slide.img}
+              productId={slide.productId}
               section="banners"
               onUploaded={onUploaded}
-              onChange={(image) => list.set(index, { img: image })}
+              onChange={({ image, productId }) => list.set(index, { img: image, productId })}
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field

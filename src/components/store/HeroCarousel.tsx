@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useContent } from "@/components/providers/ContentProvider";
+import { resolveImageSource } from "@/lib/image-source";
 import { Button } from "@/components/ui/button";
 import { visibleAnnouncements } from "@/lib/storefront-rules";
 import { ArrowRight } from "lucide-react";
@@ -10,6 +11,7 @@ const DUR = 6000;
 
 export function HeroCarousel() {
   const slides = useContent("hero");
+  const products = useContent("products");
   const { offers, homeSections } = useContent("texts");
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -28,7 +30,7 @@ export function HeroCarousel() {
           aria-hidden={idx !== current}
         >
           <img
-            src={s.img}
+            src={resolveImageSource(s, products)}
             alt={s.title}
             width={1920}
             height={1088}

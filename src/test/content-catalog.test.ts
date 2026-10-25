@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { catalogCategories, categoriesForProducts, defaults, productsWithCategoryNames, resolveContent } from "../lib/content";
 import { categoryIdForName, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
+import { referencedProductIds, resolveImageSource } from "../lib/image-source";
+import { contentSchemas } from "../lib/content-schema";
 
 describe("Catálogo y categorías heredadas", () => {
   it("conserva la categoría de productos anteriores y permite renombrarla sin reasignarlos", () => {
@@ -44,5 +46,35 @@ describe("Catálogo y categorías heredadas", () => {
     assert.deepEqual(saved.map((product) => product.id), ["new", "old-a", "old-b"]);
     assert.equal(saved[0]?.createdAt, "2026-10-24T00:00:00.002Z");
     assert.equal(saved[1]?.createdAt, undefined);
+  });
+});
+
+describe("Fotos compartidas con productos", () => {
+  const products = [{ id: "vestido", name: "Vestido", category: "Vestidos", price: 100, image: "/vestido.jpg" }];
+
+  it("resuelve la foto actual del producto sin copiar su URL a la sección", () => {
+    const banner = { img: "", productId: "vestido" };
+    assert.equal(resolveImageSource(banner, products), "/vestido.jpg");
+    assert.equal(resolveImageSource(banner, [{ ...products[0], image: "/vestido-nuevo.jpg" }]), "/vestido-nuevo.jpg");
+    assert.equal(banner.img, "");
+    assert.equal(resolveImageSource({ img: "/propia.jpg" }, products), "/propia.jpg");
+  });
+
+  it("detecta referencias en banners, categorías, textos y portadas", () => {
+    assert.deepEqual(referencedProductIds({
+      hero: [{ img: "", productId: "vestido" }],
+      categories: [{ img: "", productId: "camisa" }],
+      texts: { split: { productId: "vestido" } },
+      instagram: [{ image: "", productId: "falda" }],
+    }), ["vestido", "camisa", "vestido", "falda"]);
+  });
+
+  it("conserva la referencia al validar y resolver contenido guardado", () => {
+    const parsed = contentSchemas.hero.parse([{
+      img: "", productId: "vestido", kicker: "", title: "Vestido", cta: "Ver", promo: "", align: "left",
+    }]);
+    assert.equal(resolveContent("hero", parsed)[0]?.productId, "vestido");
+    const texts = contentSchemas.texts.parse({ split: { img: "", productId: "vestido" } });
+    assert.equal(resolveContent("texts", texts).split.productId, "vestido");
   });
 });

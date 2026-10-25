@@ -4,6 +4,7 @@ import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 
 const shortText = z.string().max(4000);
 const image = z.string().max(4000);
+const productId = z.string().min(1).max(191).optional();
 const offers = z.object({ enabled: z.boolean(), showSplit: z.boolean(), showClub: z.boolean() }).partial().passthrough();
 const homeSections = z.object({
   promoBar: z.boolean(),
@@ -20,6 +21,7 @@ const homeSections = z.object({
 }).partial().passthrough();
 const slide = z.object({
   img: image,
+  productId,
   kicker: shortText,
   title: shortText,
   cta: shortText,
@@ -39,11 +41,12 @@ const product = z.object({
   image,
   section: z.enum(["nuevo", "sale"]),
 });
-const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), img: image.optional() });
+const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), img: image.optional(), productId });
 const instagramPost = z.object({
   id: z.string().min(1).max(191),
   url: z.string().max(4000),
   image,
+  productId,
   title: shortText,
   kind: z.enum(["post", "reel"]),
 });
@@ -61,9 +64,9 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
     homeSections: homeSections.optional(),
     benefits: z.array(z.object({ t: shortText, d: shortText })).max(30).optional(),
     categories: z.array(category).max(100).optional(),
-    split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image }).partial().passthrough().optional(),
+    split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image, productId }).partial().passthrough().optional(),
     club: z.object({ kicker: shortText, big: shortText, text: shortText, code: shortText, cta: shortText }).partial().passthrough().optional(),
     marquee: z.array(shortText).max(100).optional(),
-    editorial: z.object({ kicker: shortText, title: shortText, text: shortText, cta: shortText, img: image }).partial().passthrough().optional(),
+    editorial: z.object({ kicker: shortText, title: shortText, text: shortText, cta: shortText, img: image, productId }).partial().passthrough().optional(),
   }).partial().passthrough(),
 };
