@@ -84,6 +84,7 @@ export function ProductStagedGallery({
               <ProductImage
                 src={item.url}
                 alt={`Foto ${index + 1} del producto`}
+                sizes="(min-width: 640px) 33vw, 50vw"
                 className="h-full w-full object-cover"
               />
               {index === 0 && (

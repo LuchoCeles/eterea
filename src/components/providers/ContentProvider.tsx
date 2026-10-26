@@ -5,6 +5,7 @@ import { ContentKey, ContentSnapshot, defaults, mergeTextSection, productsWithCa
 
 type ContentContextValue = {
   content: Partial<ContentSnapshot>;
+  products: ContentSnapshot["products"];
   setContent: (key: ContentKey, value: unknown) => void;
   setTextSection: (section: TextSectionKey, value: unknown) => void;
 };
@@ -13,8 +14,12 @@ const ContentContext = createContext<ContentContextValue | null>(null);
 
 export function ContentProvider({ initialContent, children }: { initialContent: Partial<ContentSnapshot>; children: ReactNode }) {
   const [content, setContentState] = useState(initialContent);
+  const products = useMemo(() => productsWithCategoryNames(
+    resolveContent("products", content.products), resolveContent("categories", content.categories),
+  ), [content.products, content.categories]);
   const value: ContentContextValue = {
     content,
+    products,
     setContent: (key, data) => setContentState((current) => ({ ...current, [key]: resolveContent(key, data) })),
     setTextSection: (section, data) => setContentState((current) => ({
       ...current,
@@ -27,14 +32,12 @@ export function ContentProvider({ initialContent, children }: { initialContent: 
 export function useContent<K extends ContentKey>(key: K) {
   const context = useContext(ContentContext);
   const data = context?.content[key];
-  const categories = context?.content.categories;
   return useMemo(() => {
-    const resolved = resolveContent(key, data ?? defaults[key]);
     if (key === "products") {
-      return productsWithCategoryNames(resolved as ContentSnapshot["products"], resolveContent("categories", categories)) as ContentSnapshot[K];
+      return (context?.products ?? resolveContent("products", undefined)) as ContentSnapshot[K];
     }
-    return resolved;
-  }, [key, data, categories]);
+    return resolveContent(key, data ?? defaults[key]);
+  }, [key, data, context?.products]);
 }
 
 export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: string[] = []) {

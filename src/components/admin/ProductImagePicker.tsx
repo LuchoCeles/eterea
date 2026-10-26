@@ -77,7 +77,7 @@ export function ProductImagePicker({ open, products, selectedId, onClose, onSele
                 onClick={() => { onSelect(product.id); close(); }}
                 className="flex min-h-16 w-full items-center gap-3 p-2 text-left text-sm hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
-                <ProductImage src={product.image} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                <ProductImage src={product.image} alt="" loading="lazy" sizes="48px" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{product.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{product.category || "Sin categoría"}</span>

@@ -12,8 +12,9 @@ function card(id: string, categoryId: string): HomeCategoryCard {
 function fakeDb(initial: Row[]) {
   const rows = new Map(initial.map((row) => [row.id, row]));
   const operations: string[] = [];
+  let reads = 0;
   const homeCategoryCard = {
-    async findMany() { return [...rows.values()]; },
+    async findMany() { reads += 1; return [...rows.values()]; },
     async deleteMany({ where }: { where: { id: { in: string[] } } }) {
       for (const id of where.id.in) rows.delete(id);
       operations.push("delete");
@@ -27,7 +28,8 @@ function fakeDb(initial: Row[]) {
       operations.push("upsert");
     },
   };
-  return { db: { homeCategoryCard } as unknown as Parameters<typeof saveHomeCategoryCardRows>[0], rows, operations };
+  return { db: { homeCategoryCard } as unknown as Parameters<typeof saveHomeCategoryCardRows>[0], rows, operations,
+    reads: () => reads };
 }
 
 describe("Guardado de categorías destacadas", () => {
@@ -70,5 +72,15 @@ describe("Guardado de categorías destacadas", () => {
     operations.length = 0;
     await saveHomeCategoryCardRows(db, [card("segunda", "tops"), card("primera", "vestidos")]);
     assert.deepEqual(operations, []);
+  });
+
+  it("reutiliza las filas ya leídas al guardar el contenido completo", async () => {
+    const current = [{ id: "primera", categoryId: "vestidos", productId: null,
+      img: "/portada.jpg", hidden: false, position: 2 }];
+    const { db, rows, operations, reads } = fakeDb(current);
+    await saveHomeCategoryCardRows(db, [{ ...card("primera", "vestidos"), img: "/portada.jpg" }], current);
+    assert.equal(reads(), 0);
+    assert.deepEqual(operations, ["upsert"]);
+    assert.equal(rows.get("primera")?.position, 0);
   });
 });

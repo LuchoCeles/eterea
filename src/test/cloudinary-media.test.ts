@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { destroyCloudinaryAsset } from "../lib/cloudinary-api";
-import { managedCloudinarySection, parseCloudinaryAssetUrl, planCloudinaryDeletions } from "../lib/cloudinary-media";
+import { managedCloudinarySection, parseCloudinaryAssetUrl, planCloudinaryDeletions, reconcileCloudinaryQueue, responsiveCloudinaryImage } from "../lib/cloudinary-media";
 
 const image = "https://res.cloudinary.com/eterea-demo/image/upload/v1761000000/eterea/productos/imagenes/123e4567-e89b-12d3-a456-426614174000.jpg";
 
@@ -28,9 +28,30 @@ describe("Gestión de imágenes de Cloudinary", () => {
     assert.equal(parseCloudinaryAssetUrl(image.replace("eterea/productos", "otro/prod"), "eterea"), null);
   });
 
+  it("entrega tamaños optimizados solo para fotos propias y conserva la URL original guardada", () => {
+    const responsive = responsiveCloudinaryImage(image);
+    assert.equal(responsive.src, image.replace("/image/upload/", "/image/upload/f_auto,q_auto,c_limit,w_960/"));
+    assert.match(responsive.srcSet ?? "", /w_240\/.* 240w/);
+    assert.match(responsive.srcSet ?? "", /w_1920\/.* 1920w/);
+    assert.deepEqual(responsiveCloudinaryImage("https://example.com/foto.jpg"), {
+      src: "https://example.com/foto.jpg", srcSet: undefined,
+    });
+    assert.equal(parseCloudinaryAssetUrl(image, "eterea")?.publicId, "eterea/productos/imagenes/123e4567-e89b-12d3-a456-426614174000");
+  });
+
   it("borra solo URLs propias sin referencias y evita duplicados", () => {
     assert.deepEqual(planCloudinaryDeletions([image, image, "https://example.com/other.jpg"], [], "eterea"), [image]);
     assert.deepEqual(planCloudinaryDeletions([image], [image], "eterea"), []);
+  });
+
+  it("actualiza la cola solo cuando cambian sus referencias", () => {
+    const other = image.replace("123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174001");
+    assert.deepEqual(reconcileCloudinaryQueue([image], [other, other], [image], "eterea"), {
+      obsoleteQueue: [image], toQueue: [other], pending: 1,
+    });
+    assert.deepEqual(reconcileCloudinaryQueue([image], [image], [], "eterea"), {
+      obsoleteQueue: [], toQueue: [], pending: 1,
+    });
   });
 
   it("envía a Cloudinary el public_id sin extensión e invalida su caché al borrar", async () => {

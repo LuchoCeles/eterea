@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useContent } from "@/components/providers/ContentProvider";
 import { resolveImageSource } from "@/lib/image-source";
+import { ProductImage } from "@/components/store/ProductImage";
 import { Button } from "@/components/ui/button";
 import { visibleAnnouncements } from "@/lib/storefront-rules";
 import { ArrowRight } from "lucide-react";
@@ -29,11 +30,13 @@ export function HeroCarousel() {
           className={`absolute inset-0 transition-opacity duration-1000 ${idx === current ? "opacity-100" : "pointer-events-none opacity-0"}`}
           aria-hidden={idx !== current}
         >
-          <img
+          <ProductImage
             src={resolveImageSource(s, products)}
             alt={s.title}
             width={1920}
             height={1088}
+            loading={idx === 0 ? "eager" : "lazy"}
+            fetchPriority={idx === 0 ? "high" : "auto"}
             className={`h-full w-full object-cover transition-transform duration-[7000ms] ${s.align === "right" ? "object-[28%_center]" : "object-[67%_center]"} md:object-center ${idx === current ? "scale-105" : "scale-100"}`}
           />
           {idx === current && (

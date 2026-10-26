@@ -28,7 +28,29 @@ export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
   return { cloudName, publicId };
 }
 
+const responsiveWidths = [240, 480, 720, 960, 1280, 1920];
+
+export function responsiveCloudinaryImage(url: string) {
+  if (!parseCloudinaryAssetUrl(url, "eterea")) return { src: url, srcSet: undefined };
+  const marker = "/image/upload/";
+  const variant = (width: number) => url.replace(marker, `${marker}f_auto,q_auto,c_limit,w_${width}/`);
+  return {
+    src: variant(960),
+    srcSet: responsiveWidths.map((width) => `${variant(width)} ${width}w`).join(", "),
+  };
+}
+
 export function planCloudinaryDeletions(candidates: string[], referencedUrls: Iterable<string>, projectFolder: string) {
   const referenced = new Set(referencedUrls);
   return [...new Set(candidates)].filter((url) => !referenced.has(url) && parseCloudinaryAssetUrl(url, projectFolder) !== null);
+}
+
+export function reconcileCloudinaryQueue(queuedUrls: string[], candidates: string[], referencedUrls: Iterable<string>, projectFolder: string) {
+  const referenced = new Set(referencedUrls);
+  const retainedQueue = planCloudinaryDeletions(queuedUrls, referenced, projectFolder);
+  const retainedSet = new Set(retainedQueue);
+  const obsoleteQueue = queuedUrls.filter((url) => !retainedSet.has(url));
+  const toQueue = planCloudinaryDeletions(candidates, referenced, projectFolder)
+    .filter((url) => !retainedSet.has(url));
+  return { obsoleteQueue, toQueue, pending: retainedQueue.length + toQueue.length };
 }

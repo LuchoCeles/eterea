@@ -21,7 +21,7 @@ export function CatalogProductCard({ product, onAdd, offersEnabled }: { product:
     <article className="group min-w-0">
       <div className="relative aspect-[4/5] overflow-hidden bg-card">
         <Link href={href} aria-label={`Ver ${product.name}`} className="block h-full w-full">
-          <ProductImage src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          <ProductImage src={product.image} alt={product.name} loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
         </Link>
         {(discounted || product.tag) && (
           <span className={`eyebrow absolute left-3 top-3 px-3 py-1.5 ${discounted ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>

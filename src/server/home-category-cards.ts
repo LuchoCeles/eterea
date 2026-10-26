@@ -2,9 +2,10 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { HomeCategoryCard } from "@/lib/content";
 
 type CardDb = Pick<Prisma.TransactionClient, "homeCategoryCard">;
+type CurrentCard = { id: string; categoryId: string; img: string; hidden: boolean; productId: string | null; position: number };
 
-export async function saveHomeCategoryCardRows(db: CardDb, cards: HomeCategoryCard[]) {
-  const current = await db.homeCategoryCard.findMany();
+export async function saveHomeCategoryCardRows(db: CardDb, cards: HomeCategoryCard[], currentRows?: CurrentCard[]) {
+  const current = currentRows ?? await db.homeCategoryCard.findMany();
   const currentById = new Map(current.map((card) => [card.id, card]));
   const nextById = new Map(cards.map((card) => [card.id, card]));
   const removedIds = current.filter((card) => nextById.get(card.id)?.categoryId !== card.categoryId).map((card) => card.id);

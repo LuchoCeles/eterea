@@ -121,7 +121,7 @@ export function Header({
                 <div className="mt-6 max-h-[50vh] space-y-4 overflow-y-auto pr-1">
                   {cartItems.map((item) => (
                     <div key={item.lineKey} className="flex gap-3 border-b pb-4">
-                      <ProductImage src={item.image} alt="" className="h-20 w-16 object-cover" />
+                      <ProductImage src={item.image} alt="" sizes="64px" className="h-20 w-16 object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{item.name}</p>
                         {(item.size || item.color) && <p className="mt-1 text-xs text-muted-foreground">{[item.size && `Talle ${item.size}`, item.color && `Color ${item.color}`].filter(Boolean).join(" · ")}</p>}

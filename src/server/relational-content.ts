@@ -1,27 +1,27 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { defaults, resolveContent, type ContentKey, type ContentSnapshot, type TextSectionKey, type Texts } from "@/lib/content";
+import { resolveContent, type ContentKey, type ContentSnapshot, type TextSectionKey, type Texts } from "@/lib/content";
 
 type ContentDb = Pick<Prisma.TransactionClient,
   "contentSection" | "contactSettings" | "offerSettings" | "homeSectionSetting" |
   "splitBanner" | "clubBanner" | "editorialBanner" | "promoLine" | "heroSlide" |
   "benefit" | "marqueeLine" | "curatedInstagramPost">;
 
-export async function loadRelationalContent(db: ContentDb) {
-  const [sections, contact, offers, home, split, club, editorial, promo, hero, benefits, marquee, instagram] = await Promise.all([
-    db.contentSection.findMany({ select: { key: true } }),
-    db.contactSettings.findUnique({ where: { id: 1 } }),
-    db.offerSettings.findUnique({ where: { id: 1 } }),
-    db.homeSectionSetting.findMany(),
-    db.splitBanner.findUnique({ where: { id: 1 } }),
-    db.clubBanner.findUnique({ where: { id: 1 } }),
-    db.editorialBanner.findUnique({ where: { id: 1 } }),
-    db.promoLine.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-    db.heroSlide.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-    db.benefit.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-    db.marqueeLine.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-    db.curatedInstagramPost.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-  ]);
+export async function loadRelationalContentWithSections(db: ContentDb) {
+  const sections = await db.contentSection.findMany({ select: { key: true } });
   const saved = new Set(sections.map((section) => section.key));
+  const [contact, offers, home, split, club, editorial, promo, hero, benefits, marquee, instagram] = await Promise.all([
+    saved.has("contact") ? db.contactSettings.findUnique({ where: { id: 1 } }) : null,
+    saved.has("texts") ? db.offerSettings.findUnique({ where: { id: 1 } }) : null,
+    saved.has("homeSections") ? db.homeSectionSetting.findMany() : [],
+    saved.has("split") ? db.splitBanner.findUnique({ where: { id: 1 } }) : null,
+    saved.has("club") ? db.clubBanner.findUnique({ where: { id: 1 } }) : null,
+    saved.has("editorial") ? db.editorialBanner.findUnique({ where: { id: 1 } }) : null,
+    saved.has("promo") ? db.promoLine.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }) : [],
+    saved.has("hero") ? db.heroSlide.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }) : [],
+    saved.has("benefits") ? db.benefit.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }) : [],
+    saved.has("marquee") ? db.marqueeLine.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }) : [],
+    saved.has("instagram") ? db.curatedInstagramPost.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }) : [],
+  ]);
   const texts = resolveContent("texts", {
     ...(offers ? { offers: { enabled: offers.enabled, showSplit: offers.showSplit, showClub: offers.showClub } } : {}),
     ...(saved.has("homeSections") ? { homeSections: Object.fromEntries(home.map((item) => [item.section, item.enabled])) } : {}),
@@ -33,7 +33,7 @@ export async function loadRelationalContent(db: ContentDb) {
     ...(saved.has("benefits") ? { benefits: benefits.map((item) => ({ t: item.title, d: item.description })) } : {}),
     ...(saved.has("marquee") ? { marquee: marquee.map((item) => item.text) } : {}),
   });
-  return {
+  return { savedSections: saved, content: {
     promo: resolveContent("promo", saved.has("promo") ? promo.map((item) => item.text) : undefined),
     hero: resolveContent("hero", saved.has("hero") ? hero.map((item) => ({
       img: item.img, ...(item.productId ? { productId: item.productId } : {}),
@@ -47,7 +47,11 @@ export async function loadRelationalContent(db: ContentDb) {
     })) : undefined),
     contact: resolveContent("contact", contact ? { whatsapp: contact.whatsapp, instagramUsername: contact.instagramUsername } : undefined),
     texts,
-  };
+  } };
+}
+
+export async function loadRelationalContent(db: ContentDb) {
+  return (await loadRelationalContentWithSections(db)).content;
 }
 
 async function markSaved(db: ContentDb, key: string) {

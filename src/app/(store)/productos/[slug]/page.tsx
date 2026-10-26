@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { ContentProvider } from "@/components/providers/ContentProvider";
 import { ProductDetail } from "@/components/store/ProductDetail";
 import { catalogProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts, type ContentSnapshot } from "@/lib/content";
 import { productHref, productSlug } from "@/lib/product-slugs";
-import { productWithoutOffers } from "@/lib/storefront-rules";
 import { loadStorefrontContent } from "@/server/storefront-content";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +34,10 @@ export default async function ProductPage({ params }: PageProps) {
   if (slug !== productSlug(source, content.products)) redirect(productHref(source, content.products));
 
   const offersEnabled = content.texts.offers.enabled;
-  const product = productWithoutOffers(source, offersEnabled);
   const related = catalogProducts(content.products, content.categories, offersEnabled)
     .filter((item) => item.id !== source.id)
-    .sort((a, b) => Number(b.categoryId === product.categoryId) - Number(a.categoryId === product.categoryId))
+    .sort((a, b) => Number(b.categoryId === source.categoryId) - Number(a.categoryId === source.categoryId))
     .slice(0, 4);
 
-  return <ContentProvider initialContent={content}>
-    <ProductDetail product={product} related={related} offersEnabled={offersEnabled} />
-  </ContentProvider>;
+  return <ProductDetail source={source} relatedIds={related.map((item) => item.id)} />;
 }

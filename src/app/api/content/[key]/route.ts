@@ -3,6 +3,7 @@ import { ContentKey } from "@/lib/content";
 import { ContentValidationError, contentKeys, drainCloudinaryCleanupQueue, saveContentAndCleanImages } from "@/server/content";
 import { isAdminRequest } from "@/server/auth";
 import { contentSchemas } from "@/lib/content-schema";
+import { invalidateStorefrontContent } from "@/server/storefront-content";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ key: string }> }) {
   if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -18,6 +19,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ key:
     const parsed = contentSchemas[key as ContentKey].safeParse(data);
     if (!parsed.success) return NextResponse.json({ error: key === "categories" ? "Cada categoría necesita un nombre válido." : "El formato del contenido no es válido." }, { status: 400 });
     const result = await saveContentAndCleanImages(key as ContentKey, parsed.data, uploadedUrls);
+    invalidateStorefrontContent();
     if (result.cleanupPending) {
       after(async () => {
         try {

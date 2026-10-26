@@ -1,15 +1,29 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
+import { after as afterResponse } from "next/server";
 import type { InstagramPost } from "@/lib/content";
 import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-media";
 import { instagramPermalink, instagramProfileUrl } from "@/lib/storefront-rules";
 import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
-import { readFeedCache, readMediaCache, readStoredConnection, replaceStoredConnection, updateStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
+import { readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, updateStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
 const api = "https://graph.instagram.com/v25.0";
 const refreshSeconds = 15 * 60;
 const day = 24 * 60 * 60 * 1000;
+const pendingRefreshes = new Map<string, Promise<unknown>>();
+
+function refreshAfterResponse(key: string, task: () => Promise<unknown>) {
+  afterResponse(() => {
+    const pending = pendingRefreshes.get(key);
+    if (pending) return pending.then(() => undefined);
+    const refresh = task().catch((error: unknown) => {
+      console.error("No se pudo renovar la caché de Instagram.", error);
+    }).finally(() => pendingRefreshes.delete(key));
+    pendingRefreshes.set(key, refresh);
+    return refresh.then(() => undefined);
+  });
+}
 
 type InstagramMedia = {
   id?: unknown;
@@ -86,14 +100,9 @@ async function readInstagramProfile(connection: InstagramConnection): Promise<In
   return { id: profile.id, username: profile.username };
 }
 
-export async function loadInstagramProfile(): Promise<InstagramProfile | null> {
-  const connection = await storedConnection().catch(() => null);
-  if (!connection) return null;
-  try {
-    return await readInstagramProfile(connection);
-  } catch {
-    return null;
-  }
+export async function loadInstagramConnectionInfo() {
+  const { connected, username } = await readStoredInstagramConnectionInfo();
+  return { connected, username: username && instagramProfileUrl(username) ? username : null };
 }
 
 export async function instagramConnectionStatus() {
@@ -126,10 +135,25 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<
   if (!connection) return {};
 
   const cache = await readMediaCache(connection.connectionId).catch(() => null);
-  if (cache && Date.now() - cache.fetchedAt < refreshSeconds * 1000 && urls.every((url) => cache.checkedUrls.includes(url))) {
-    return Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []));
+  const checked = cache && urls.every((url) => cache.checkedUrls.includes(url));
+  if (checked && Date.now() - cache.fetchedAt < refreshSeconds * 1000) {
+    return cachedMediaAssets(urls, cache);
   }
+  if (checked && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000) {
+    refreshAfterResponse(`media:${connection.connectionId}:${[...urls].sort().join("|")}`,
+      () => refreshInstagramMediaAssets(urls, connection, cache));
+    return cachedMediaAssets(urls, cache);
+  }
+  return refreshInstagramMediaAssets(urls, connection, cache);
+}
 
+type MediaCache = Awaited<ReturnType<typeof readMediaCache>>;
+
+function cachedMediaAssets(urls: string[], cache: NonNullable<MediaCache>) {
+  return Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []));
+}
+
+async function refreshInstagramMediaAssets(urls: string[], connection: InstagramConnection, cache: MediaCache): Promise<Record<string, InstagramMediaAsset>> {
   try {
     const token = await accessToken(connection);
     const mediaIds = { ...(cache?.mediaIds ?? {}) };
@@ -182,7 +206,7 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<
   } catch (error) {
     console.error("No se pudieron cargar los videos de Instagram.", error);
     return cache && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000
-      ? Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []))
+      ? cachedMediaAssets(urls, cache)
       : {};
   }
 }
@@ -220,7 +244,14 @@ export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null
   const cache = await readFeedCache(connection.connectionId).catch(() => null);
   if (cache && Date.now() - cache.fetchedAt < refreshSeconds * 1000) return cache.posts;
   const fallback = cache && Date.now() - cache.fetchedAt < day ? cache.posts : null;
+  if (fallback) {
+    refreshAfterResponse(`feed:${connection.connectionId}`, () => refreshRecentInstagramPosts(connection, fallback));
+    return fallback;
+  }
+  return refreshRecentInstagramPosts(connection, fallback);
+}
 
+async function refreshRecentInstagramPosts(connection: InstagramConnection, fallback: InstagramPost[] | null) {
   try {
     const token = await accessToken(connection);
     const profile = await getInstagram<{ id?: unknown }>("/me?fields=id", token);

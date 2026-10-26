@@ -46,7 +46,7 @@ Las secciones vacías se distinguen de las que usan valores por defecto mediante
 
 ## Publicaciones de Instagram en el home
 
-La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta seis publicaciones recientes de la cuenta vinculada, actualizadas cada 15 minutos. Si Meta no responde, se usa la última lista obtenida durante un día. Con la cuenta conectada, el servidor busca las publicaciones propias por su enlace, obtiene el archivo y la portada mediante la API de Meta y los reproduce en el home sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador y las URL de los archivos se actualizan cada 15 minutos. Si Meta no entrega el archivo, se intenta la inserción pública; cuando tampoco está permitida, el home muestra la portada cargada (si existe) y un enlace a Instagram.
+La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta seis publicaciones recientes de la cuenta vinculada. La caché se revisa cada 15 minutos; cuando vence, el home entrega temporalmente los datos guardados y los renueva después de responder. Si Meta no responde, se usa la última lista obtenida durante un día. Con la cuenta conectada, el servidor busca las publicaciones propias por su enlace, obtiene el archivo y la portada mediante la API de Meta y los reproduce en el home sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador. Si Meta no entrega el archivo, se intenta la inserción pública; cuando tampoco está permitida, el home muestra la portada cargada (si existe) y un enlace a Instagram.
 
 Para activar la reproducción directa y la actualización automática:
 

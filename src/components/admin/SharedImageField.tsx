@@ -25,7 +25,7 @@ export function SharedImageField({ label, image, productId, section, onChange, o
       <p>{label} · fuente</p>
       {productId ? (
         <div className="flex items-center gap-3">
-          <ProductImage src={resolveImageSource({ productId }, products)} alt="" className="h-20 w-16 rounded-xl border object-cover" />
+          <ProductImage src={resolveImageSource({ productId }, products)} alt="" sizes="64px" className="h-20 w-16 rounded-xl border object-cover" />
           <p className="max-w-48 leading-5">
             {selected ? `Se usa la foto de ${selected.name}. Si la cambiás en Productos, se actualiza acá.` : "Este producto ya no está disponible."}
           </p>

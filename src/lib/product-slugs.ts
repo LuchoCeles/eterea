@@ -1,5 +1,7 @@
 import type { Product } from "@/lib/products";
 
+const groupedProducts = new WeakMap<Product[], Map<string, Product[]>>();
+
 export function slugifyProductName(name: string) {
   return name.normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -17,9 +19,23 @@ function idToken(id: string) {
   return hash.toString(36).padStart(13, "0");
 }
 
+function productsBySlug(products: Product[]) {
+  const cached = groupedProducts.get(products);
+  if (cached) return cached;
+  const groups = new Map<string, Product[]>();
+  for (const product of products) {
+    const base = slugifyProductName(product.name);
+    const group = groups.get(base);
+    if (group) group.push(product);
+    else groups.set(base, [product]);
+  }
+  groupedProducts.set(products, groups);
+  return groups;
+}
+
 export function productSlug(product: Product, products: Product[]) {
   const base = slugifyProductName(product.name);
-  const duplicates = products.filter((item) => slugifyProductName(item.name) === base);
+  const duplicates = productsBySlug(products).get(base) ?? [];
   if (duplicates.length < 2) return base;
 
   const token = idToken(product.id);

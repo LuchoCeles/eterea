@@ -1,26 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
+import { useContent } from "@/components/providers/ContentProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
 import { ProductImage } from "@/components/store/ProductImage";
-import type { StoreProduct } from "@/lib/content";
 import { formatPrice } from "@/lib/products";
-import { hasRealDiscount, visiblePaymentPrices } from "@/lib/storefront-rules";
+import { hasRealDiscount, productWithoutOffers, visiblePaymentPrices } from "@/lib/storefront-rules";
+import type { StoreProduct } from "@/lib/content";
 
-export function ProductDetail({ product, related, offersEnabled }: {
-  product: StoreProduct;
-  related: StoreProduct[];
-  offersEnabled: boolean;
-}) {
+export function ProductDetail({ source, relatedIds }: { source: StoreProduct; relatedIds: string[] }) {
   const { add } = useCart();
+  const products = useContent("products");
+  const offersEnabled = useContent("texts").offers.enabled;
   const [activeImage, setActiveImage] = useState(0);
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [selectionError, setSelectionError] = useState("");
   const [added, setAdded] = useState(false);
+  const relatedById = useMemo(() => new Map(products.map((item) => [item.id, item])), [products]);
+  const product = productWithoutOffers(source, offersEnabled);
+  const related = relatedIds.flatMap((id) => {
+    const item = relatedById.get(id);
+    return item ? [productWithoutOffers(item, offersEnabled)] : [];
+  });
   const images = product.images?.length ? product.images : product.image ? [product.image] : [];
   const sizes = product.sizes ?? [];
   const colors = product.colors ?? [];
@@ -55,11 +60,11 @@ export function ProductDetail({ product, related, offersEnabled }: {
           <section aria-label={`Fotos de ${product.name}`} className="min-w-0">
             <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
               <div className="min-h-0 flex-1 overflow-hidden bg-background">
-                <ProductImage src={images[activeImage] ?? product.image} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" className="h-full w-full object-contain" />
+                <ProductImage src={images[activeImage] ?? product.image} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
               </div>
               {images.length > 1 && <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
                 {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => setActiveImage(index)} aria-label={`Ver foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
-                  <ProductImage src={src} alt="" loading="lazy" className="h-full w-full object-contain" />
+                  <ProductImage src={src} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
                 </button>)}
               </div>}
             </div>

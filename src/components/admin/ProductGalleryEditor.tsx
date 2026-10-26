@@ -39,7 +39,7 @@ export function ProductGalleryEditor({ images, onChange, onUploaded }: {
           {images.map((url, index) => (
             <div key={url} className="overflow-hidden rounded-xl border bg-card">
               <div className="relative aspect-[3/4] bg-secondary/40">
-                <ProductImage src={url} alt={`Foto ${index + 1} del producto`} className="h-full w-full object-cover" />
+                <ProductImage src={url} alt={`Foto ${index + 1} del producto`} sizes="(min-width: 640px) 33vw, 50vw" className="h-full w-full object-cover" />
                 {index === 0 && <span className="absolute left-2 top-2 rounded-full bg-background/95 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm">Portada</span>}
               </div>
               <div className="space-y-2 p-2">

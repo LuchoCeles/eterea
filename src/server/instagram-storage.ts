@@ -16,6 +16,11 @@ export async function readStoredConnection() {
   return { data, updatedAt: row.updatedAt };
 }
 
+export async function readStoredInstagramConnectionInfo() {
+  const row = await prisma.instagramConnection.findUnique({ where: { id: 1 }, select: { username: true } });
+  return { connected: row !== null, username: row?.username ?? null };
+}
+
 function connectionColumns(data: StoredInstagramToken) {
   return {
     connectionId: data.connectionId, encryptedToken: data.token, iv: data.iv,

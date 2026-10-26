@@ -1,19 +1,19 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowUpRight, Waves, Leaf, Shell } from "lucide-react";
 import { HeroCarousel } from "@/components/store/HeroCarousel";
 import { ProductCarousel } from "@/components/store/ProductCarousel";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
-import { InstagramSection } from "@/components/store/InstagramSection";
-import type { InstagramMediaAsset } from "@/lib/instagram-media";
+import { ProductImage } from "@/components/store/ProductImage";
 import { Button } from "@/components/ui/button";
 import { instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
 import { resolveImageSource } from "@/lib/image-source";
 import { visibleStoreProducts } from "@/lib/content";
 
 const logo = "/assets/eterea-placeholder.svg";
-export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: { unavailableInstagramUrls: string[]; instagramMediaAssets: Record<string, InstagramMediaAsset> }) {
+export function Storefront({ instagramSection }: { instagramSection: ReactNode }) {
   const { add } = useCart();
   const T = useContent("texts");
   const contact = useContent("contact");
@@ -65,7 +65,7 @@ export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {homeCategoryCards.map((card) => (
               <a key={card.id} href={`/productos?categoria=${encodeURIComponent(card.category.id)}`} className="group relative block overflow-hidden bg-card">
-                <img src={resolveImageSource(card, products)} alt="" loading="lazy" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <ProductImage src={resolveImageSource(card, products)} alt="" loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-background/90 p-4">
                   <h3 className="font-display text-xl md:text-2xl">{card.category.name}</h3>
                   <ArrowUpRight className="h-5 w-5 shrink-0" />
@@ -80,7 +80,7 @@ export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: {
         {/* Banner promo partido */}
         {homeSections.offerBanners && T.offers.enabled && (T.offers.showSplit || T.offers.showClub) && <section className="mx-auto grid max-w-[1600px] gap-4 px-4 md:grid-cols-2 md:px-8">
           {T.offers.showSplit && T.split.big && <div className="relative min-h-[480px] overflow-hidden">
-            <img src={resolveImageSource(T.split, products)} alt={T.split.sub} loading="lazy" className="absolute inset-0 h-full w-full object-cover object-left" />
+            <ProductImage src={resolveImageSource(T.split, products)} alt={T.split.sub} loading="lazy" sizes="(min-width: 768px) 50vw, 100vw" className="absolute inset-0 h-full w-full object-cover object-left" />
             <div className="absolute inset-0 flex flex-col justify-end p-8 text-primary-foreground md:p-12">
               <span className="eyebrow">{T.split.kicker}</span>
               <p className="mt-3 font-display text-7xl font-semibold leading-none md:text-9xl">{T.split.big}</p>
@@ -121,7 +121,7 @@ export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: {
         {/* Editorial */}
         {homeSections.editorial && <section id="new-concept" className="mx-auto grid max-w-[1600px] items-center gap-10 px-4 py-20 md:grid-cols-12 md:px-8">
           <div className="md:col-span-5">
-            <img src={resolveImageSource(T.editorial, products)} alt="Editorial Etérea" loading="lazy" className="aspect-[4/5] w-full object-cover" />
+            <ProductImage src={resolveImageSource(T.editorial, products)} alt="Editorial Etérea" loading="lazy" sizes="(min-width: 768px) 42vw, 100vw" className="aspect-[4/5] w-full object-cover" />
           </div>
           <div className="md:col-span-6 md:col-start-7">
             <span className="eyebrow text-muted-foreground">{T.editorial.kicker}</span>
@@ -139,7 +139,7 @@ export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: {
         </section>}
 
         {/* Instagram */}
-        <InstagramSection unavailableUrls={unavailableInstagramUrls} mediaAssets={instagramMediaAssets} />
+        {instagramSection}
 
         {/* Newsletter */}
          {homeSections.newsletter && <section className="bg-primary text-primary-foreground">

@@ -1,35 +1,32 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
-import { planCloudinaryDeletions } from "@/lib/cloudinary-media";
+import { planCloudinaryDeletions, reconcileCloudinaryQueue } from "@/lib/cloudinary-media";
 import { catalogCategories, defaults, productsWithCategoryNames, resolveContent, type ContentKey, type ContentSnapshot, type HomeCategoryCard, type StoreProduct, type TextSectionKey } from "@/lib/content";
 import { contentSchemas, textSectionSchemas } from "@/lib/content-schema";
 import { referencedProductIds } from "@/lib/image-source";
 import { prepareProductsForSave } from "@/lib/products";
 import { instagramPermalink } from "@/lib/storefront-rules";
 import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
-import { cloudinaryPublicId, deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudinary";
+import { deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudinary";
 import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
 import { prisma } from "@/server/prisma";
-import { loadRelationalContent, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
+import { loadRelationalContentWithSections, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
 
 type Db = Prisma.TransactionClient;
 const PENDING_UPLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const contentKeys = Object.keys(defaults) as ContentKey[];
 export class ContentValidationError extends Error { }
 
-async function readSnapshot(db: Db): Promise<ContentSnapshot> {
-  const [saved, catalog, sectionRows] = await Promise.all([
-    loadRelationalContent(db), loadRelationalCatalog(db),
-    db.contentSection.findMany({ where: { key: { in: ["categories", "products", "homeCategoryCards"] } }, select: { key: true } }),
-  ]);
-  const sections = new Set(sectionRows.map((row) => row.key));
+async function readSnapshotData(db: Db) {
+  const [saved, catalog] = await Promise.all([loadRelationalContentWithSections(db), loadRelationalCatalog(db)]);
+  const sections = saved.savedSections;
   const products = sections.has("products") ? resolveContent("products", catalog.products) : resolveContent("products", undefined);
   const categories = sections.has("categories") ? resolveContent("categories", catalog.categories)
-    : catalogCategories(null, saved.texts, products);
+    : catalogCategories(null, saved.content.texts, products);
   const snapshot: ContentSnapshot = {
-    ...saved, categories, products: productsWithCategoryNames(products, categories),
+    ...saved.content, categories, products: productsWithCategoryNames(products, categories),
     texts: resolveContent("texts", {
-      ...saved.texts,
+      ...saved.content.texts,
       homeCategoryCards: sections.has("homeCategoryCards") ? catalog.homeCategoryCards : defaults.texts.homeCategoryCards,
     }),
   };
@@ -38,17 +35,25 @@ async function readSnapshot(db: Db): Promise<ContentSnapshot> {
       throw new ContentValidationError(`El contenido guardado de ${key} no tiene un formato válido.`);
     }
   }
-  return snapshot;
+  return { snapshot, catalog };
 }
 
-export async function loadContentSnapshot({ strict = false }: { strict?: boolean } = {}): Promise<ContentSnapshot> {
-  if (strict) return readSnapshot(prisma);
-  return readSnapshot(prisma).catch(() => ({
+async function readSnapshot(db: Db): Promise<ContentSnapshot> {
+  return (await readSnapshotData(db)).snapshot;
+}
+
+export function defaultContentSnapshot(): ContentSnapshot {
+  return {
     promo: resolveContent("promo", undefined), hero: resolveContent("hero", undefined),
     products: resolveContent("products", undefined), categories: resolveContent("categories", undefined),
     instagram: resolveContent("instagram", undefined), contact: resolveContent("contact", undefined),
     texts: resolveContent("texts", undefined),
-  }));
+  };
+}
+
+export async function loadContentSnapshot({ strict = false }: { strict?: boolean } = {}): Promise<ContentSnapshot> {
+  if (strict) return readSnapshot(prisma);
+  return readSnapshot(prisma).catch(defaultContentSnapshot);
 }
 
 function contentImageUrls(key: ContentKey, value: ContentSnapshot[ContentKey]): string[] {
@@ -76,16 +81,15 @@ async function queueUnusedImages(db: Db, candidates: string[], snapshot: Content
     select: { url: true }, orderBy: { createdAt: "asc" }, take: 100,
   });
   const staleUrls = staleUploads.flatMap((item) => item.url ? [item.url] : []);
-  const newlyUnused = [...new Set([...candidates, ...staleUrls])]
-    .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
   const queued = await db.cloudinaryCleanup.findMany({ select: { url: true } });
-  const unused = [...new Set([...queued.map((item) => item.url), ...newlyUnused])]
-    .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
-  await db.cloudinaryCleanup.deleteMany({ where: { url: { notIn: unused } } });
-  if (unused.length) await db.cloudinaryCleanup.createMany({ data: unused.map((url) => ({ url })), skipDuplicates: true });
+  const { obsoleteQueue, toQueue, pending } = reconcileCloudinaryQueue(
+    queued.map((item) => item.url), [...candidates, ...staleUrls], referenced, "eterea",
+  );
+  if (obsoleteQueue.length) await db.cloudinaryCleanup.deleteMany({ where: { url: { in: obsoleteQueue } } });
+  if (toQueue.length) await db.cloudinaryCleanup.createMany({ data: toQueue.map((url) => ({ url })), skipDuplicates: true });
   const settledUploads = [...new Set([...candidates, ...staleUrls])];
   if (settledUploads.length) await db.cloudinaryPendingUpload.deleteMany({ where: { url: { in: settledUploads } } });
-  return unused.length;
+  return pending;
 }
 
 export async function reservePendingUpload(publicId: string) {
@@ -101,6 +105,12 @@ export async function releasePendingUpload(publicId: string) {
 }
 
 export async function sweepPendingUploads() {
+  const staleBefore = new Date(Date.now() - PENDING_UPLOAD_TTL_MS);
+  const [stale, queued] = await Promise.all([
+    prisma.cloudinaryPendingUpload.findFirst({ where: { createdAt: { lt: staleBefore } }, select: { publicId: true } }),
+    prisma.cloudinaryCleanup.findFirst({ select: { url: true } }),
+  ]);
+  if (!stale && !queued) return;
   const pending = await prisma.$transaction(async (db) => {
     const snapshot = await readSnapshot(db);
     return queueUnusedImages(db, [], snapshot);
@@ -145,7 +155,7 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
   const parsed = contentSchemas[key].safeParse(value);
   if (!parsed.success) throw new ContentValidationError("El formato del contenido no es válido.");
   return prisma.$transaction(async (db) => {
-    const current = await readSnapshot(db);
+    const { snapshot: current, catalog: stored } = await readSnapshotData(db);
     let next = resolveContent(key, parsed.data);
     if (key === "categories") {
       const categories = next as ContentSnapshot["categories"];
@@ -187,10 +197,8 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       }
     }
     if (key === "categories") {
-      const stored = await loadRelationalCatalog(db);
       await saveCategoryRows(db, next as ContentSnapshot["categories"], stored.categories);
     } else if (key === "products") {
-      const stored = await loadRelationalCatalog(db);
       await saveProductRows(db, next as StoreProduct[], stored.products);
       const removedIds = stored.products.filter((product) => !(next as StoreProduct[]).some((item) => item.id === product.id)).map((product) => product.id);
       if (removedIds.length) {
@@ -207,7 +215,7 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
     }
     else {
       if (key === "texts") {
-        await saveHomeCategoryCardRows(db, (next as ContentSnapshot["texts"]).homeCategoryCards);
+        await saveHomeCategoryCardRows(db, (next as ContentSnapshot["texts"]).homeCategoryCards, stored.cardRows);
         await db.contentSection.upsert({ where: { key: "homeCategoryCards" }, create: { key: "homeCategoryCards" }, update: {} });
       }
       await saveRelationalContent(db, key, next);
@@ -274,9 +282,10 @@ export async function deleteUnreferencedImages(urls: string[]) {
 
 export async function drainCloudinaryCleanupQueue() {
   await drainStaleReservations();
+  const queue = await prisma.cloudinaryCleanup.findMany({ select: { url: true } });
+  if (!queue.length) return 0;
   const snapshot = await readSnapshot(prisma);
   const referenced = referencedUrls(snapshot);
-  const queue = await prisma.cloudinaryCleanup.findMany({ select: { url: true } });
   for (const item of queue) {
     if (referenced.has(item.url)) {
       await prisma.cloudinaryCleanup.delete({ where: { url: item.url } });

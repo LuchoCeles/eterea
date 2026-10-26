@@ -55,8 +55,7 @@ function InstagramCard({ post, products, unavailable, mediaAsset }: { post: Inst
   );
 }
 
-export function InstagramSection({ unavailableUrls, mediaAssets }: { unavailableUrls: string[]; mediaAssets: Record<string, InstagramMediaAsset> }) {
-  const posts = useContent("instagram");
+export function InstagramSection({ posts, unavailableUrls, mediaAssets }: { posts: InstagramPost[]; unavailableUrls: string[]; mediaAssets: Record<string, InstagramMediaAsset> }) {
   const products = useContent("products");
   const { homeSections } = useContent("texts");
   const profileUsername = useContent("contact").instagramUsername;

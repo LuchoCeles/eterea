@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { isAdminRequest } from "@/server/auth";
 import { imageSections } from "@/lib/media";
 import {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         });
       throw new Error("No se pudo completar la carga de la imagen. Intentá de nuevo.");
     }
-    await sweepPendingUploads().catch(() => undefined);
+    after(() => sweepPendingUploads().catch(() => undefined));
     return NextResponse.json({ url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo subir la imagen.";

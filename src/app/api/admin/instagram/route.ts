@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequest } from "@/server/auth";
 import { instagramConnectionStatus, InstagramConnectionError, saveInstagramConnection } from "@/server/instagram";
+import { invalidateStorefrontContent } from "@/server/storefront-content";
 
 const tokenSchema = z.object({ token: z.string().trim().min(20).max(4000) });
 const privateHeaders = { "Cache-Control": "no-store" };
@@ -25,6 +26,7 @@ export async function PUT(request: Request) {
 
   try {
     const profile = await saveInstagramConnection(parsed.data.token);
+    invalidateStorefrontContent();
     return NextResponse.json({ saved: true, username: profile.username }, { headers: privateHeaders });
   } catch (error) {
     const message = error instanceof InstagramConnectionError ? error.message : "No se pudo guardar el token de Instagram.";

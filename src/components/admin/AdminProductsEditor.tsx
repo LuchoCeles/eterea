@@ -256,6 +256,7 @@ function ProductThumbnail({ product }: { product: StoreProduct }) {
     <ProductImage
       src={product.image}
       alt=""
+      sizes="48px"
       className="h-12 w-12 shrink-0 rounded-lg object-cover"
     />
   );
