@@ -28,9 +28,10 @@ describe("Relaciones de productos", () => {
     const groups = groupProductRelations([
       row("color", 1, "Negro", null, "", 0),
       row("color", 0, "Blanco", null, "", true),
+      row("color", 2, "Azul", null, "", 1n),
     ]);
-    assert.deepEqual(groups.get("prenda")?.colors, ["Blanco", "Negro"]);
-    assert.deepEqual(groups.get("prenda")?.soldOutColors, ["Blanco"]);
+    assert.deepEqual(groups.get("prenda")?.colors, ["Blanco", "Negro", "Azul"]);
+    assert.deepEqual(groups.get("prenda")?.soldOutColors, ["Blanco", "Azul"]);
   });
 
   it("ordena precios con igual posición por ID y rechaza importes inválidos", () => {

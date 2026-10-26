@@ -5,7 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
 import { ProductImage } from "@/components/store/ProductImage";
-import { formatPrice, type Product } from "@/lib/products";
+import { formatPrice, isProductSoldOut, type Product } from "@/lib/products";
 import { productHref } from "@/lib/product-slugs";
 import { hasRealDiscount, visiblePaymentPrices } from "@/lib/storefront-rules";
 
@@ -15,7 +15,7 @@ export function CatalogProductCard({ product, onAdd, offersEnabled }: { product:
   const discount = discounted ? Math.round((1 - product.price / (product.oldPrice ?? product.price)) * 100) : 0;
   const paymentPrices = visiblePaymentPrices(product.paymentPrices ?? [], offersEnabled);
   const needsSelection = !!(product.sizes?.length || product.colors?.length);
-  const unavailable = !!product.soldOut || !!(product.colors?.length && product.colors.every((color) => product.soldOutColors?.includes(color)));
+  const unavailable = isProductSoldOut(product);
   const href = productHref(product, allProducts);
 
   return (
