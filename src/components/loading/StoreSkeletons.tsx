@@ -1,23 +1,4 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { PromoBar } from "@/components/store/PromoBar";
-
-function StoreHeaderSkeleton() {
-  return (
-    <div className="sticky top-0 z-40">
-      <PromoBar />
-      <header className="border-b bg-background">
-        <div className="mx-auto grid h-24 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
-          <Skeleton className="h-11 w-11 rounded-full" />
-          <Skeleton className="h-[72px] w-36 rounded-none md:h-20 md:w-44" />
-          <div className="flex items-center justify-end gap-3">
-            <Skeleton className="hidden h-4 w-24 rounded-none sm:block" />
-            <Skeleton className="h-11 w-11 rounded-full" />
-          </div>
-        </div>
-      </header>
-    </div>
-  );
-}
 
 function ProductCardSkeleton({ carousel = false }: { carousel?: boolean }) {
   return (
@@ -115,7 +96,6 @@ function StoreFooterSkeleton({ catalog = false }: { catalog?: boolean }) {
 export function HomeSkeleton() {
   return (
     <div className="min-h-screen" aria-busy="true" aria-label="Cargando inicio">
-      <StoreHeaderSkeleton />
       <main aria-hidden="true">
         <section className="relative h-[72svh] min-h-[510px] max-h-[820px] w-full overflow-hidden bg-pearl">
           <Skeleton className="absolute inset-0 rounded-none" />

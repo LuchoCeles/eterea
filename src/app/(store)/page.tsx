@@ -1,19 +1,13 @@
 import { Storefront } from "@/components/store/Storefront";
 import { ContentProvider } from "@/components/providers/ContentProvider";
-import { loadContentSnapshot } from "@/server/content";
-import { isInstagramEmbedUnavailable, loadInstagramMediaAssets, loadInstagramProfile, loadRecentInstagramPosts } from "@/server/instagram";
-import { isCurrentUserAdmin } from "@/server/auth";
+import { loadRecentInstagramPosts, loadInstagramMediaAssets, isInstagramEmbedUnavailable } from "@/server/instagram";
+import { loadStorefrontContent } from "@/server/storefront-content";
 import { visibleInstagramPosts } from "@/lib/storefront-rules";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [content, isAdmin, profile] = await Promise.all([
-    loadContentSnapshot(),
-    isCurrentUserAdmin(),
-    loadInstagramProfile(),
-  ]);
-  if (profile) content.contact = { ...content.contact, instagramUsername: profile.username };
+  const content = await loadStorefrontContent();
   if (!visibleInstagramPosts(content.instagram).length) {
     const recentPosts = await loadRecentInstagramPosts();
     if (recentPosts?.length) content.instagram = recentPosts;
@@ -27,7 +21,7 @@ export default async function HomePage() {
   const unavailableInstagramUrls = unavailableChecks.filter((post) => post.unavailable).map((post) => post.url);
   return (
     <ContentProvider initialContent={content}>
-      <Storefront isAdmin={isAdmin} unavailableInstagramUrls={unavailableInstagramUrls} instagramMediaAssets={instagramMediaAssets} />
+      <Storefront unavailableInstagramUrls={unavailableInstagramUrls} instagramMediaAssets={instagramMediaAssets} />
     </ContentProvider>
   );
 }

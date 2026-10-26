@@ -1,8 +1,6 @@
 "use client";
 
 import { ArrowUpRight, Waves, Leaf, Shell } from "lucide-react";
-import { PromoBar } from "@/components/store/PromoBar";
-import { Header } from "@/components/store/Header";
 import { HeroCarousel } from "@/components/store/HeroCarousel";
 import { ProductCarousel } from "@/components/store/ProductCarousel";
 import { useContent } from "@/components/providers/ContentProvider";
@@ -15,8 +13,8 @@ import { resolveImageSource } from "@/lib/image-source";
 import { visibleStoreProducts } from "@/lib/content";
 
 const logo = "/assets/eterea-placeholder.svg";
-export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAssets }: { isAdmin: boolean; unavailableInstagramUrls: string[]; instagramMediaAssets: Record<string, InstagramMediaAsset> }) {
-  const { items: cart, addAnimationKey, add, changeQuantity, remove: removeFromCart } = useCart();
+export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: { unavailableInstagramUrls: string[]; instagramMediaAssets: Record<string, InstagramMediaAsset> }) {
+  const { add } = useCart();
   const T = useContent("texts");
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
@@ -37,10 +35,6 @@ export function Storefront({ isAdmin, unavailableInstagramUrls, instagramMediaAs
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-40">
-        {homeSections.promoBar && <PromoBar />}
-        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={visibleHomeSections} hasSale={homeSections.sale && sale.length > 0} isAdmin={isAdmin} />
-      </div>
       <main>
         <HeroCarousel />
 
