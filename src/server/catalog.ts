@@ -3,13 +3,19 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { HomeCategoryCard, StoreCategory, StoreProduct } from "@/lib/content";
 import { paymentPriceId } from "@/lib/catalog-ids";
 
-type CatalogDb = Pick<Prisma.TransactionClient, "category" | "product" | "productPaymentPrice" | "homeCategoryCard">;
+type CatalogDb = Pick<Prisma.TransactionClient, "category" | "product" | "productPaymentPrice" | "productImage" | "productSize" | "productColor" | "homeCategoryCard">;
 
 export async function loadRelationalCatalog(db: CatalogDb) {
   const [categoryRows, productRows, cardRows] = await Promise.all([
     db.category.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
     db.product.findMany({
-      include: { category: true, paymentPrices: { where: { active: true }, orderBy: [{ position: "asc" }, { id: "asc" }] } },
+      include: {
+        category: true,
+        paymentPrices: { where: { active: true }, orderBy: [{ position: "asc" }, { id: "asc" }] },
+        images: { orderBy: { position: "asc" } },
+        sizes: { orderBy: { position: "asc" } },
+        colors: { orderBy: { position: "asc" } },
+      },
       orderBy: [{ position: "asc" }, { id: "asc" }],
     }),
     db.homeCategoryCard.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
@@ -23,7 +29,11 @@ export async function loadRelationalCatalog(db: CatalogDb) {
     price: row.price.toNumber(),
     ...(row.oldPrice ? { oldPrice: row.oldPrice.toNumber() } : {}),
     ...(row.tag ? { tag: row.tag } : {}),
-    image: row.image,
+    image: row.images[0]?.url ?? row.image,
+    images: row.images.length ? row.images.map((item) => item.url) : (row.image ? [row.image] : []),
+    description: row.description ?? "",
+    sizes: row.sizes.map((item) => item.label),
+    colors: row.colors.map((item) => item.label),
     section: row.section as StoreProduct["section"],
     hidden: row.hidden,
     ...(row.createdAt ? { createdAt: row.createdAt.toISOString() } : {}),
@@ -51,7 +61,11 @@ export async function saveCategoryRows(db: CatalogDb, categories: StoreCategory[
 function sameProduct(a: StoreProduct, b: StoreProduct) {
   return a.id === b.id && a.categoryId === b.categoryId && a.name === b.name && a.price === b.price
     && a.oldPrice === b.oldPrice && a.tag === b.tag && a.image === b.image && a.section === b.section
+    && (a.description ?? "") === (b.description ?? "")
     && !!a.hidden === !!b.hidden && a.createdAt === b.createdAt
+    && JSON.stringify(a.images ?? (a.image ? [a.image] : [])) === JSON.stringify(b.images ?? (b.image ? [b.image] : []))
+    && JSON.stringify(a.sizes ?? []) === JSON.stringify(b.sizes ?? [])
+    && JSON.stringify(a.colors ?? []) === JSON.stringify(b.colors ?? [])
     && JSON.stringify(a.paymentPrices ?? []) === JSON.stringify(b.paymentPrices ?? []);
 }
 
@@ -59,14 +73,35 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
   const currentById = new Map(current.map((product) => [product.id, product]));
   for (const [position, product] of products.entries()) {
     if (current[position] && sameProduct(current[position], product)) continue;
+    const previous = currentById.get(product.id);
+    const images = product.images ?? (product.image ? [product.image] : []);
     const data = {
       categoryId: product.categoryId!, name: product.name, price: product.price,
-      oldPrice: product.oldPrice ?? null, tag: product.tag ?? null, image: product.image,
+      oldPrice: product.oldPrice ?? null, tag: product.tag ?? null, image: images[0] ?? "",
+      description: product.description ?? "",
       section: product.section, hidden: product.hidden === true,
       createdAt: product.createdAt ? new Date(product.createdAt) : null, position,
     };
     await db.product.upsert({ where: { id: product.id }, create: { id: product.id, ...data }, update: data });
-    if (JSON.stringify(currentById.get(product.id)?.paymentPrices ?? []) === JSON.stringify(product.paymentPrices ?? [])) continue;
+    if (JSON.stringify(previous?.images ?? (previous?.image ? [previous.image] : [])) !== JSON.stringify(images)) {
+      await db.productImage.deleteMany({ where: { productId: product.id } });
+      if (images.length) await db.productImage.createMany({
+        data: images.map((url, imagePosition) => ({ productId: product.id, position: imagePosition, url })),
+      });
+    }
+    if (JSON.stringify(previous?.sizes ?? []) !== JSON.stringify(product.sizes ?? [])) {
+      await db.productSize.deleteMany({ where: { productId: product.id } });
+      if (product.sizes?.length) await db.productSize.createMany({
+        data: product.sizes.map((label, optionPosition) => ({ productId: product.id, position: optionPosition, label })),
+      });
+    }
+    if (JSON.stringify(previous?.colors ?? []) !== JSON.stringify(product.colors ?? [])) {
+      await db.productColor.deleteMany({ where: { productId: product.id } });
+      if (product.colors?.length) await db.productColor.createMany({
+        data: product.colors.map((label, optionPosition) => ({ productId: product.id, position: optionPosition, label })),
+      });
+    }
+    if (JSON.stringify(previous?.paymentPrices ?? []) === JSON.stringify(product.paymentPrices ?? [])) continue;
     const currentPrices = await db.productPaymentPrice.findMany({ where: { productId: product.id, active: true }, select: { id: true } });
     const nextPriceIds = new Set((product.paymentPrices ?? []).map((_, index) => paymentPriceId(product.id, index)));
     for (const oldPrice of currentPrices) {

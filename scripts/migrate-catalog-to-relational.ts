@@ -62,9 +62,20 @@ try {
         await transaction.product.create({ data: {
           id: product.id, categoryId: product.categoryId!, name: product.name, price: product.price,
           oldPrice: product.oldPrice ?? null, tag: product.tag ?? null, image: product.image,
+          description: product.description ?? "",
           section: product.section, hidden: product.hidden === true,
           createdAt: product.createdAt ? new Date(product.createdAt) : null, position,
         } });
+        const images = product.images ?? (product.image ? [product.image] : []);
+        if (images.length) await transaction.productImage.createMany({ data: images.map((url, imagePosition) => ({
+          productId: product.id, position: imagePosition, url,
+        })) });
+        if (product.sizes?.length) await transaction.productSize.createMany({ data: product.sizes.map((label, optionPosition) => ({
+          productId: product.id, position: optionPosition, label,
+        })) });
+        if (product.colors?.length) await transaction.productColor.createMany({ data: product.colors.map((label, optionPosition) => ({
+          productId: product.id, position: optionPosition, label,
+        })) });
         for (const [pricePosition, item] of (product.paymentPrices ?? []).entries()) {
           await transaction.productPaymentPrice.create({ data: {
             id: paymentPriceId(product.id, pricePosition), productId: product.id,

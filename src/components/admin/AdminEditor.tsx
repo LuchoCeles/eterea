@@ -6,10 +6,14 @@ import { Loader2, Save } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
 import { AdminContentEditor } from "@/components/admin/AdminContentEditors";
-import { AdminSaveProvider, hasUnsavedChanges, useAdminSave } from "@/components/admin/AdminSaveProvider";
+import {
+  AdminSaveProvider,
+  hasUnsavedChanges,
+  useAdminSave,
+} from "@/components/admin/AdminSaveProvider";
 import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
 import { useContent } from "@/components/providers/ContentProvider";
-import type { ContentKey } from "@/lib/content";
+import type { ContentKey, StoreProduct } from "@/lib/content";
 
 type AdminTheme = "light" | "dark";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
@@ -33,8 +37,10 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
   const pendingSections = adminSections
     .filter((section) => {
       const entry = drafts[section.id];
-      return hasUnsavedChanges(entry) || (section.id === "texts"
-        && Object.values(textDrafts).some(hasUnsavedChanges));
+      return (
+        hasUnsavedChanges(entry) ||
+        (section.id === "texts" && Object.values(textDrafts).some(hasUnsavedChanges))
+      );
     })
     .map((section) => section.id);
 
@@ -72,15 +78,26 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
   }
 
   function confirmLeaving() {
-    return !hasPendingChanges() || window.confirm("Hay cambios sin guardar. ¿Querés salir y descartarlos?");
+    return (
+      !hasPendingChanges() ||
+      window.confirm("Hay cambios sin guardar. ¿Querés salir y descartarlos?")
+    );
   }
 
   function handleLinkClick(event: MouseEvent<HTMLDivElement>) {
     const target = event.target;
     if (!(target instanceof Element)) return;
     const link = target.closest<HTMLAnchorElement>("a[href]");
-    if (!link || link.getAttribute("href")?.startsWith("/admin") || link.target === "_blank"
-      || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (
+      !link ||
+      link.getAttribute("href")?.startsWith("/admin") ||
+      link.target === "_blank" ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
     if (!confirmLeaving()) event.preventDefault();
   }
 
@@ -92,7 +109,10 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
   }
 
   return (
-    <div className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground" onClickCapture={handleLinkClick}>
+    <div
+      className="admin-theme flex h-dvh min-h-[480px] flex-col bg-background text-foreground"
+      onClickCapture={handleLinkClick}
+    >
       <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
         <AdminHeader email={email} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
@@ -128,7 +148,7 @@ export function AdminSectionEditor({ section }: { section: ContentKey }) {
 
 function Editor({ k, label, description }: { k: ContentKey; label: string; description: string }) {
   const value = useContent(k);
-  const { drafts, change, uploaded, save } = useAdminSave();
+  const { drafts, change, uploaded, save, saveData } = useAdminSave();
   const entry = drafts[k];
   const draft = entry?.data ?? value;
   const dirty = hasUnsavedChanges(entry);
@@ -163,6 +183,11 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
         draft={draft}
         onChange={(next) => change(k, value, next)}
         onUploaded={(urls) => uploaded(k, value, urls)}
+        onSaveProduct={
+          k === "products"
+            ? (products: StoreProduct[], urls: string[]) => saveData(k, value, products, urls)
+            : undefined
+        }
       />
     </div>
   );

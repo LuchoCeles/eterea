@@ -6,9 +6,9 @@ import type { CartItem, Product } from "@/lib/products";
 type CartContextValue = {
   items: CartItem[];
   addAnimationKey: number;
-  add: (product: Product) => void;
-  changeQuantity: (productId: string, quantity: number) => void;
-  remove: (productId: string) => void;
+  add: (product: Product, selection?: { size?: string; color?: string }) => void;
+  changeQuantity: (lineKey: string, quantity: number) => void;
+  remove: (lineKey: string) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -19,21 +19,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value: CartContextValue = {
     items,
     addAnimationKey,
-    add: (product) => {
+    add: (product, selection) => {
+      const lineKey = JSON.stringify([product.id, selection?.size ?? "", selection?.color ?? ""]);
       setItems((current) => {
-        const existing = current.find((item) => item.id === product.id);
+        const existing = current.find((item) => item.lineKey === lineKey);
         return existing
-          ? current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
-          : [...current, { ...product, quantity: 1 }];
+          ? current.map((item) => item.lineKey === lineKey ? { ...item, quantity: item.quantity + 1 } : item)
+          : [...current, { ...product, ...selection, lineKey, quantity: 1 }];
       });
       setAddAnimationKey((current) => current + 1);
     },
-    changeQuantity: (productId, quantity) => setItems((current) => (
+    changeQuantity: (lineKey, quantity) => setItems((current) => (
       quantity < 1
-        ? current.filter((item) => item.id !== productId)
-        : current.map((item) => item.id === productId ? { ...item, quantity } : item)
+        ? current.filter((item) => item.lineKey !== lineKey)
+        : current.map((item) => item.lineKey === lineKey ? { ...item, quantity } : item)
     )),
-    remove: (productId) => setItems((current) => current.filter((item) => item.id !== productId)),
+    remove: (lineKey) => setItems((current) => current.filter((item) => item.lineKey !== lineKey)),
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

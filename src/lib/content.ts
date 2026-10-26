@@ -118,10 +118,18 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
     } as ContentOf<K>;
   }
   if (key === "products") {
-    return sortProductsByCreation((data as StoreProduct[]).map((product) => ({
-      ...product,
-      categoryId: product.categoryId || categoryIdForName(product.category),
-    }))) as ContentOf<K>;
+    return sortProductsByCreation((data as StoreProduct[]).map((product) => {
+      const images = product.images === undefined ? (product.image ? [product.image] : []) : product.images;
+      return {
+        ...product,
+        image: images[0] ?? "",
+        images,
+        description: product.description ?? "",
+        sizes: product.sizes ?? [],
+        colors: product.colors ?? [],
+        categoryId: product.categoryId || categoryIdForName(product.category),
+      };
+    })) as ContentOf<K>;
   }
   if (key === "categories") {
     return (data as StoreCategory[]).map((category) => ({ id: category.id || categoryIdForName(category.name), name: category.name, hidden: category.hidden === true })) as ContentOf<K>;

@@ -7,14 +7,15 @@ import { referencedProductIds } from "@/lib/image-source";
 import { prepareProductsForSave } from "@/lib/products";
 import { instagramPermalink } from "@/lib/storefront-rules";
 import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
-import { cloudinaryPublicId, deleteCloudinaryImage } from "@/server/cloudinary";
+import { cloudinaryPublicId, deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudinary";
 import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
 import { prisma } from "@/server/prisma";
 import { loadRelationalContent, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
 
 type Db = Prisma.TransactionClient;
+const PENDING_UPLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const contentKeys = Object.keys(defaults) as ContentKey[];
-export class ContentValidationError extends Error {}
+export class ContentValidationError extends Error { }
 
 async function readSnapshot(db: Db): Promise<ContentSnapshot> {
   const [saved, catalog, sectionRows] = await Promise.all([
@@ -50,32 +51,77 @@ export async function loadContentSnapshot({ strict = false }: { strict?: boolean
   }));
 }
 
-function imageUrls(value: unknown): string[] {
-  if (typeof value === "string") return cloudinaryPublicId(value) ? [value] : [];
-  if (Array.isArray(value)) return value.flatMap(imageUrls);
-  if (value && typeof value === "object") return Object.values(value).flatMap(imageUrls);
+function contentImageUrls(key: ContentKey, value: ContentSnapshot[ContentKey]): string[] {
+  if (key === "hero") return (value as ContentSnapshot["hero"]).map((slide) => slide.img);
+  if (key === "instagram") return (value as ContentSnapshot["instagram"]).map((post) => post.image);
+  if (key === "products") return (value as StoreProduct[]).flatMap((product) => [product.image, ...(product.images ?? [])]);
+  if (key === "texts") {
+    const texts = value as ContentSnapshot["texts"];
+    return [texts.split.img, texts.editorial.img, ...texts.homeCategoryCards.map((card) => card.img)];
+  }
   return [];
 }
 
 function referencedUrls(snapshot: ContentSnapshot) {
   return new Set([
-    ...imageUrls(snapshot.hero), ...imageUrls(snapshot.instagram), ...imageUrls(snapshot.products),
-    ...imageUrls(snapshot.texts.split), ...imageUrls(snapshot.texts.editorial),
-    ...imageUrls(snapshot.texts.homeCategoryCards),
+    ...contentImageUrls("hero", snapshot.hero), ...contentImageUrls("instagram", snapshot.instagram),
+    ...contentImageUrls("products", snapshot.products), ...contentImageUrls("texts", snapshot.texts),
   ]);
 }
 
 async function queueUnusedImages(db: Db, candidates: string[], snapshot: ContentSnapshot) {
   const referenced = referencedUrls(snapshot);
-  const newlyUnused = [...new Set(candidates)]
+  const staleUploads = await db.cloudinaryPendingUpload.findMany({
+    where: { url: { not: null }, createdAt: { lt: new Date(Date.now() - PENDING_UPLOAD_TTL_MS) } },
+    select: { url: true }, orderBy: { createdAt: "asc" }, take: 100,
+  });
+  const staleUrls = staleUploads.flatMap((item) => item.url ? [item.url] : []);
+  const newlyUnused = [...new Set([...candidates, ...staleUrls])]
     .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
-  if (!newlyUnused.length) return 0;
   const queued = await db.cloudinaryCleanup.findMany({ select: { url: true } });
   const unused = [...new Set([...queued.map((item) => item.url), ...newlyUnused])]
     .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
   await db.cloudinaryCleanup.deleteMany({ where: { url: { notIn: unused } } });
   if (unused.length) await db.cloudinaryCleanup.createMany({ data: unused.map((url) => ({ url })), skipDuplicates: true });
+  const settledUploads = [...new Set([...candidates, ...staleUrls])];
+  if (settledUploads.length) await db.cloudinaryPendingUpload.deleteMany({ where: { url: { in: settledUploads } } });
   return unused.length;
+}
+
+export async function reservePendingUpload(publicId: string) {
+  await prisma.cloudinaryPendingUpload.create({ data: { publicId } });
+}
+
+export async function completePendingUpload(publicId: string, url: string) {
+  await prisma.cloudinaryPendingUpload.update({ where: { publicId }, data: { url } });
+}
+
+export async function releasePendingUpload(publicId: string) {
+  await prisma.cloudinaryPendingUpload.deleteMany({ where: { publicId } });
+}
+
+export async function sweepPendingUploads() {
+  const pending = await prisma.$transaction(async (db) => {
+    const snapshot = await readSnapshot(db);
+    return queueUnusedImages(db, [], snapshot);
+  }, { timeout: 120_000 });
+  if (pending) await drainCloudinaryCleanupQueue();
+  else await drainStaleReservations();
+}
+
+async function drainStaleReservations() {
+  const stale = await prisma.cloudinaryPendingUpload.findMany({
+    where: { url: null, createdAt: { lt: new Date(Date.now() - PENDING_UPLOAD_TTL_MS) } },
+    select: { publicId: true }, orderBy: { createdAt: "asc" }, take: 100,
+  });
+  for (const item of stale) {
+    try {
+      await deleteCloudinaryPublicId(item.publicId);
+      await releasePendingUpload(item.publicId);
+    } catch {
+      // La reserva queda registrada para reintentar el borrado en la próxima actividad.
+    }
+  }
 }
 
 function checkProductReferences(value: unknown, products: StoreProduct[]) {
@@ -117,9 +163,6 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       if (new Set(products.map((product) => product.id)).size !== products.length) {
         throw new ContentValidationError("Hay productos con identificadores repetidos.");
       }
-      if (current.products.some((product) => !products.some((item) => item.id === product.id))) {
-        throw new ContentValidationError("Para quitar un producto de la tienda, ocultalo.");
-      }
       const categories = new Map(current.categories.map((category) => [category.id, category.name]));
       if (products.some((product) => !categories.has(product.categoryId ?? ""))) {
         throw new ContentValidationError("Asigná a cada producto una categoría creada en el administrador.");
@@ -149,6 +192,18 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
     } else if (key === "products") {
       const stored = await loadRelationalCatalog(db);
       await saveProductRows(db, next as StoreProduct[], stored.products);
+      const removedIds = stored.products.filter((product) => !(next as StoreProduct[]).some((item) => item.id === product.id)).map((product) => product.id);
+      if (removedIds.length) {
+        const where = { productId: { in: removedIds } };
+        const references = await Promise.all([
+          db.heroSlide.count({ where }), db.splitBanner.count({ where }), db.editorialBanner.count({ where }),
+          db.curatedInstagramPost.count({ where }), db.homeCategoryCard.count({ where }),
+        ]);
+        if (references.some(Boolean)) {
+          throw new ContentValidationError("Desvinculá el producto de banners, inicio e Instagram antes de eliminarlo.");
+        }
+        await db.product.deleteMany({ where: { id: { in: removedIds } } });
+      }
     }
     else {
       if (key === "texts") {
@@ -161,7 +216,7 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
     }
     const updated = { ...current, [key]: next } as ContentSnapshot;
-    const cleanupPending = await queueUnusedImages(db, [...imageUrls(current[key]), ...uploadedUrls], updated);
+    const cleanupPending = await queueUnusedImages(db, [...contentImageUrls(key, current[key]), ...uploadedUrls], updated);
     return { data: updated[key], cleanupPending };
   }, { timeout: 120_000 });
 }
@@ -196,23 +251,29 @@ export async function saveTextSection(section: TextSectionKey, value: unknown, u
       }
       await saveRelationalTextSection(db, section, nextValue);
     }
-    const retainedUrls = new Set(imageUrls(nextValue));
-    const cleanupUrls = [...new Set([...previousImageUrls, ...uploadedUrls])]
-      .filter((url) => !retainedUrls.has(url) && cloudinaryPublicId(url) !== null);
-    return { section, data: nextValue, cleanupUrls };
+    const updated = await readSnapshot(db);
+    const cleanupPending = await queueUnusedImages(db, [...previousImageUrls, ...uploadedUrls], updated);
+    return { section, data: nextValue, cleanupPending };
   }, { timeout: 120_000 });
 }
 
 export async function deleteUnreferencedImages(urls: string[]) {
-  const snapshot = await readSnapshot(prisma);
-  const candidates = planCloudinaryDeletions(urls, referencedUrls(snapshot), process.env.CLOUDINARY_PROJECT_FOLDER ?? "eterea");
-  if (candidates.length) await prisma.cloudinaryCleanup.createMany({ data: candidates.map((url) => ({ url })), skipDuplicates: true });
+  const candidates = await prisma.$transaction(async (db) => {
+    const snapshot = await readSnapshot(db);
+    const unused = planCloudinaryDeletions(urls, referencedUrls(snapshot), "eterea");
+    if (unused.length) {
+      await db.cloudinaryCleanup.createMany({ data: unused.map((url) => ({ url })), skipDuplicates: true });
+      await db.cloudinaryPendingUpload.deleteMany({ where: { url: { in: unused } } });
+    }
+    return unused;
+  }, { timeout: 120_000 });
   const failed = await drainCloudinaryCleanupQueue();
   const remaining = await prisma.cloudinaryCleanup.findMany({ where: { url: { in: candidates } }, select: { url: true } });
   return { deleted: candidates.length - remaining.length, failed };
 }
 
 export async function drainCloudinaryCleanupQueue() {
+  await drainStaleReservations();
   const snapshot = await readSnapshot(prisma);
   const referenced = referencedUrls(snapshot);
   const queue = await prisma.cloudinaryCleanup.findMany({ select: { url: true } });

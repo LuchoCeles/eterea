@@ -1,9 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { PromoBar } from "@/components/store/PromoBar";
 
 function StoreHeaderSkeleton() {
   return (
     <div className="sticky top-0 z-40">
-      <div className="h-10 border-b bg-primary/10" aria-hidden="true" />
+      <PromoBar />
       <header className="border-b bg-background">
         <div className="mx-auto grid h-24 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
           <Skeleton className="h-11 w-11 rounded-full" />
@@ -206,8 +207,7 @@ export function HomeSkeleton() {
 
 export function CatalogSkeleton() {
   return (
-    <div className="min-h-screen" aria-busy="true" aria-label="Cargando prendas">
-      <StoreHeaderSkeleton />
+    <div aria-busy="true" aria-label="Cargando prendas">
       <main>
         <section className="border-b bg-sand/60" aria-hidden="true">
           <div className="mx-auto max-w-[1600px] px-4 py-12 md:px-8 md:py-16">
@@ -264,6 +264,70 @@ export function CatalogSkeleton() {
             </div>
           </div>
         </section>
+      </main>
+      <StoreFooterSkeleton catalog />
+    </div>
+  );
+}
+
+export function ProductDetailSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Cargando prenda">
+      <main aria-hidden="true">
+        <nav className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-5 md:px-8">
+          <Skeleton className="h-3 w-10 rounded-none" />
+          <Skeleton className="h-3 w-3 rounded-none" />
+          <Skeleton className="h-3 w-14 rounded-none" />
+          <Skeleton className="h-3 w-3 rounded-none" />
+          <Skeleton className="h-3 w-32 rounded-none" />
+        </nav>
+
+        <div className="mx-auto grid max-w-[1600px] gap-8 px-4 pb-20 md:px-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-16">
+          <section className="min-w-0">
+            <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
+              <Skeleton className="min-h-0 w-full flex-1 rounded-none" />
+              <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Skeleton key={index} className="h-full w-full rounded-none" />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="min-w-0 lg:sticky lg:top-36 lg:self-start">
+            <Skeleton className="h-3 w-36 rounded-none" />
+            <Skeleton className="mt-4 h-12 w-4/5 rounded-none sm:h-16" />
+            <Skeleton className="mt-5 h-6 w-20 rounded-none" />
+            <div className="mt-6 flex items-baseline gap-3 border-b pb-7">
+              <Skeleton className="h-8 w-28 rounded-none" />
+              <Skeleton className="h-4 w-20 rounded-none" />
+            </div>
+            <div className="space-y-3 border-b py-7">
+              <Skeleton className="h-4 w-full rounded-none" />
+              <Skeleton className="h-4 w-11/12 rounded-none" />
+              <Skeleton className="h-4 w-2/3 rounded-none" />
+            </div>
+            <div className="pt-7">
+              <Skeleton className="h-4 w-12 rounded-none" />
+              <div className="mt-3 flex gap-2">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <Skeleton key={index} className="h-11 w-14 rounded-none" />
+                ))}
+              </div>
+            </div>
+            <div className="pt-7">
+              <Skeleton className="h-4 w-12 rounded-none" />
+              <div className="mt-3 flex gap-2">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <Skeleton key={index} className="h-11 w-20 rounded-none" />
+                ))}
+              </div>
+            </div>
+            <Skeleton className="mt-11 h-14 w-full rounded-none" />
+            <Skeleton className="mx-auto mt-4 h-3 w-3/4 rounded-none" />
+            <Skeleton className="mt-8 h-4 w-36 rounded-none" />
+          </section>
+        </div>
       </main>
       <StoreFooterSkeleton catalog />
     </div>

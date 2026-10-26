@@ -32,8 +32,8 @@ export function Header({
   cartItems: CartItem[];
   cartAddCount: number;
   whatsappNumber: string;
-  onQuantityChange: (productId: string, quantity: number) => void;
-  onRemove: (productId: string) => void;
+  onQuantityChange: (lineKey: string, quantity: number) => void;
+  onRemove: (lineKey: string) => void;
   homeSections: HomeSections;
   hasSale?: boolean;
   isAdmin: boolean;
@@ -68,13 +68,15 @@ export function Header({
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
   const total = cartItems.reduce((amount, item) => amount + item.price * item.quantity, 0);
+  const hasPaymentPrices = cartItems.some((item) => item.paymentPrices?.length);
   const phone = normalizeWhatsAppNumber(whatsappNumber);
   const message = [
     "Hola, quiero comprar estas prendas de Etérea:",
     "",
-    ...cartItems.map((item) => "• " + item.name + " (" + item.category + ") — " + item.quantity + " × " + formatPrice(item.price) + " = " + formatPrice(item.price * item.quantity)),
+    ...cartItems.map((item) => "• " + item.name + " (" + [item.category, item.size && `talle ${item.size}`, item.color && `color ${item.color}`].filter(Boolean).join(", ") + ") — " + item.quantity + " × " + formatPrice(item.price) + " = " + formatPrice(item.price * item.quantity)),
     "",
-    "Total: " + formatPrice(total),
+    (hasPaymentPrices ? "Subtotal al precio base: " : "Total: ") + formatPrice(total),
+    ...(hasPaymentPrices ? ["El importe final depende de la forma de pago."] : []),
   ].join("\n");
   const checkoutUrl = phone && cartItems.length
     ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
@@ -118,27 +120,28 @@ export function Header({
               {cartItems.length > 0 && (
                 <div className="mt-6 max-h-[50vh] space-y-4 overflow-y-auto pr-1">
                   {cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-3 border-b pb-4">
+                    <div key={item.lineKey} className="flex gap-3 border-b pb-4">
                       <ProductImage src={item.image} alt="" className="h-20 w-16 object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{item.name}</p>
+                        {(item.size || item.color) && <p className="mt-1 text-xs text-muted-foreground">{[item.size && `Talle ${item.size}`, item.color && `Color ${item.color}`].filter(Boolean).join(" · ")}</p>}
                         <p className="mt-1 text-xs text-muted-foreground">{formatPrice(item.price)} c/u</p>
                         <div className="mt-2 flex items-center gap-2">
-                          <button type="button" onClick={() => onQuantityChange(item.id, item.quantity - 1)} aria-label={"Quitar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Minus className="h-3 w-3" /></button>
+                          <button type="button" onClick={() => onQuantityChange(item.lineKey, item.quantity - 1)} aria-label={"Quitar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Minus className="h-3 w-3" /></button>
                           <span className="min-w-4 text-center text-xs">{item.quantity}</span>
-                          <button type="button" onClick={() => onQuantityChange(item.id, item.quantity + 1)} aria-label={"Agregar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Plus className="h-3 w-3" /></button>
+                          <button type="button" onClick={() => onQuantityChange(item.lineKey, item.quantity + 1)} aria-label={"Agregar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Plus className="h-3 w-3" /></button>
                         </div>
                       </div>
                       <div className="flex flex-col items-end justify-between">
                         <p className="text-sm">{formatPrice(item.price * item.quantity)}</p>
-                        <button type="button" onClick={() => onRemove(item.id)} aria-label={"Quitar " + item.name + " del carrito"} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => onRemove(item.lineKey)} aria-label={"Quitar " + item.name + " del carrito"} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
               <div className="mt-auto border-t pt-5">
-                {cartItems.length > 0 && <p className="mb-4 flex justify-between font-medium"><span>Total</span><span>{formatPrice(total)}</span></p>}
+                {cartItems.length > 0 && <div className="mb-4"><p className="flex justify-between font-medium"><span>{hasPaymentPrices ? "Subtotal al precio base" : "Total"}</span><span>{formatPrice(total)}</span></p>{hasPaymentPrices && <p className="mt-2 text-xs text-muted-foreground">El importe final depende de la forma de pago.</p>}</div>}
                 {checkoutUrl ? (
                   <SheetClose asChild>
                     <Button asChild className="w-full rounded-none">

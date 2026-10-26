@@ -25,13 +25,15 @@ Abrí `http://localhost:3000`. La primera cuenta que se registre recibe el rol d
 
 Creá las categorías en **Catálogo → Categorías** y asignalas a los productos. Podés ocultar una categoría sin borrarla: todos sus productos dejan de aparecer en el inicio, el catálogo y los filtros. También podés ocultar un producto individual. Los registros anteriores se consideran visibles hasta que el administrador cambie su estado.
 
-Las categorías, los productos, sus precios por medio de pago y las tarjetas destacadas del inicio se guardan en las tablas `Category`, `Product`, `ProductPaymentPrice` y `HomeCategoryCard`. El administrador elige qué tarjetas destacar en **Inicio → Diseño del inicio**; las anteriores quedan ocultas hasta que se elijan. Los productos anteriores conservan su orden y quedan sin fecha cuando no se conoce su alta real.
+Las categorías, los productos, sus precios por medio de pago y las tarjetas destacadas del inicio se guardan en las tablas `Category`, `Product`, `ProductPaymentPrice` y `HomeCategoryCard`. Cada producto puede tener descripción, talles, colores y hasta cinco fotos ordenadas en `ProductImage`, `ProductSize` y `ProductColor`. La primera foto es la portada del catálogo y de la ficha `/productos/<nombre-normalizado>`; el administrador puede elegirla y reordenar las demás. Si dos nombres generan la misma URL, se añade un sufijo corto derivado del ID. Los enlaces anteriores por ID redirigen a la URL nueva. El administrador elige qué tarjetas destacar en **Inicio → Diseño del inicio**; las anteriores quedan ocultas hasta que se elijan. Los productos anteriores conservan su orden y quedan sin fecha cuando no se conoce su alta real.
 
 Para una base existente, seguí la secuencia de **Migración relacional** más abajo. Los importadores no modifican usuarios ni roles.
 
 ## Migración relacional
 
 `prisma/migrations/20261025010000_content_relacional/migration.sql` crea las tablas de promociones, banners, textos, contacto, Instagram y limpieza de imágenes. No retira `SiteContent` durante la creación: esa tabla se necesita para copiar los datos heredados. El esquema Prisma y la aplicación nueva ya usan exclusivamente las tablas relacionales.
+
+`prisma/migrations/20261026000000_product_details_and_gallery/migration.sql` agrega la ficha y las tablas de fotos y opciones. Copia cada `Product.image` existente a `ProductImage` en la posición cero, sin eliminar la columna anterior. También crea `CloudinaryPendingUpload` para registrar las cargas antes de enviarlas al proveedor. Revisá y autorizá esta migración antes de aplicarla en TiDB compartido.
 
 En una base existente, prepará una copia de seguridad y detené las escrituras del administrador durante el corte. Revisá el SQL y obtené la autorización explícita requerida por `AGENTS.md` antes de aplicarlo en un entorno compartido. Después:
 
@@ -65,7 +67,7 @@ Referencias de Meta: [API con Instagram Login](https://www.postman.com/meta/inst
 
 Las imágenes nuevas se suben a Cloudinary dentro de `eterea/<sección>/imagenes` y el contenido guarda su URL segura. La carga conserva el archivo original, sin transformaciones ni compresión agregada por la aplicación. Se admiten fotos de hasta 50 MB cada una y tandas de hasta 20 fotos. Next.js también queda configurado para aceptar respuestas de origen de hasta 50.000.000 bytes al optimizar imágenes.
 
-Al guardar cambios, las imágenes anteriores que ya no están referenciadas se borran de Cloudinary. Si Cloudinary no está disponible, las URLs pendientes quedan en `CloudinaryCleanup` y el panel informa que falta completar la limpieza. La tabla `Media` se conserva para poder mostrar imágenes antiguas; las subidas nuevas ya no guardan bytes en la base.
+Cada carga usa un UUID propio, con sobrescritura desactivada, y reserva su identificador en `CloudinaryPendingUpload` antes de enviarse. Al guardar cambios o eliminar un producto, las fotos que ya no estén referenciadas quedan en `CloudinaryCleanup` dentro de la misma transacción; los borrados fallidos se reintentan en la siguiente actividad. Las cargas abandonadas se revisan después de siete días, al ocurrir una nueva carga o guardado. Para eliminar un producto vinculado a banners, Instagram o destacados, primero hay que desvincularlo. La tabla `Media` se conserva para poder mostrar imágenes antiguas; las subidas nuevas ya no guardan bytes en la base.
 
 ## Comandos
 

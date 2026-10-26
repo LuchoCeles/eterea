@@ -17,18 +17,27 @@ import {
   ListControls,
   useList,
 } from "@/components/admin/AdminEditorFields";
-import type { ContentKey, InstagramPost, Slide, StoreCategory, StoreProduct, Texts } from "@/lib/content";
+import type {
+  ContentKey,
+  InstagramPost,
+  Slide,
+  StoreCategory,
+  StoreProduct,
+  Texts,
+} from "@/lib/content";
 
 export function AdminContentEditor({
   k,
   draft,
   onChange,
   onUploaded,
+  onSaveProduct,
 }: {
   k: ContentKey;
   draft: unknown;
   onChange: (value: unknown) => void;
   onUploaded: (urls: string[]) => void;
+  onSaveProduct?: (products: StoreProduct[], uploadedUrls: string[]) => Promise<boolean>;
 }) {
   if (k === "promo") return <PromoEditor value={draft as string[]} onChange={onChange} />;
   if (k === "hero")
@@ -41,7 +50,11 @@ export function AdminContentEditor({
     );
   if (k === "products")
     return (
-      <AdminProductsEditor value={draft as StoreProduct[]} onChange={onChange} onUploaded={onUploaded} />
+      <AdminProductsEditor
+        value={draft as StoreProduct[]}
+        onChange={onChange}
+        onSave={onSaveProduct!}
+      />
     );
   if (k === "categories")
     return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;

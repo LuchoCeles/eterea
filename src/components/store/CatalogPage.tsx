@@ -3,19 +3,17 @@
 import { useState } from "react";
 import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
-import { Header } from "@/components/store/Header";
-import { PromoBar } from "@/components/store/PromoBar";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
-import { hasRealDiscount, instagramProfileUrl, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
-import { sortProductsByCreation } from "@/lib/products";
-import { visibleStoreProducts, type StoreCategory } from "@/lib/content";
+import { hasRealDiscount, instagramProfileUrl } from "@/lib/storefront-rules";
+import { catalogProducts } from "@/lib/catalog-products";
+import type { StoreCategory } from "@/lib/content";
 
 const PRODUCTS_PER_PAGE = 12;
 
-export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory?: string; isAdmin: boolean }) {
-  const { items: cart, addAnimationKey, add, changeQuantity, remove: removeFromCart } = useCart();
+export function CatalogPage({ initialCategory = "" }: { initialCategory?: string }) {
+  const { add } = useCart();
   const [category, setCategory] = useState(initialCategory);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
@@ -23,27 +21,11 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
   const storeCategories = useContent("categories");
-  const { offers, homeSections } = useContent("texts");
+  const { offers } = useContent("texts");
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
-  const availableProducts = visibleStoreProducts(products, storeCategories);
-  const regularCandidates = availableProducts.filter((product) => product.section === "nuevo");
-  const saleCandidates = availableProducts.filter((product) => product.section === "sale");
-  const productKey = (product: (typeof products)[number]) => `${product.categoryId}|${product.name.toLocaleLowerCase("es-AR")}`;
-  const regularKeys = new Set(regularCandidates.map(productKey));
-  const discountedProducts = visibleSaleProducts(saleCandidates, offers.enabled);
-  const discountedKeys = new Set(discountedProducts.map(productKey));
-  const catalogCandidates = offers.enabled
-    ? [
-        ...regularCandidates.filter((product) => !discountedKeys.has(productKey(product))),
-        ...discountedProducts,
-      ]
-    : [
-        ...regularCandidates,
-        ...saleCandidates.filter((product) => !regularKeys.has(productKey(product))),
-      ];
-  const visibleProducts = sortProductsByCreation(catalogCandidates).map((product) => productWithoutOffers(product, offers.enabled));
+  const visibleProducts = catalogProducts(products, storeCategories, offers.enabled);
   const categoryCounts = new Map<string, number>();
   visibleProducts.forEach((product) => {
     const id = product.categoryId ?? "";
@@ -83,11 +65,7 @@ export function CatalogPage({ initialCategory = "", isAdmin }: { initialCategory
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="sticky top-0 z-40">
-        <PromoBar />
-        <Header cartItems={cart} cartAddCount={addAnimationKey} whatsappNumber={contact.whatsapp} onQuantityChange={changeQuantity} onRemove={removeFromCart} homeSections={{ ...homeSections, newArrivals: homeSections.newArrivals && regularCandidates.length > 0 }} hasSale={homeSections.sale && saleCount > 0} isAdmin={isAdmin} />
-      </div>
+    <div>
       <main>
         <section className="border-b bg-sand/60">
           <div className="mx-auto max-w-[1600px] px-4 py-12 md:px-8 md:py-16">

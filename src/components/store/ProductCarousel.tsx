@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { formatPrice, type Product } from "@/lib/products";
 import { Button } from "@/components/ui/button";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
 import { ProductImage } from "@/components/store/ProductImage";
+import { useContent } from "@/components/providers/ContentProvider";
+import { productHref } from "@/lib/product-slugs";
 
 export function ProductCarousel({
   id,
@@ -21,6 +24,7 @@ export function ProductCarousel({
   onAdd: (product: Product) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const allProducts = useContent("products");
   const scroll = (d: number) => ref.current?.scrollBy({ left: d * ref.current.clientWidth * 0.8, behavior: "smooth" });
 
   return (
@@ -40,25 +44,29 @@ export function ProductCarousel({
         </div>
       </div>
       <div ref={ref} className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        {products.map((p) => (
+        {products.map((p) => {
+          const href = productHref(p, allProducts);
+          return (
           <article key={p.id + p.name} className="group w-[70%] shrink-0 snap-start sm:w-[42%] lg:w-[23.5%]">
             <div className="relative aspect-[4/5] overflow-hidden bg-card">
-              <ProductImage src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <Link href={href} aria-label={`Ver ${p.name}`} className="block h-full w-full">
+                <ProductImage src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              </Link>
               {p.tag && (
                 <span className={`eyebrow absolute left-3 top-3 px-2.5 py-1 ${p.oldPrice ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
                   {p.tag}
                 </span>
               )}
-              <AddToCartButton
+              {p.sizes?.length || p.colors?.length ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-primary text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Elegir talle y color</Link> : <AddToCartButton
                 product={p}
                 onAdd={onAdd}
                 className="absolute inset-x-3 bottom-3 h-11 rounded-none bg-primary py-3 text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100"
-              />
+              />}
             </div>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{p.category}</p>
-                <h3 className="mt-0.5 font-sans text-[15px] font-medium tracking-normal">{p.name}</h3>
+                <h3 className="mt-0.5 font-sans text-[15px] font-medium tracking-normal"><Link href={href} className="hover:text-accent">{p.name}</Link></h3>
               </div>
               <div className="text-right text-sm">
                 <p className={p.oldPrice ? "text-accent" : ""}>{formatPrice(p.price)}</p>
@@ -66,7 +74,7 @@ export function ProductCarousel({
               </div>
             </div>
           </article>
-        ))}
+        ); })}
       </div>
     </section>
   );

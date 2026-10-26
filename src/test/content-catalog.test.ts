@@ -4,6 +4,25 @@ import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryC
 import { categoryIdForName, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
 import { referencedProductIds, resolveImageSource } from "../lib/image-source";
 import { contentSchemas, textSectionSchemas } from "../lib/content-schema";
+import { productHref, productSlug, slugifyProductName } from "../lib/product-slugs";
+
+describe("URLs de productos", () => {
+  const first = { id: "c942197d-37fb-4f0f-a2dc-98a9aac72739", name: "LESS DÚO GIGI DOTS", category: "Tops", price: 100, image: "" };
+  const second = { ...first, id: "c4832af1-39db-4bd8-90c5-59d0f6e2f884" };
+
+  it("normaliza el nombre sin acentos cuando es único", () => {
+    assert.equal(slugifyProductName(first.name), "less-duo-gigi-dots");
+    assert.equal(productHref(first, [first]), "/productos/less-duo-gigi-dots");
+  });
+
+  it("agrega un sufijo estable y distinto a los nombres repetidos", () => {
+    const firstSlug = productSlug(first, [first, second]);
+    const secondSlug = productSlug(second, [first, second]);
+    assert.match(firstSlug, /^less-duo-gigi-dots-[a-z0-9]{6,13}$/);
+    assert.notEqual(firstSlug, secondSlug);
+    assert.equal(productSlug(first, [second, first]), firstSlug);
+  });
+});
 
 describe("Catálogo y categorías heredadas", () => {
   it("guarda un apartado del inicio sin alterar los demás ni activar ofertas", () => {
@@ -49,6 +68,20 @@ describe("Catálogo y categorías heredadas", () => {
       { id: "new", name: "C", category: "Tops", price: 100, image: "", section: "nuevo", createdAt: "2026-10-24T12:00:00.000Z" },
     ]);
     assert.deepEqual(sortProductsByCreation(products).map((product) => product.id), ["new", "old-a", "old-b"]);
+  });
+
+  it("conserva fotos heredadas y normaliza la portada de galerías nuevas", () => {
+    const products = resolveContent("products", [
+      { id: "legado", name: "Legado", category: "Tops", price: 100, image: "/original.jpg", section: "nuevo" },
+      { id: "nuevo", name: "Nuevo", category: "Tops", price: 100, image: "/anterior.jpg", images: ["/portada.jpg", "/detalle.jpg"], section: "nuevo" },
+    ]);
+    assert.deepEqual(products[0]?.images, ["/original.jpg"]);
+    assert.equal(products[1]?.image, "/portada.jpg");
+    assert.deepEqual(products[1]?.images, ["/portada.jpg", "/detalle.jpg"]);
+    assert.deepEqual(products[1]?.sizes, []);
+    assert.deepEqual(products[1]?.colors, []);
+    assert.equal(contentSchemas.products.safeParse([{ ...products[1], images: Array(6).fill("/foto.jpg") }]).success, false);
+    assert.equal(contentSchemas.products.safeParse([{ ...products[1], sizes: ["M", "m"] }]).success, false);
   });
 
   it("separa las tarjetas del inicio y conserva sus fotos heredadas", () => {

@@ -3,6 +3,12 @@ import { imageSections } from "@/lib/media";
 const CLOUDINARY_HOST = "res.cloudinary.com";
 const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
+export function managedCloudinarySection(publicId: string, projectFolder: string) {
+  const [root, section, imagesFolder, id, ...extra] = publicId.split("/");
+  if (extra.length || root !== projectFolder || imagesFolder !== "imagenes" || !id || !UUID_PATTERN.test(id)) return null;
+  return imageSections.includes(section as (typeof imageSections)[number]) ? section : null;
+}
+
 export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
   let parsed: URL;
   try {
@@ -15,10 +21,11 @@ export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
   const parts = parsed.pathname.split("/").filter(Boolean);
   const [cloudName, resourceType, deliveryType, ...assetPath] = parts;
   if (!cloudName || resourceType !== "image" || deliveryType !== "upload" || !/^v\d+$/.test(assetPath[0] ?? "")) return null;
-  const [root, section, imagesFolder, filename, ...extra] = assetPath.slice(1);
+  const filename = assetPath.at(-1);
   const id = filename?.replace(/\.[^.]+$/, "");
-  if (extra.length || root !== projectFolder || !imageSections.includes(section as (typeof imageSections)[number]) || imagesFolder !== "imagenes" || !id || !UUID_PATTERN.test(id)) return null;
-  return { cloudName, publicId: `${root}/${section}/${imagesFolder}/${id}` };
+  const publicId = [...assetPath.slice(1, -1), id].join("/");
+  if (!managedCloudinarySection(publicId, projectFolder)) return null;
+  return { cloudName, publicId };
 }
 
 export function planCloudinaryDeletions(candidates: string[], referencedUrls: Iterable<string>, projectFolder: string) {

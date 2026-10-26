@@ -9,6 +9,10 @@ export type Product = {
   paymentPrices?: { label: string; price: number }[];
   tag?: string;
   image: string;
+  images?: string[];
+  description?: string;
+  sizes?: string[];
+  colors?: string[];
 };
 
 export function categoryIdForName(name: string) {
@@ -34,7 +38,7 @@ export function prepareProductsForSave<T extends Product>(incoming: T[], current
     : 0);
 }
 
-export type CartItem = Product & { quantity: number };
+export type CartItem = Product & { quantity: number; lineKey: string; size?: string; color?: string };
 
 export const PRODUCT_IMAGE_FALLBACK = "/assets/eterea-placeholder.svg";
 

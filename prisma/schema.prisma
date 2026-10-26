@@ -137,6 +137,14 @@ model CloudinaryCleanup {
   createdAt DateTime @default(now()) @db.DateTime(3)
 }
 
+model CloudinaryPendingUpload {
+  publicId  String   @id @db.VarChar(191)
+  url       String?  @unique @db.VarChar(512)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+
+  @@index([createdAt])
+}
+
 model InstagramConnection {
   id            Int      @id @default(1)
   connectionId  String   @db.VarChar(64)
@@ -203,12 +211,16 @@ model Product {
   oldPrice      Decimal?              @db.Decimal(14, 2)
   tag           String?               @db.Text
   image         String                @db.Text
+  description   String?               @db.Text
   section       String                @db.VarChar(20)
   hidden        Boolean               @default(false)
   createdAt     DateTime?             @db.DateTime(3)
   position      Int
   category      Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   paymentPrices ProductPaymentPrice[]
+  images        ProductImage[]
+  sizes         ProductSize[]
+  colors        ProductColor[]
   homeCards     HomeCategoryCard[]
   heroSlides    HeroSlide[]
   curatedPosts  CuratedInstagramPost[]
@@ -216,6 +228,33 @@ model Product {
   editorialBanners EditorialBanner[]
 
   @@index([categoryId])
+}
+
+model ProductImage {
+  productId String  @db.VarChar(191)
+  position  Int
+  url       String  @db.Text
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, position])
+}
+
+model ProductSize {
+  productId String  @db.VarChar(191)
+  position  Int
+  label     String  @db.VarChar(80)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, position])
+}
+
+model ProductColor {
+  productId String  @db.VarChar(191)
+  position  Int
+  label     String  @db.VarChar(80)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, position])
 }
 
 model ProductPaymentPrice {

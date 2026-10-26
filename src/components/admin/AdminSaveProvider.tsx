@@ -2,7 +2,12 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { saveContent, saveTextSection, useContentUpdater, useTextSectionUpdater } from "@/components/providers/ContentProvider";
+import {
+  saveContent,
+  saveTextSection,
+  useContentUpdater,
+  useTextSectionUpdater,
+} from "@/components/providers/ContentProvider";
 import type { ContentKey, TextSectionKey, Texts } from "@/lib/content";
 
 type DraftEntry = {
@@ -20,6 +25,12 @@ type AdminSaveContextValue = {
   change: (key: ContentKey, initial: unknown, data: unknown) => void;
   uploaded: (key: ContentKey, initial: unknown, urls: string[]) => void;
   save: (key: ContentKey, initial: unknown) => Promise<void>;
+  saveData: (
+    key: ContentKey,
+    initial: unknown,
+    data: unknown,
+    uploadedUrls?: string[],
+  ) => Promise<boolean>;
   changeText: <K extends TextSectionKey>(section: K, initial: Texts[K], data: Texts[K]) => void;
   uploadedText: (section: TextSectionKey, initial: unknown, urls: string[]) => void;
   saveText: (section: TextSectionKey, initial: unknown) => Promise<void>;
@@ -48,7 +59,10 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
   const textSaveQueue = useRef<Promise<void>>(Promise.resolve());
 
   function setEntry(key: ContentKey, initial: unknown, update: (entry: DraftEntry) => DraftEntry) {
-    const next = { ...draftsRef.current, [key]: update(draftsRef.current[key] ?? initialEntry(initial)) };
+    const next = {
+      ...draftsRef.current,
+      [key]: update(draftsRef.current[key] ?? initialEntry(initial)),
+    };
     draftsRef.current = next;
     setDrafts(next);
   }
@@ -59,14 +73,26 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  function setTextEntry(section: TextSectionKey, initial: unknown, update: (entry: DraftEntry) => DraftEntry) {
-    const next = { ...textDraftsRef.current, [section]: update(textDraftsRef.current[section] ?? initialEntry(initial)) };
+  function setTextEntry(
+    section: TextSectionKey,
+    initial: unknown,
+    update: (entry: DraftEntry) => DraftEntry,
+  ) {
+    const next = {
+      ...textDraftsRef.current,
+      [section]: update(textDraftsRef.current[section] ?? initialEntry(initial)),
+    };
     textDraftsRef.current = next;
     setTextDrafts(next);
   }
 
   function changeText<K extends TextSectionKey>(section: K, initial: Texts[K], data: Texts[K]) {
-    setTextEntry(section, initial, (entry) => ({ ...entry, data, version: entry.version + 1, error: null }));
+    setTextEntry(section, initial, (entry) => ({
+      ...entry,
+      data,
+      version: entry.version + 1,
+      error: null,
+    }));
   }
 
   function uploadedText(section: TextSectionKey, initial: unknown, urls: string[]) {
@@ -100,8 +126,15 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
         }));
         if (!hasNewerChanges) toast.success("Sección guardada");
       } catch (error) {
-        const message = error instanceof Error ? error.message : "No se pudo guardar la sección. Intentá de nuevo.";
-        setTextEntry(section, initial, (current) => ({ ...current, saving: false, error: message }));
+        const message =
+          error instanceof Error
+            ? error.message
+            : "No se pudo guardar la sección. Intentá de nuevo.";
+        setTextEntry(section, initial, (current) => ({
+          ...current,
+          saving: false,
+          error: message,
+        }));
         toast.error(message);
       } finally {
         savingTextKeys.current.delete(section);
@@ -123,7 +156,12 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
   }, []);
 
   function change(key: ContentKey, initial: unknown, data: unknown) {
-    setEntry(key, initial, (entry) => ({ ...entry, data, version: entry.version + 1, error: null }));
+    setEntry(key, initial, (entry) => ({
+      ...entry,
+      data,
+      version: entry.version + 1,
+      error: null,
+    }));
   }
 
   function uploaded(key: ContentKey, initial: unknown, urls: string[]) {
@@ -137,9 +175,12 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
     if (savingKeys.current.has(key)) return;
     const entry = draftsRef.current[key];
     if (!entry || !hasUnsavedChanges(entry)) return;
-    if (key === "categories" && !(entry.data as { name?: string }[]).every(
-      (category) => typeof category.name === "string" && category.name.trim().length > 0,
-    )) {
+    if (
+      key === "categories" &&
+      !(entry.data as { name?: string }[]).every(
+        (category) => typeof category.name === "string" && category.name.trim().length > 0,
+      )
+    ) {
       const message = "Cada categoría necesita un nombre válido antes de guardar.";
       setEntry(key, initial, (current) => ({ ...current, error: message }));
       toast.error(message);
@@ -165,7 +206,8 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
       }));
       if (!hasNewerChanges) toast.success("Cambios guardados");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo guardar. Intentá de nuevo.";
+      const message =
+        error instanceof Error ? error.message : "No se pudo guardar. Intentá de nuevo.";
       setEntry(key, initial, (current) => ({ ...current, saving: false, error: message }));
       toast.error(message);
     } finally {
@@ -173,8 +215,59 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function saveData(
+    key: ContentKey,
+    initial: unknown,
+    data: unknown,
+    newUrls: string[] = [],
+  ): Promise<boolean> {
+    if (savingKeys.current.has(key)) return false;
+    const entry = draftsRef.current[key] ?? initialEntry(initial);
+    const version = entry.version;
+    const uploadedUrls = [...new Set([...entry.uploadedUrls, ...newUrls])];
+    savingKeys.current.add(key);
+    setEntry(key, initial, (current) => ({ ...current, saving: true, error: null }));
+    try {
+      const result = await saveContent(key, data, uploadedUrls);
+      updateContent(key, result.data);
+      const hasNewerChanges = draftsRef.current[key]!.version !== version;
+      setEntry(key, initial, (current) => ({
+        ...current,
+        data: hasNewerChanges ? current.data : result.data,
+        savedData: result.data,
+        uploadedUrls: current.uploadedUrls.filter((url) => !uploadedUrls.includes(url)),
+        saving: false,
+      }));
+      toast.success("Producto guardado");
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el producto. Intentá de nuevo.";
+      setEntry(key, initial, (current) => ({ ...current, saving: false, error: message }));
+      toast.error(message);
+      return false;
+    } finally {
+      savingKeys.current.delete(key);
+    }
+  }
+
   return (
-    <AdminSaveContext.Provider value={{ drafts, textDrafts, change, uploaded, save, changeText, uploadedText, saveText, hasPendingChanges }}>
+    <AdminSaveContext.Provider
+      value={{
+        drafts,
+        textDrafts,
+        change,
+        uploaded,
+        save,
+        saveData,
+        changeText,
+        uploadedText,
+        saveText,
+        hasPendingChanges,
+      }}
+    >
       {children}
     </AdminSaveContext.Provider>
   );

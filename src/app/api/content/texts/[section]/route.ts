@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { textSectionKeys, textSectionSchemas } from "@/lib/content-schema";
 import type { TextSectionKey } from "@/lib/content";
 import { isAdminRequest } from "@/server/auth";
-import { ContentValidationError, deleteUnreferencedImages, saveTextSection } from "@/server/content";
+import { ContentValidationError, drainCloudinaryCleanupQueue, saveTextSection } from "@/server/content";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ section: string }> }) {
   if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -20,10 +20,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
     const parsed = textSectionSchemas[section as TextSectionKey].safeParse(data);
     if (!parsed.success) return NextResponse.json({ error: "El formato de esta sección no es válido." }, { status: 400 });
     const result = await saveTextSection(section as TextSectionKey, parsed.data, uploadedUrls);
-    if (result.cleanupUrls.length) {
+    if (result.cleanupPending) {
       after(async () => {
         try {
-          await deleteUnreferencedImages(result.cleanupUrls);
+          await drainCloudinaryCleanupQueue();
         } catch (error) {
           console.error("No se pudo completar la limpieza de fotos pendientes.", error);
         }

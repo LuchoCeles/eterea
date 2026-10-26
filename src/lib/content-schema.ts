@@ -4,6 +4,10 @@ import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-r
 
 const shortText = z.string().max(4000);
 const image = z.string().max(4000);
+const productImages = z.array(image.trim().min(1)).max(5)
+  .refine((items) => new Set(items).size === items.length);
+const productOptions = z.array(z.string().trim().min(1).max(80)).max(30)
+  .refine((items) => new Set(items.map((item) => item.toLocaleLowerCase("es-AR"))).size === items.length);
 const productId = z.string().min(1).max(191).optional();
 const offers = z.object({ enabled: z.boolean(), showSplit: z.boolean(), showClub: z.boolean() }).partial().strict();
 const homeSections = z.object({
@@ -40,6 +44,10 @@ const product = z.object({
   paymentPrices: z.array(z.object({ label: z.string().trim().min(1).max(80), price: z.number().finite().nonnegative() })).max(20).optional(),
   tag: shortText.optional(),
   image,
+  images: productImages.optional(),
+  description: shortText.optional(),
+  sizes: productOptions.optional(),
+  colors: productOptions.optional(),
   section: z.enum(["nuevo", "sale"]),
 });
 const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), hidden: z.boolean().optional() });
