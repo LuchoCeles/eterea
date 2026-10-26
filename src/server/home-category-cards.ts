@@ -17,4 +17,5 @@ export async function saveHomeCategoryCardRows(db: CardDb, cards: HomeCategoryCa
     const data = { categoryId: card.categoryId, productId: card.productId ?? null, img: card.img, hidden: card.hidden !== false, position };
     await db.homeCategoryCard.upsert({ where: { id: card.id }, create: { id: card.id, ...data }, update: data });
   }
+  return current.map((card) => card.img);
 }

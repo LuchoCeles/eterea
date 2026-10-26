@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CollapsibleCard } from "@/components/admin/AdminEditorFields";
 
@@ -11,7 +12,6 @@ export function InstagramConnection() {
   const [status, setStatus] = useState<ConnectionStatus>("loading");
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +35,6 @@ export function InstagramConnection() {
     event.preventDefault();
     if (!token.trim()) return;
     setSaving(true);
-    setMessage("");
     try {
       const response = await fetch("/api/admin/instagram", {
         method: "PUT",
@@ -47,9 +46,9 @@ export function InstagramConnection() {
       setToken("");
       setStatus("saved");
       setUsername(result.username ?? null);
-      setMessage("Token guardado. Los videos propios podrán reproducirse en el home sin iniciar sesión.");
+      toast.success("Token guardado. Los videos propios podrán reproducirse en el home sin iniciar sesión.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo guardar el token.");
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el token.");
     } finally {
       setSaving(false);
     }
@@ -67,7 +66,7 @@ export function InstagramConnection() {
         <p className="text-sm" role="status">
           {status === "loading" && "Consultando conexión…"}
           {status === "saved" &&
-            (username ? `Cuenta vinculada: @${username}. Ingresá otro token solamente si necesitás reemplazarlo.` : "Token guardado. Ingresá otro solamente si necesitás reemplazarlo.")}
+            (username ? `Cuenta vinculada: @${username}. Ingresá otro token solamente si necesitás reemplazarlo.` : "Cuenta vinculada. Ingresá otro token solamente si necesitás reemplazarlo.")}
           {status === "missing" && "Todavía no hay un token guardado."}
           {status === "error" && "No se pudo consultar el estado de la conexión."}
         </p>
@@ -82,15 +81,10 @@ export function InstagramConnection() {
             className="min-h-11 w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
         </div>
-        <Button type="submit" disabled={saving || !token.trim()}>
+        {(token.trim() || saving) && <Button type="submit" disabled={saving || !token.trim()}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}{" "}
           {status === "saved" ? "Reemplazar token" : "Guardar token"}
-        </Button>
-        {message && (
-          <p role="status" className="text-sm">
-            {message}
-          </p>
-        )}
+        </Button>}
       </form>
     </CollapsibleCard>
   );

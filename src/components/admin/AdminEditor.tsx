@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, Loader2, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
 import { AdminContentEditor } from "@/components/admin/AdminContentEditors";
-import { AdminSaveProvider, useAdminSave } from "@/components/admin/AdminSaveProvider";
+import { AdminSaveProvider, hasUnsavedChanges, useAdminSave } from "@/components/admin/AdminSaveProvider";
 import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
 import { useContent } from "@/components/providers/ContentProvider";
 import type { ContentKey } from "@/lib/content";
@@ -33,8 +33,8 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
   const pendingSections = adminSections
     .filter((section) => {
       const entry = drafts[section.id];
-      return (entry && entry.version > entry.savedVersion) || (section.id === "texts"
-        && Object.values(textDrafts).some((textEntry) => textEntry && textEntry.version > textEntry.savedVersion));
+      return hasUnsavedChanges(entry) || (section.id === "texts"
+        && Object.values(textDrafts).some(hasUnsavedChanges));
     })
     .map((section) => section.id);
 
@@ -128,13 +128,12 @@ export function AdminSectionEditor({ section }: { section: ContentKey }) {
 
 function Editor({ k, label, description }: { k: ContentKey; label: string; description: string }) {
   const value = useContent(k);
-  const { drafts, textDrafts, change, uploaded, save } = useAdminSave();
+  const { drafts, change, uploaded, save } = useAdminSave();
   const entry = drafts[k];
   const draft = entry?.data ?? value;
-  const dirty = !!entry && entry.version > entry.savedVersion;
+  const dirty = hasUnsavedChanges(entry);
   const saving = entry?.saving === true;
   const postsOnly = k === "instagram";
-  const textPending = k === "texts" && Object.values(textDrafts).some((item) => item && item.version > item.savedVersion);
 
   if (draft === null) return <AdminSectionSkeleton section={k === "contact" ? "instagram" : k} />;
 
@@ -147,23 +146,17 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
           </h2>
           <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-base">{description}</p>
         </div>
-        {k === "texts" ? <span role="status" aria-live="polite" className="text-xs text-muted-foreground sm:text-sm">
-          {textPending ? "Hay apartados sin guardar" : "Guardá cada apartado desde su tarjeta"}
-        </span> : <div className="flex shrink-0 flex-wrap items-center gap-3">
-          <span role="status" aria-live="polite" className={"text-xs font-medium sm:text-sm " + (entry?.error ? "text-destructive" : "text-muted-foreground")}>
-            {saving ? "Guardando…" : entry?.error ? "No se guardaron los cambios" : dirty ? (postsOnly ? "Publicaciones sin guardar" : "Cambios sin guardar") : (postsOnly ? "Publicaciones guardadas" : "Todos los cambios guardados")}
-          </span>
+        {k !== "texts" && (dirty || saving) && (
           <button
             type="button"
             onClick={() => void save(k, value)}
-            disabled={!dirty || saving}
+            disabled={saving}
             className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-            {saving ? "Guardando…" : postsOnly ? "Guardar publicaciones" : "Guardar cambios"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {postsOnly ? "Guardar publicaciones" : "Guardar cambios"}
           </button>
-        </div>}
-        {k !== "texts" && entry?.error && <p role="alert" className="w-full text-sm text-destructive">{entry.error}</p>}
+        )}
       </div>
       <AdminContentEditor
         k={k}

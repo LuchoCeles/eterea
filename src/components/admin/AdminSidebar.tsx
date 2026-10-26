@@ -103,6 +103,7 @@ export function AdminSidebar({ activeSection, pendingSections = [] }: { activeSe
               {(index === 0 || adminSections[index - 1].group !== group) && <p className="mt-4 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground first:mt-0 sm:block">{group}</p>}
               <Link
                 href={`/admin/${slug}`}
+                prefetch={false}
                 title={pending ? label + " · Cambios sin guardar" : label}
                 aria-label={pending ? label + ", con cambios sin guardar" : label}
                 aria-current={active ? "page" : undefined}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { saveContent, useContent, useContentUpdater } from "@/components/providers/ContentProvider";
 import { Button } from "@/components/ui/button";
 import { CollapsibleCard } from "@/components/admin/AdminEditorFields";
@@ -12,25 +13,24 @@ export function WhatsAppSettings() {
   const updateContent = useContentUpdater();
   const [phone, setPhone] = useState(contact.whatsapp);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const changed = phone.trim() !== contact.whatsapp;
 
   useEffect(() => setPhone(contact.whatsapp), [contact.whatsapp]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (phone.trim() && !normalizeWhatsAppNumber(phone)) {
-      setMessage("Ingresá un número internacional válido, con código de país y área.");
+      toast.error("Ingresá un número internacional válido, con código de país y área.");
       return;
     }
     setSaving(true);
-    setMessage("");
     try {
       const data = { ...contact, whatsapp: phone.trim() };
       const result = await saveContent("contact", data);
       updateContent("contact", result.data);
-      setMessage(data.whatsapp ? "Número de WhatsApp guardado." : "Número de WhatsApp eliminado.");
+      toast.success(data.whatsapp ? "Número de WhatsApp guardado." : "Número de WhatsApp eliminado.");
     } catch {
-      setMessage("No se pudo guardar el número. Revisá la conexión e intentá de nuevo.");
+      toast.error("No se pudo guardar el número. Revisá la conexión e intentá de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -55,14 +55,9 @@ export function WhatsAppSettings() {
             className="min-h-11 w-full border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
         </div>
-        <Button type="submit" disabled={saving}>
+        {(changed || saving) && <Button type="submit" disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />} Guardar número
-        </Button>
-        {message && (
-          <p role="status" className="text-sm">
-            {message}
-          </p>
-        )}
+        </Button>}
       </form>
     </CollapsibleCard>
   );

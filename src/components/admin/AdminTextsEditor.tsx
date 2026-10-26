@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Loader2, Save } from "lucide-react";
-import { useAdminSave } from "@/components/admin/AdminSaveProvider";
+import { Loader2, Save } from "lucide-react";
+import { hasUnsavedChanges, useAdminSave } from "@/components/admin/AdminSaveProvider";
 import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility";
 import { AdminHomeCategoriesEditor } from "@/components/admin/AdminHomeCategoriesEditor";
 import { SharedImageField } from "@/components/admin/SharedImageField";
@@ -17,23 +17,19 @@ import type { TextSectionKey, Texts } from "@/lib/content";
 function SectionSaveButton({ section, label, value }: { section: TextSectionKey; label: string; value: Texts[TextSectionKey] }) {
   const { textDrafts, saveText } = useAdminSave();
   const entry = textDrafts[section];
-  const dirty = !!entry && entry.version > entry.savedVersion;
+  const dirty = hasUnsavedChanges(entry);
+  if (!dirty && !entry?.saving) return null;
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <span role="status" aria-live="polite" className={"text-xs " + (entry?.error ? "text-destructive" : "text-muted-foreground")}>
-        {entry?.saving ? "Guardando…" : entry?.error ? "Error al guardar" : dirty ? "Sin guardar" : "Guardado"}
-      </span>
-      <button
-        type="button"
-        onClick={() => void saveText(section, value)}
-        disabled={!dirty || entry?.saving}
-        className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-        aria-label={`Guardar ${label.toLocaleLowerCase("es-AR")}`}
-      >
-        {entry?.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-        Guardar
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => void saveText(section, value)}
+      disabled={entry?.saving}
+      className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label={`Guardar ${label.toLocaleLowerCase("es-AR")}`}
+    >
+      {entry?.saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+      Guardar
+    </button>
   );
 }
 

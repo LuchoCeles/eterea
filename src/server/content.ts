@@ -67,8 +67,11 @@ function referencedUrls(snapshot: ContentSnapshot) {
 
 async function queueUnusedImages(db: Db, candidates: string[], snapshot: ContentSnapshot) {
   const referenced = referencedUrls(snapshot);
+  const newlyUnused = [...new Set(candidates)]
+    .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
+  if (!newlyUnused.length) return 0;
   const queued = await db.cloudinaryCleanup.findMany({ select: { url: true } });
-  const unused = [...new Set([...queued.map((item) => item.url), ...candidates])]
+  const unused = [...new Set([...queued.map((item) => item.url), ...newlyUnused])]
     .filter((url) => cloudinaryPublicId(url) !== null && !referenced.has(url));
   await db.cloudinaryCleanup.deleteMany({ where: { url: { notIn: unused } } });
   if (unused.length) await db.cloudinaryCleanup.createMany({ data: unused.map((url) => ({ url })), skipDuplicates: true });
@@ -157,8 +160,8 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
     if (key === "categories" || key === "products") {
       await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
     }
-    const updated = await readSnapshot(db);
-    const cleanupPending = await queueUnusedImages(db, [...imageUrls(current), ...uploadedUrls], updated);
+    const updated = { ...current, [key]: next } as ContentSnapshot;
+    const cleanupPending = await queueUnusedImages(db, [...imageUrls(current[key]), ...uploadedUrls], updated);
     return { data: updated[key], cleanupPending };
   }, { timeout: 120_000 });
 }
@@ -167,21 +170,36 @@ export async function saveTextSection(section: TextSectionKey, value: unknown, u
   const parsed = textSectionSchemas[section].safeParse(value);
   if (!parsed.success) throw new ContentValidationError("El formato de esta sección no es válido.");
   return prisma.$transaction(async (db) => {
-    const current = await readSnapshot(db);
     const nextValue = resolveContent("texts", { [section]: parsed.data })[section];
-    checkProductReferences(nextValue, current.products);
+    const productIds = [...new Set(referencedProductIds(nextValue))];
+    if (productIds.length) {
+      const products = await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true } });
+      if (products.length !== productIds.length) {
+        throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+      }
+    }
+    let previousImageUrls: string[] = [];
     if (section === "homeCategoryCards") {
       const cards = nextValue as HomeCategoryCard[];
-      checkCards(cards, new Set(current.categories.map((category) => category.id)));
-      await saveHomeCategoryCardRows(db, cards);
+      const categoryIds = [...new Set(cards.map((card) => card.categoryId))];
+      const categories = await db.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true } });
+      checkCards(cards, new Set(categories.map((category) => category.id)));
+      previousImageUrls = await saveHomeCategoryCardRows(db, cards);
+      await db.contentSection.upsert({ where: { key: section }, create: { key: section }, update: {} });
     } else {
+      if (section === "split") {
+        const previous = await db.splitBanner.findUnique({ where: { id: 1 }, select: { img: true } });
+        if (previous) previousImageUrls = [previous.img];
+      } else if (section === "editorial") {
+        const previous = await db.editorialBanner.findUnique({ where: { id: 1 }, select: { img: true } });
+        if (previous) previousImageUrls = [previous.img];
+      }
       await saveRelationalTextSection(db, section, nextValue);
     }
-    await db.contentSection.upsert({ where: { key: section }, create: { key: section }, update: {} });
-    const updated = await readSnapshot(db);
-    const cleanupUrls = [...new Set([...imageUrls(current.texts[section]), ...uploadedUrls])]
-      .filter((url) => !referencedUrls(updated).has(url) && cloudinaryPublicId(url) !== null);
-    return { section, data: updated.texts[section], cleanupUrls };
+    const retainedUrls = new Set(imageUrls(nextValue));
+    const cleanupUrls = [...new Set([...previousImageUrls, ...uploadedUrls])]
+      .filter((url) => !retainedUrls.has(url) && cloudinaryPublicId(url) !== null);
+    return { section, data: nextValue, cleanupUrls };
   }, { timeout: 120_000 });
 }
 

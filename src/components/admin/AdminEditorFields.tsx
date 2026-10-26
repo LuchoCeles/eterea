@@ -201,7 +201,7 @@ export function CollapsibleCard({
       className={`admin-card-surface overflow-hidden rounded-[22px] border border-border ${className}`}
     >
       <div className="flex flex-col gap-3 p-3 min-[900px]:flex-row min-[900px]:items-center min-[900px]:gap-4 sm:p-5">
-        <CollapsibleTrigger className="group flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4">
+        <CollapsibleTrigger className="flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4">
           {preview !== undefined && (
             <>
               {preview ? (
@@ -229,12 +229,19 @@ export function CollapsibleCard({
               </span>
             )}
           </span>
-          <ChevronDown
-            className="h-10 w-10 shrink-0 rounded-full bg-secondary p-2.5 text-foreground transition-transform group-data-[state=open]:rotate-180 sm:h-11 sm:w-11"
-            aria-hidden="true"
-          />
         </CollapsibleTrigger>
-        {right}
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {right}
+          <CollapsibleTrigger
+            aria-label={`Mostrar u ocultar ${title.toLocaleLowerCase("es-AR")}`}
+            className="group shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronDown
+              className="h-10 w-10 rounded-full bg-secondary p-2.5 text-foreground transition-transform group-data-[state=open]:rotate-180 sm:h-11 sm:w-11"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+        </div>
       </div>
       <CollapsibleContent
         forceMount

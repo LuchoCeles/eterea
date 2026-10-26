@@ -89,9 +89,11 @@ export async function isAdminRequest(request: Request) {
   const cookie = request.headers.get("cookie")?.match(/(?:^|; *)eterea_session=([^;]+)/)?.[1];
   const session = readSessionToken(cookie);
   if (!session) return null;
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true } });
-  if (!user || !(await isAdmin(user.id))) return null;
-  return user;
+  const role = await prisma.userRole.findFirst({
+    where: { userId: session.userId, role: "admin" },
+    select: { userId: true },
+  });
+  return role ? { id: role.userId } : null;
 }
 
 export { COOKIE_NAME };

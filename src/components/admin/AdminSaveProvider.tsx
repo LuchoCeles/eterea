@@ -7,8 +7,8 @@ import type { ContentKey, TextSectionKey, Texts } from "@/lib/content";
 
 type DraftEntry = {
   data: unknown;
+  savedData: unknown;
   version: number;
-  savedVersion: number;
   uploadedUrls: string[];
   saving: boolean;
   error: string | null;
@@ -29,7 +29,11 @@ type AdminSaveContextValue = {
 const AdminSaveContext = createContext<AdminSaveContextValue | null>(null);
 
 function initialEntry(data: unknown): DraftEntry {
-  return { data, version: 0, savedVersion: 0, uploadedUrls: [], saving: false, error: null };
+  return { data, savedData: data, version: 0, uploadedUrls: [], saving: false, error: null };
+}
+
+export function hasUnsavedChanges(entry: DraftEntry | undefined) {
+  return !!entry && JSON.stringify(entry.data) !== JSON.stringify(entry.savedData);
 }
 
 export function AdminSaveProvider({ children }: { children: ReactNode }) {
@@ -51,7 +55,7 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
 
   function hasPendingChanges() {
     return [...Object.values(draftsRef.current), ...Object.values(textDraftsRef.current)].some(
-      (entry) => entry && (entry.version > entry.savedVersion || entry.saving),
+      (entry) => entry && (hasUnsavedChanges(entry) || entry.saving),
     );
   }
 
@@ -75,7 +79,7 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
   async function saveText(section: TextSectionKey, initial: unknown) {
     if (savingTextKeys.current.has(section)) return;
     const entry = textDraftsRef.current[section];
-    if (!entry || entry.version <= entry.savedVersion) return;
+    if (!entry || !hasUnsavedChanges(entry)) return;
     const version = entry.version;
     const data = structuredClone(entry.data) as Texts[typeof section];
     const uploadedUrls = [...entry.uploadedUrls];
@@ -90,7 +94,7 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
         setTextEntry(section, initial, (current) => ({
           ...current,
           data: hasNewerChanges ? current.data : saved,
-          savedVersion: version,
+          savedData: saved,
           uploadedUrls: current.uploadedUrls.filter((url) => !uploadedUrls.includes(url)),
           saving: false,
         }));
@@ -132,7 +136,7 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
   async function save(key: ContentKey, initial: unknown) {
     if (savingKeys.current.has(key)) return;
     const entry = draftsRef.current[key];
-    if (!entry || entry.version <= entry.savedVersion) return;
+    if (!entry || !hasUnsavedChanges(entry)) return;
     if (key === "categories" && !(entry.data as { name?: string }[]).every(
       (category) => typeof category.name === "string" && category.name.trim().length > 0,
     )) {
@@ -155,7 +159,7 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
       setEntry(key, initial, (current) => ({
         ...current,
         data: hasNewerChanges ? current.data : result.data,
-        savedVersion: version,
+        savedData: result.data,
         uploadedUrls: current.uploadedUrls.filter((url) => !uploadedUrls.includes(url)),
         saving: false,
       }));
