@@ -173,7 +173,7 @@ export function Storefront({ unavailableInstagramUrls, instagramMediaAssets }: {
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-5 text-xs text-muted-foreground md:px-8"><p>© 2026 Etérea New Concept</p><a href="/admin" className="hover:text-foreground">Administración</a></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-5 text-xs text-muted-foreground md:px-8"><p>© 2026 Etérea New Concept</p></div>
       </footer>
     </div>
   );
