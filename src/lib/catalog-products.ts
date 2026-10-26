@@ -1,5 +1,5 @@
 import { visibleStoreProducts, type StoreCategory, type StoreProduct } from "@/lib/content";
-import { sortProductsByCreation } from "@/lib/products";
+import { isProductSoldOut, sortProductsByCreation, type Product } from "@/lib/products";
 import { productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
 
 export function catalogProducts(products: StoreProduct[], categories: StoreCategory[], offersEnabled: boolean) {
@@ -14,4 +14,8 @@ export function catalogProducts(products: StoreProduct[], categories: StoreCateg
     ? [...regular.filter((product) => !discountedKeys.has(key(product))), ...discounted]
     : [...regular, ...sale.filter((product) => !regularKeys.has(key(product)))];
   return sortProductsByCreation(selected).map((product) => productWithoutOffers(product, offersEnabled));
+}
+
+export function sortProductsByAvailability<T extends Product>(products: T[]): T[] {
+  return [...products].sort((a, b) => Number(isProductSoldOut(a)) - Number(isProductSoldOut(b)));
 }

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryCards, mergeTextSection, productsWithCategoryNames, resolveContent, visibleStoreProducts } from "../lib/content";
-import { categoryIdForName, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
+import { categoryIdForName, isProductSoldOut, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
+import { sortProductsByAvailability } from "../lib/catalog-products";
 import { referencedProductIds, resolveImageSource } from "../lib/image-source";
 import { contentSchemas, textSectionSchemas } from "../lib/content-schema";
 import { productHref, productSlug, slugifyProductName } from "../lib/product-slugs";
@@ -95,6 +96,22 @@ describe("Catálogo y categorías heredadas", () => {
     assert.equal(contentSchemas.products.safeParse([{ ...product, soldOutColors: ["Retirado"] }]).success, false);
     assert.equal(contentSchemas.products.safeParse([{ ...product, soldOutColors: ["Azul", "Azul"] }]).success, false);
     assert.deepEqual(resolveContent("products", [{ ...product, soldOut: true }])[0]?.soldOutColors, ["Azul"]);
+  });
+
+  it("ubica al final los productos totalmente agotados sin alterar el orden elegido", () => {
+    const base = { category: "Tops", image: "" };
+    const products = [
+      { ...base, id: "agotado", name: "A", price: 10, soldOut: true },
+      { ...base, id: "parcial", name: "B", price: 20, colors: ["Azul", "Negro"], soldOutColors: ["Azul"] },
+      { ...base, id: "sin-colores", name: "C", price: 30 },
+      { ...base, id: "colores-agotados", name: "D", price: 40, colors: ["Azul", "Negro"], soldOutColors: ["Azul", "Negro"] },
+    ];
+    assert.equal(isProductSoldOut(products[1]), false);
+    assert.equal(isProductSoldOut(products[2]), false);
+    assert.equal(isProductSoldOut(products[3]), true);
+    assert.deepEqual(sortProductsByAvailability(products).map((product) => product.id), ["parcial", "sin-colores", "agotado", "colores-agotados"]);
+    assert.deepEqual(sortProductsByAvailability([...products].sort((a, b) => b.price - a.price)).map((product) => product.id), ["sin-colores", "parcial", "colores-agotados", "agotado"]);
+    assert.deepEqual(products.map((product) => product.id), ["agotado", "parcial", "sin-colores", "colores-agotados"]);
   });
 
   it("separa las tarjetas del inicio y conserva sus fotos heredadas", () => {

@@ -84,7 +84,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             <p className="eyebrow text-muted-foreground">Etérea · {product.category}</p>
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
             {unavailable && <p className="mt-4 inline-block bg-muted px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Agotada</p>}
-            {product.tag && <span className="eyebrow mt-5 inline-block bg-sand px-3 py-1.5 text-foreground">{product.tag}</span>}
+            {!unavailable && product.tag && <span className="eyebrow mt-5 inline-block bg-sand px-3 py-1.5 text-foreground">{product.tag}</span>}
             <div className="mt-6 flex flex-wrap items-baseline gap-3 border-b pb-7">
               <p className={`text-2xl font-medium tabular-nums ${discounted ? "text-accent" : ""}`}>{formatPrice(product.price)}</p>
               {discounted && <p className="text-sm text-muted-foreground line-through">{formatPrice(product.oldPrice ?? product.price)}</p>}
@@ -99,11 +99,11 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             </div>}
 
             {colors.length > 0 && <div className="pt-7">
-              <div className="flex items-baseline justify-between gap-3"><h2 className="text-sm font-medium">Color</h2><span className="text-xs text-muted-foreground">Los colores agotados no se pueden elegir</span></div>
+              <h2 className="text-sm font-medium">Color</h2>
               <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Elegir color">
                 {colors.map((option) => {
                   const optionSoldOut = !!product.soldOut || soldOutColors.has(option);
-                  return <button key={option} type="button" disabled={optionSoldOut} onClick={() => { setColor(option); setSelectionError(""); }} aria-pressed={color === option && !optionSoldOut} aria-label={optionSoldOut ? `${option}, agotado` : option} title={optionSoldOut ? "Agotado" : undefined} className={`border px-4 py-3 text-sm transition-colors ${optionSoldOut ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70" : color === option ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary"}`}>{option}{optionSoldOut && <span className="ml-2 text-[10px] font-medium no-underline">Agotado</span>}</button>;
+                  return <button key={option} type="button" disabled={optionSoldOut} onClick={() => { setColor(option); setSelectionError(""); }} aria-pressed={color === option && !optionSoldOut} aria-label={optionSoldOut ? `${option}, agotado` : option} className={`border px-4 py-3 text-sm transition-colors ${optionSoldOut ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70" : color === option ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary"}`}>{option}</button>;
                 })}
               </div>
             </div>}
