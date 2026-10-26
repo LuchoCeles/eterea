@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type UIEvent } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { ProductEditorModal } from "@/components/admin/ProductEditorModal";
 import { ProductImage } from "@/components/store/ProductImage";
@@ -20,6 +20,8 @@ import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
 import { formatPrice, sortProductsByCreation } from "@/lib/products";
 
+const PRODUCTS_PER_BATCH = 50;
+
 export function AdminProductsEditor({
   value,
   onChange,
@@ -31,11 +33,27 @@ export function AdminProductsEditor({
 }) {
   const categories = useContent("categories");
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_BATCH);
   const [editingProduct, setEditingProduct] = useState<StoreProduct | null>(null);
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
   const rows = sortProductsByCreation(value).filter((product) =>
     `${product.name} ${product.category}`.toLocaleLowerCase("es-AR").includes(normalizedSearch),
   );
+  const visibleRows = rows.slice(0, visibleCount);
+
+  function handleSearchChange(nextSearch: string) {
+    setSearch(nextSearch);
+    setVisibleCount(PRODUCTS_PER_BATCH);
+  }
+
+  function loadMoreOnScroll(event: UIEvent<HTMLDivElement>) {
+    const container = event.currentTarget;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (distanceToBottom < 180) {
+      setVisibleCount((current) => Math.min(current + PRODUCTS_PER_BATCH, rows.length));
+    }
+  }
 
   function update(id: string, patch: Partial<StoreProduct>) {
     onChange(value.map((product) => (product.id === id ? { ...product, ...patch } : product)));
@@ -88,7 +106,7 @@ export function AdminProductsEditor({
         <Search className="h-4 w-4 text-muted-foreground" />
         <input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => handleSearchChange(event.target.value)}
           placeholder="Buscar productos…"
           aria-label="Buscar productos"
           className="admin-product-search min-w-0 flex-1 bg-transparent text-sm outline-none"
@@ -96,9 +114,12 @@ export function AdminProductsEditor({
       </label>
 
       <div className="overflow-hidden rounded-2xl border bg-card/30">
-        <div className="hidden overflow-x-auto lg:block">
+        <div
+          onScroll={loadMoreOnScroll}
+          className="no-scrollbar hidden max-h-[70vh] overflow-auto lg:block"
+        >
           <table className="w-full min-w-[940px] text-left text-sm">
-            <thead className="border-b bg-secondary/40 text-xs text-muted-foreground">
+            <thead className="sticky top-0 z-10 border-b bg-secondary/95 text-xs text-muted-foreground backdrop-blur">
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Producto
@@ -124,7 +145,7 @@ export function AdminProductsEditor({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {rows.map((product) => (
+              {visibleRows.map((product) => (
                 <tr key={product.id} className="hover:bg-secondary/25">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -164,8 +185,11 @@ export function AdminProductsEditor({
             </tbody>
           </table>
         </div>
-        <div className="divide-y lg:hidden">
-          {rows.map((product) => (
+        <div
+          onScroll={loadMoreOnScroll}
+          className="no-scrollbar max-h-[70vh] divide-y overflow-y-auto lg:hidden"
+        >
+          {visibleRows.map((product) => (
             <div key={product.id} className="flex items-center gap-3 p-3 sm:p-4">
               <ProductThumbnail product={product} />
               <div className="min-w-0 flex-1">
@@ -192,12 +216,19 @@ export function AdminProductsEditor({
         </div>
         {rows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            {search
+            {normalizedSearch
               ? "No hay productos que coincidan con la búsqueda."
               : "Todavía no hay productos."}
           </p>
         )}
       </div>
+      {rows.length > 0 && (
+        <p aria-live="polite" className="text-center text-xs text-muted-foreground">
+          {visibleRows.length < rows.length
+            ? `Mostrando ${visibleRows.length} de ${rows.length} productos · Desplazate hacia abajo para cargar más.`
+            : `Se muestran los ${rows.length} productos.`}
+        </p>
+      )}
 
       {editingProduct && (
         <ProductEditorModal
