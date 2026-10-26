@@ -50,7 +50,7 @@ export function ProductCarousel({
           return (
           <article key={p.id + p.name} className="group w-[70%] shrink-0 snap-start sm:w-[42%] lg:w-[23.5%]">
             <div className="relative aspect-[4/5] overflow-hidden bg-card">
-              <Link href={href} aria-label={`Ver ${p.name}`} className="block h-full w-full">
+              <Link href={href} aria-label={`Ver ${p.name}`} draggable={false} className="block h-full w-full">
                 <ProductImage src={p.image} alt={p.name} loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 42vw, 70vw" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
               </Link>
               {(unavailable || p.tag) && (
@@ -58,7 +58,7 @@ export function ProductCarousel({
                   {unavailable ? "Agotada" : p.tag}
                 </span>
               )}
-              {unavailable ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-muted text-sm text-muted-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Ver prenda agotada</Link> : p.sizes?.length || p.colors?.length ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-primary text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Elegir talle y color</Link> : <AddToCartButton
+              {unavailable ? <Link href={href} draggable={false} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-muted text-sm text-muted-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Ver prenda agotada</Link> : p.sizes?.length || p.colors?.length ? <Link href={href} draggable={false} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-primary text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Elegir talle y color</Link> : <AddToCartButton
                 product={p}
                 onAdd={onAdd}
                 className="absolute inset-x-3 bottom-3 h-11 rounded-none bg-primary py-3 text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100"
@@ -67,7 +67,7 @@ export function ProductCarousel({
             <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{p.category}</p>
-                <h3 className="mt-0.5 font-sans text-[15px] font-medium tracking-normal"><Link href={href} className="hover:text-accent">{p.name}</Link></h3>
+                <h3 className="mt-0.5 font-sans text-[15px] font-medium tracking-normal"><Link href={href} draggable={false} className="hover:text-accent">{p.name}</Link></h3>
               </div>
               <div className="text-right text-sm">
                 <p className={p.oldPrice ? "text-accent" : ""}>{formatPrice(p.price)}</p>

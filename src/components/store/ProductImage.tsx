@@ -32,6 +32,7 @@ export function ProductImage({
       srcSet={optimized.srcSet}
       sizes={optimized.srcSet ? sizes : undefined}
       alt={alt}
+      draggable={false}
       loading={loading}
       width={width}
       height={height}
