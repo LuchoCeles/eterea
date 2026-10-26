@@ -29,16 +29,26 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const images = product.images?.length ? product.images : product.image ? [product.image] : [];
   const sizes = product.sizes ?? [];
   const colors = product.colors ?? [];
+  const soldOutColors = new Set(product.soldOutColors ?? []);
+  const unavailable = !!product.soldOut || (colors.length > 0 && colors.every((option) => soldOutColors.has(option)));
   const paymentPrices = visiblePaymentPrices(product.paymentPrices ?? [], offersEnabled);
   const discounted = hasRealDiscount(product);
 
   function addSelectedProduct() {
+    if (unavailable) {
+      setSelectionError("Esta prenda está agotada.");
+      return;
+    }
     if (sizes.length && !size) {
       setSelectionError("Elegí un talle para agregar la prenda.");
       return;
     }
     if (colors.length && !color) {
       setSelectionError("Elegí un color para agregar la prenda.");
+      return;
+    }
+    if (color && soldOutColors.has(color)) {
+      setSelectionError("Este color está agotado. Elegí otro para continuar.");
       return;
     }
     add(product, { size: size || undefined, color: color || undefined });
@@ -73,6 +83,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <section className="min-w-0 lg:sticky lg:top-36 lg:self-start">
             <p className="eyebrow text-muted-foreground">Etérea · {product.category}</p>
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
+            {unavailable && <p className="mt-4 inline-block bg-muted px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Agotada</p>}
             {product.tag && <span className="eyebrow mt-5 inline-block bg-sand px-3 py-1.5 text-foreground">{product.tag}</span>}
             <div className="mt-6 flex flex-wrap items-baseline gap-3 border-b pb-7">
               <p className={`text-2xl font-medium tabular-nums ${discounted ? "text-accent" : ""}`}>{formatPrice(product.price)}</p>
@@ -88,9 +99,12 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             </div>}
 
             {colors.length > 0 && <div className="pt-7">
-              <h2 className="text-sm font-medium">Color</h2>
+              <div className="flex items-baseline justify-between gap-3"><h2 className="text-sm font-medium">Color</h2><span className="text-xs text-muted-foreground">Los colores agotados no se pueden elegir</span></div>
               <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Elegir color">
-                {colors.map((option) => <button key={option} type="button" onClick={() => { setColor(option); setSelectionError(""); }} aria-pressed={color === option} className={`border px-4 py-3 text-sm transition-colors ${color === option ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary"}`}>{option}</button>)}
+                {colors.map((option) => {
+                  const optionSoldOut = !!product.soldOut || soldOutColors.has(option);
+                  return <button key={option} type="button" disabled={optionSoldOut} onClick={() => { setColor(option); setSelectionError(""); }} aria-pressed={color === option && !optionSoldOut} aria-label={optionSoldOut ? `${option}, agotado` : option} title={optionSoldOut ? "Agotado" : undefined} className={`border px-4 py-3 text-sm transition-colors ${optionSoldOut ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-70" : color === option ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary"}`}>{option}{optionSoldOut && <span className="ml-2 text-[10px] font-medium no-underline">Agotado</span>}</button>;
+                })}
               </div>
             </div>}
 
@@ -100,8 +114,8 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             </div>}
 
             <p role="alert" className="min-h-6 pt-3 text-sm text-accent">{selectionError}</p>
-            <button type="button" onClick={addSelectedProduct} className="mt-2 flex h-14 w-full items-center justify-center gap-3 bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-              {added ? <Check className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}{added ? "Agregada al carrito" : "Agregar al carrito"}
+            <button type="button" disabled={unavailable} onClick={addSelectedProduct} className={`mt-2 flex h-14 w-full items-center justify-center gap-3 px-5 text-sm font-medium transition-colors ${unavailable ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
+              {added ? <Check className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}{unavailable ? "Agotada" : added ? "Agregada al carrito" : "Agregar al carrito"}
             </button>
             <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Podés revisar las prendas elegidas en el carrito y hacer tu pedido por WhatsApp.</p>
             <Link href="/productos" className="mt-8 inline-flex items-center gap-2 border-b border-foreground pb-1 text-sm hover:text-accent"><ArrowLeft className="h-4 w-4" /> Seguir descubriendo</Link>

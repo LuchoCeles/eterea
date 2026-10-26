@@ -14,12 +14,12 @@ Storefront y panel de administración construidos con Next.js App Router, React,
 npm install
 npm run db:generate
 npm run db:migrate
-npm run db:migrate-catalog
-npm run db:migrate-content -- --apply
 npm run dev
 ```
 
-Abrí `http://localhost:3000`. La primera cuenta que se registre recibe el rol de administración. Luego ingresá a `/auth` para administrar promociones, banners, productos, textos e Instagram.
+Abrí `http://localhost:3000`. Ingresá a `/auth` con usuario y contraseña para administrar promociones, banners, productos, textos e Instagram. El panel no ofrece registro público.
+
+En una base vacía, después de aplicar las migraciones configurá temporalmente `BOOTSTRAP_OWNER_USERNAME` y `BOOTSTRAP_OWNER_PASSWORD` (12 caracteres como mínimo) en tu entorno privado. También podés definir `BOOTSTRAP_OWNER_NAME`, que se muestra en la barra superior; si lo omitís, se usa el usuario como nombre inicial. Ejecutá `npm run db:bootstrap-owner` una sola vez. El comando crea la primera cuenta con los roles `admin` y `owner`; rechaza bases que ya tengan usuarios. Retirá esas variables al terminar.
 
 ## Categorías y productos
 
@@ -35,11 +35,17 @@ Para una base existente, seguí la secuencia de **Migración relacional** más a
 
 `prisma/migrations/20261026000000_product_details_and_gallery/migration.sql` agrega la ficha y las tablas de fotos y opciones. Copia cada `Product.image` existente a `ProductImage` en la posición cero, sin eliminar la columna anterior. También crea `CloudinaryPendingUpload` para registrar las cargas antes de enviarlas al proveedor. Revisá y autorizá esta migración antes de aplicarla en TiDB compartido.
 
+`prisma/migrations/20261026010000_username_login/migration.sql` cambia el identificador de acceso de `email` a `username` sin modificar los valores ni los hashes de contraseña existentes, y limita el rol permitido a `admin`. El acceso al panel se realiza desde `/auth`; no hay registro público.
+
+`prisma/migrations/20261026030000_owner_role/migration.sql` amplía los roles y asigna `owner` a la cuenta administradora más antigua, sin quitarle `admin` ni modificar las demás cuentas. Revisá que esa cuenta sea la que debe figurar como **Dueño** antes de aplicar la migración en TiDB compartido. El dueño ve **Cuenta → Usuarios** y puede crear administradores, cambiar sus usuarios o contraseñas y eliminarlos. Su propia cuenta no admite cambios de usuario o contraseña ni eliminación desde el panel. Al cambiar la contraseña de otra cuenta, las sesiones previas de esa cuenta dejan de ser válidas.
+
+`prisma/migrations/20261026040000_user_name/migration.sql` agrega el nombre visible de cada cuenta y completa las cuentas existentes con su usuario actual. En **Cuenta → Usuarios**, el dueño puede asignar un nombre distinto para identificar a quién pertenece cada cuenta; ese nombre aparece en la barra superior del administrador. El nombre del dueño se puede editar sin habilitar cambios en sus credenciales.
+
 En una base existente, prepará una copia de seguridad y detené las escrituras del administrador durante el corte. Revisá el SQL y obtené la autorización explícita requerida por `AGENTS.md` antes de aplicarlo en un entorno compartido. Después:
 
-1. Aplicá las migraciones pendientes con `npm run db:migrate:deploy`. Si el catálogo aún no se migró, ejecutá `npm run db:migrate-catalog`.
-2. Ejecutá `npm run db:migrate-content` para auditar las claves heredadas, el formato y las tablas de destino sin escribir. Corregí cualquier dato inválido o clave desconocida antes de seguir.
-3. Ejecutá `npm run db:migrate-content -- --apply`. La copia es transaccional y verifica el contenido importado. Conservá una exportación externa de `SiteContent` y compará el storefront y el administrador antes de habilitar escrituras.
+1. Aplicá las migraciones pendientes con `npm run db:migrate:deploy`. Si el catálogo aún no se migró, ejecutá `npx tsx scripts/migrate-catalog-to-relational.ts`.
+2. Ejecutá `npx tsx scripts/migrate-content-to-relational.ts` para auditar las claves heredadas, el formato y las tablas de destino sin escribir. Corregí cualquier dato inválido o clave desconocida antes de seguir.
+3. Ejecutá `npx tsx scripts/migrate-content-to-relational.ts --apply`. La copia es transaccional y verifica el contenido importado. Conservá una exportación externa de `SiteContent` y compará el storefront y el administrador antes de habilitar escrituras.
 4. Desplegá la aplicación nueva. Cuando la verificación esté terminada, ejecutá el SQL de `scripts/finalize-content-migration.sql` con autorización explícita en el entorno compartido. Ese paso retira la última columna JSON junto con la tabla heredada.
 
 Las secciones vacías se distinguen de las que usan valores por defecto mediante `ContentSection`. El token de Instagram sigue cifrado en `InstagramConnection`; sus cachés, las publicaciones curadas y la cola de Cloudinary usan tablas propias. Durante el intervalo entre los pasos 1 y 4, `SiteContent` es solo una fuente heredada de lectura para el importador; la aplicación nueva no escribe allí.
@@ -77,13 +83,13 @@ Cada carga usa un UUID propio, con sobrescritura desactivada, y reserva su ident
 - `npm run db:generate`: genera Prisma Client.
 - `npm run db:migrate`: aplica migraciones pendientes en el entorno local configurado.
 - `npm run db:migrate:deploy`: aplica migraciones versionadas en el entorno de despliegue.
-- `npm run db:import-content -- ./legacy-site-content.json`: importa filas exportadas de contenido JSON.
-- `npm run db:migrate-catalog`: copia categorías, productos y destacados heredados a sus tablas propias después de aplicar el SQL.
-- `npm run db:migrate-content`: audita la importación relacional sin escribir; agregá `-- --apply` para realizarla.
+- `npx tsx scripts/import-legacy-content.ts ./legacy-site-content.json`: importa filas exportadas de contenido JSON.
+- `npx tsx scripts/migrate-catalog-to-relational.ts`: copia categorías, productos y destacados heredados a sus tablas propias después de aplicar el SQL.
+- `npx tsx scripts/migrate-content-to-relational.ts`: audita la importación relacional sin escribir; agregá `--apply` para realizarla.
 
 ## Datos existentes
 
-La aplicación nueva puede mostrar valores por defecto definidos en `src/lib/content.ts`. Para conservar ajustes de un proveedor anterior, exportá las filas a un archivo local, cargalas en `SiteContent` con `npm run db:import-content -- ./archivo.json` antes de migrar el catálogo y luego seguí **Migración relacional**. No agregues el archivo exportado al repositorio. Los roles actuales de administrador no se modifican. Las fotos vinculadas a URLs antiguas deben copiarse y actualizarse a enlaces del almacén configurado.
+La aplicación nueva puede mostrar valores por defecto definidos en `src/lib/content.ts`. Para conservar ajustes de un proveedor anterior, exportá las filas a un archivo local, cargalas en `SiteContent` con `npx tsx scripts/import-legacy-content.ts ./archivo.json` antes de migrar el catálogo y luego seguí **Migración relacional**. No agregues el archivo exportado al repositorio. Los roles actuales de administrador no se modifican. Las fotos vinculadas a URLs antiguas deben copiarse y actualizarse a enlaces del almacén configurado.
 
 ## Recursos gráficos
 

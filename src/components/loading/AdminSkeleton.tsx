@@ -55,7 +55,7 @@ export function AdminSkeleton() {
           >
             <AdminContentSkeleton />
           </main>
-          <AdminSidebar />
+          <AdminSidebar owner={false} />
         </div>
       </div>
     </div>

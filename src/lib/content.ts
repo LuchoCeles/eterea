@@ -120,13 +120,16 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
   if (key === "products") {
     return sortProductsByCreation((data as StoreProduct[]).map((product) => {
       const images = product.images === undefined ? (product.image ? [product.image] : []) : product.images;
+      const colors = product.colors ?? [];
       return {
         ...product,
         image: images[0] ?? "",
         images,
         description: product.description ?? "",
         sizes: product.sizes ?? [],
-        colors: product.colors ?? [],
+        colors,
+        soldOut: product.soldOut === true,
+        soldOutColors: (product.soldOutColors ?? []).filter((color) => colors.includes(color)),
         categoryId: product.categoryId || categoryIdForName(product.category),
       };
     })) as ContentOf<K>;

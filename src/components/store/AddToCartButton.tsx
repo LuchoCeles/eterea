@@ -16,12 +16,14 @@ export function AddToCartButton({
 }) {
   const [added, setAdded] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unavailable = !!product.soldOut || !!(product.colors?.length && product.colors.every((color) => product.soldOutColors?.includes(color)));
 
   useEffect(() => () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
   }, []);
 
   function handleAdd() {
+    if (unavailable) return;
     onAdd(product);
     setAdded(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -34,12 +36,13 @@ export function AddToCartButton({
   return (
     <Button
       type="button"
+      disabled={unavailable}
       onClick={handleAdd}
       aria-live="polite"
-      className={`${className ?? ""} transition-all active:scale-[0.97] ${added ? "bg-accent text-accent-foreground" : ""}`}
+      className={`${className ?? ""} transition-all active:scale-[0.97] ${added ? "bg-accent text-accent-foreground" : ""} ${unavailable ? "cursor-not-allowed bg-muted text-muted-foreground opacity-100" : ""}`}
     >
       {added ? <Check className="h-4 w-4 animate-in zoom-in-50 duration-200" /> : <Plus className="h-4 w-4" />}
-      {added ? "Agregado" : "Agregar al carrito"}
+      {unavailable ? "Agotada" : added ? "Agregado" : "Agregar al carrito"}
     </Button>
   );
 }

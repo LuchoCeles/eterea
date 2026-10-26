@@ -10,16 +10,22 @@ datasource db {
 
 model User {
   id           String     @id @default(cuid()) @db.VarChar(191)
-  email        String     @unique @db.VarChar(191)
+  name         String     @default("") @db.VarChar(100)
+  username     String     @unique @db.VarChar(191)
   passwordHash String     @db.VarChar(255)
   createdAt    DateTime   @default(now()) @db.DateTime(3)
   roles        UserRole[]
 }
 
+enum UserRoleType {
+  admin
+  owner
+}
+
 model UserRole {
   id        String   @id @default(cuid()) @db.VarChar(191)
   userId    String   @db.VarChar(191)
-  role      String   @db.VarChar(32)
+  role      UserRoleType
   createdAt DateTime @default(now()) @db.DateTime(3)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -214,6 +220,7 @@ model Product {
   description   String?               @db.Text
   section       String                @db.VarChar(20)
   hidden        Boolean               @default(false)
+  soldOut       Boolean               @default(false)
   createdAt     DateTime?             @db.DateTime(3)
   position      Int
   category      Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -252,6 +259,7 @@ model ProductColor {
   productId String  @db.VarChar(191)
   position  Int
   label     String  @db.VarChar(80)
+  soldOut   Boolean @default(false)
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@id([productId, position])

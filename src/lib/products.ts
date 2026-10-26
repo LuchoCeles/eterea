@@ -13,6 +13,8 @@ export type Product = {
   description?: string;
   sizes?: string[];
   colors?: string[];
+  soldOut?: boolean;
+  soldOutColors?: string[];
 };
 
 export function categoryIdForName(name: string) {

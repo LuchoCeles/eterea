@@ -10,6 +10,7 @@ import {
   Package,
   PanelsTopLeft,
   Tags,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import clsx from "clsx";
@@ -80,7 +81,7 @@ export const adminSections: {
   },
 ];
 
-export function AdminSidebar({ activeSection, pendingSections = [] }: { activeSection?: ContentKey; pendingSections?: ContentKey[] }) {
+export function AdminSidebar({ activeSection, pendingSections = [], owner }: { activeSection?: ContentKey; pendingSections?: ContentKey[]; owner: boolean }) {
   const pathname = usePathname();
   const currentSection =
     activeSection ?? adminSections.find((section) => pathname === `/admin/${section.slug}`)?.id;
@@ -93,7 +94,7 @@ export function AdminSidebar({ activeSection, pendingSections = [] }: { activeSe
       <nav
         id="admin-navigation"
         aria-label="Navegación principal"
-        className="grid grid-cols-6 gap-1 sm:flex sm:flex-col sm:gap-2"
+        className={`grid ${owner ? "grid-cols-7" : "grid-cols-6"} gap-1 sm:flex sm:flex-col sm:gap-2`}
       >
         {adminSections.map(({ id, slug, label, shortLabel, group, icon: Icon }, index) => {
           const active = currentSection === id;
@@ -134,6 +135,18 @@ export function AdminSidebar({ activeSection, pendingSections = [] }: { activeSe
             </Fragment>
           );
         })}
+        {owner && (
+          <Fragment>
+            <p className="mt-4 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground sm:block">Cuenta</p>
+            <Link href="/admin/usuarios" prefetch={false} aria-current={pathname === "/admin/usuarios" ? "page" : undefined}
+              className={clsx("relative flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-[19px] px-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-[52px] sm:flex-row sm:justify-start sm:gap-3 sm:rounded-xl sm:px-3 sm:text-left lg:px-4", pathname === "/admin/usuarios" ? "admin-nav-active font-semibold" : "font-medium text-muted-foreground hover:bg-secondary/55 hover:text-foreground")}>
+              {pathname === "/admin/usuarios" && <span className="absolute inset-y-3 left-0 hidden w-[3px] rounded-r-full bg-primary sm:block" aria-hidden="true" />}
+              <Users className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" strokeWidth={pathname === "/admin/usuarios" ? 2 : 1.7} aria-hidden="true" />
+              <span className="w-full truncate text-[10px] leading-tight sm:hidden">Usuarios</span>
+              <span className="hidden truncate text-sm sm:block">Usuarios</span>
+            </Link>
+          </Fragment>
+        )}
       </nav>
     </aside>
   );

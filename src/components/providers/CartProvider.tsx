@@ -20,6 +20,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     items,
     addAnimationKey,
     add: (product, selection) => {
+      const colors = product.colors ?? [];
+      const sizes = product.sizes ?? [];
+      if (product.soldOut || (colors.length > 0 && colors.every((color) => product.soldOutColors?.includes(color)))) return;
+      if (sizes.length > 0 && (!selection?.size || !sizes.includes(selection.size))) return;
+      if (colors.length > 0 && (!selection?.color || !colors.includes(selection.color) || product.soldOutColors?.includes(selection.color))) return;
       const lineKey = JSON.stringify([product.id, selection?.size ?? "", selection?.color ?? ""]);
       setItems((current) => {
         const existing = current.find((item) => item.lineKey === lineKey);
@@ -32,7 +37,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     changeQuantity: (lineKey, quantity) => setItems((current) => (
       quantity < 1
         ? current.filter((item) => item.lineKey !== lineKey)
-        : current.map((item) => item.lineKey === lineKey ? { ...item, quantity } : item)
+        : current.map((item) => item.lineKey === lineKey && !(quantity > item.quantity && (item.soldOut || (item.color && item.soldOutColors?.includes(item.color)))) ? { ...item, quantity } : item)
     )),
     remove: (lineKey) => setItems((current) => current.filter((item) => item.lineKey !== lineKey)),
   };

@@ -84,6 +84,19 @@ describe("Catálogo y categorías heredadas", () => {
     assert.equal(contentSchemas.products.safeParse([{ ...products[1], sizes: ["M", "m"] }]).success, false);
   });
 
+  it("normaliza estados heredados y valida los colores agotados", () => {
+    const [product] = resolveContent("products", [{
+      id: "vestido", name: "Vestido", category: "Vestidos", price: 100, image: "",
+      colors: ["Azul", "Negro"], soldOutColors: ["Azul", "Retirado"], section: "nuevo",
+    }]);
+    assert.equal(product.soldOut, false);
+    assert.deepEqual(product.soldOutColors, ["Azul"]);
+    assert.equal(contentSchemas.products.safeParse([product]).success, true);
+    assert.equal(contentSchemas.products.safeParse([{ ...product, soldOutColors: ["Retirado"] }]).success, false);
+    assert.equal(contentSchemas.products.safeParse([{ ...product, soldOutColors: ["Azul", "Azul"] }]).success, false);
+    assert.deepEqual(resolveContent("products", [{ ...product, soldOut: true }])[0]?.soldOutColors, ["Azul"]);
+  });
+
   it("separa las tarjetas del inicio y conserva sus fotos heredadas", () => {
     const categories = [{ id: "vestidos", name: "Vestidos" }];
     const products = resolveContent("products", [{ id: "uno", name: "Vestido", category: "Vestidos", categoryId: "vestidos", price: 100, image: "", section: "nuevo" }]);

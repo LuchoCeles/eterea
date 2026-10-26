@@ -48,7 +48,12 @@ const product = z.object({
   description: shortText.optional(),
   sizes: productOptions.optional(),
   colors: productOptions.optional(),
+  soldOut: z.boolean().optional(),
+  soldOutColors: productOptions.optional(),
   section: z.enum(["nuevo", "sale"]),
+}).refine((item) => (item.soldOutColors ?? []).every((color) => item.colors?.includes(color)), {
+  message: "Los colores agotados deben pertenecer a los colores de la prenda.",
+  path: ["soldOutColors"],
 });
 const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), hidden: z.boolean().optional() });
 const homeCategoryCard = z.object({ id: z.string().min(1).max(191), categoryId: z.string().min(1).max(191), img: image, productId, hidden: z.boolean().optional() });

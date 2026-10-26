@@ -46,18 +46,19 @@ export function ProductCarousel({
       <div ref={ref} className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 md:mx-0 md:px-0">
         {products.map((p) => {
           const href = productHref(p, allProducts);
+          const unavailable = !!p.soldOut || !!(p.colors?.length && p.colors.every((color) => p.soldOutColors?.includes(color)));
           return (
           <article key={p.id + p.name} className="group w-[70%] shrink-0 snap-start sm:w-[42%] lg:w-[23.5%]">
             <div className="relative aspect-[4/5] overflow-hidden bg-card">
               <Link href={href} aria-label={`Ver ${p.name}`} className="block h-full w-full">
                 <ProductImage src={p.image} alt={p.name} loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 42vw, 70vw" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
               </Link>
-              {p.tag && (
-                <span className={`eyebrow absolute left-3 top-3 px-2.5 py-1 ${p.oldPrice ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
-                  {p.tag}
+              {(unavailable || p.tag) && (
+                <span className={`eyebrow absolute left-3 top-3 px-2.5 py-1 ${unavailable ? "bg-muted text-muted-foreground" : p.oldPrice ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
+                  {unavailable ? "Agotada" : p.tag}
                 </span>
               )}
-              {p.sizes?.length || p.colors?.length ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-primary text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Elegir talle y color</Link> : <AddToCartButton
+              {unavailable ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-muted text-sm text-muted-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Ver prenda agotada</Link> : p.sizes?.length || p.colors?.length ? <Link href={href} className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center bg-primary text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100">Elegir talle y color</Link> : <AddToCartButton
                 product={p}
                 onAdd={onAdd}
                 className="absolute inset-x-3 bottom-3 h-11 rounded-none bg-primary py-3 text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100"

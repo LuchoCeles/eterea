@@ -32,6 +32,8 @@ export async function loadRelationalCatalog(db: CatalogDb) {
       description: row.description ?? "",
       sizes: related?.sizes ?? [],
       colors: related?.colors ?? [],
+      soldOut: row.soldOut,
+      soldOutColors: related?.soldOutColors ?? [],
       section: row.section as StoreProduct["section"],
       hidden: row.hidden,
       ...(row.createdAt ? { createdAt: row.createdAt.toISOString() } : {}),
@@ -62,9 +64,11 @@ function sameProduct(a: StoreProduct, b: StoreProduct) {
     && a.oldPrice === b.oldPrice && a.tag === b.tag && a.image === b.image && a.section === b.section
     && (a.description ?? "") === (b.description ?? "")
     && !!a.hidden === !!b.hidden && a.createdAt === b.createdAt
+    && !!a.soldOut === !!b.soldOut
     && JSON.stringify(a.images ?? (a.image ? [a.image] : [])) === JSON.stringify(b.images ?? (b.image ? [b.image] : []))
     && JSON.stringify(a.sizes ?? []) === JSON.stringify(b.sizes ?? [])
     && JSON.stringify(a.colors ?? []) === JSON.stringify(b.colors ?? [])
+    && JSON.stringify(a.soldOutColors ?? []) === JSON.stringify(b.soldOutColors ?? [])
     && JSON.stringify(a.paymentPrices ?? []) === JSON.stringify(b.paymentPrices ?? []);
 }
 
@@ -93,7 +97,7 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
       categoryId: product.categoryId!, name: product.name, price: product.price,
       oldPrice: product.oldPrice ?? null, tag: product.tag ?? null, image: images[0] ?? "",
       description: product.description ?? "",
-      section: product.section, hidden: product.hidden === true,
+      section: product.section, hidden: product.hidden === true, soldOut: product.soldOut === true,
       createdAt: product.createdAt ? new Date(product.createdAt) : null, position,
     };
     await db.product.upsert({ where: { id: product.id }, create: { id: product.id, ...data }, update: data });
@@ -109,10 +113,14 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
         data: product.sizes.map((label, optionPosition) => ({ productId: product.id, position: optionPosition, label })),
       });
     }
-    if (JSON.stringify(previous?.colors ?? []) !== JSON.stringify(product.colors ?? [])) {
+    if (JSON.stringify(previous?.colors ?? []) !== JSON.stringify(product.colors ?? [])
+      || JSON.stringify(previous?.soldOutColors ?? []) !== JSON.stringify(product.soldOutColors ?? [])) {
       await db.productColor.deleteMany({ where: { productId: product.id } });
       if (product.colors?.length) await db.productColor.createMany({
-        data: product.colors.map((label, optionPosition) => ({ productId: product.id, position: optionPosition, label })),
+        data: product.colors.map((label, optionPosition) => ({
+          productId: product.id, position: optionPosition, label,
+          soldOut: product.soldOutColors?.includes(label) === true,
+        })),
       });
     }
     if (JSON.stringify(previous?.paymentPrices ?? []) === JSON.stringify(product.paymentPrices ?? [])) continue;

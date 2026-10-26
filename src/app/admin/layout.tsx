@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin/AdminEditor";
 import { AdminSkeleton } from "@/components/loading/AdminSkeleton";
 import { ContentProvider } from "@/components/providers/ContentProvider";
-import { getCurrentUser, isAdmin } from "@/server/auth";
+import { getCurrentUser, isAdmin, isOwner } from "@/server/auth";
 import { loadContentSnapshot } from "@/server/content";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +21,12 @@ async function AdminLayoutContent({ children }: Readonly<{ children: React.React
   const user = await getCurrentUser();
   if (!user) redirect("/auth");
   if (!(await isAdmin(user.id))) redirect("/");
+  const owner = await isOwner(user.id);
   const content = await loadContentSnapshot({ strict: true });
 
   return (
     <ContentProvider initialContent={content}>
-      <AdminEditor email={user.email}>{children}</AdminEditor>
+      <AdminEditor name={user.name || user.username} owner={owner}>{children}</AdminEditor>
     </ContentProvider>
   );
 }

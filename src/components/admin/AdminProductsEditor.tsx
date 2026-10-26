@@ -72,6 +72,8 @@ export function AdminProductsEditor({
       description: "",
       sizes: [],
       colors: [],
+      soldOutColors: [],
+      soldOut: false,
       section: "nuevo",
       hidden: false,
     };
@@ -150,7 +152,10 @@ export function AdminProductsEditor({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ProductThumbnail product={product} />
-                      <span className="max-w-[220px] truncate font-medium">{product.name}</span>
+                      <div className="min-w-0">
+                        <span className="block max-w-[220px] truncate font-medium">{product.name}</span>
+                        <ProductAvailability product={product} />
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
@@ -194,6 +199,7 @@ export function AdminProductsEditor({
               <ProductThumbnail product={product} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{product.name}</p>
+                <ProductAvailability product={product} />
                 <p className="truncate text-xs text-muted-foreground">
                   {product.category || "Sin asignar"} · {formatPrice(product.price)}
                 </p>
@@ -259,6 +265,18 @@ function ProductThumbnail({ product }: { product: StoreProduct }) {
       sizes="48px"
       className="h-12 w-12 shrink-0 rounded-lg object-cover"
     />
+  );
+}
+
+function ProductAvailability({ product }: { product: StoreProduct }) {
+  const soldOutCount = product.soldOutColors?.length ?? 0;
+  if (!product.soldOut && soldOutCount === 0) return null;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {product.soldOut
+        ? "Agotado"
+        : `${soldOutCount} ${soldOutCount === 1 ? "color agotado" : "colores agotados"}`}
+    </span>
   );
 }
 

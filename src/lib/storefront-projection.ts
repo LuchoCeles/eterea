@@ -14,6 +14,8 @@ export function productForListing(product: StoreProduct): StoreProduct {
     image: product.image,
     ...(product.sizes?.length ? { sizes: product.sizes } : {}),
     ...(product.colors?.length ? { colors: product.colors } : {}),
+    ...(product.soldOut ? { soldOut: true } : {}),
+    ...(product.soldOutColors?.length ? { soldOutColors: product.soldOutColors } : {}),
     section: product.section,
     hidden: product.hidden,
   };

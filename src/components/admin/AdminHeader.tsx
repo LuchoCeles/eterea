@@ -2,12 +2,14 @@ import Link from "next/link";
 import { ArrowUpRight, LogOut, Moon, Sun } from "lucide-react";
 
 export function AdminHeader({
-  email,
+  name,
+  owner,
   onSignOut,
   theme,
   onToggleTheme,
 }: {
-  email: string;
+  name: string;
+  owner: boolean;
   onSignOut: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
@@ -29,9 +31,9 @@ export function AdminHeader({
       <div className="flex shrink-0 items-center gap-1 sm:gap-3">
         <span
           className="mr-2 hidden max-w-48 truncate text-xs text-muted-foreground lg:block"
-          title={email}
+          title={name}
         >
-          {email}
+          {name} · {owner ? "Dueño" : "Administrador"}
         </span>
         <button
           type="button"

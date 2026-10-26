@@ -5,9 +5,10 @@ export type ProductRelationRow = {
   value: string;
   price: unknown;
   rowId: string;
+  soldOut: unknown;
 };
 
-type Entry = { position: number; rowId: string; value: string; price: unknown };
+type Entry = { position: number; rowId: string; value: string; price: unknown; soldOut: unknown };
 type Group = { images: Entry[]; sizes: Entry[]; colors: Entry[]; payments: Entry[] };
 
 export function groupProductRelations(rows: ProductRelationRow[]) {
@@ -18,7 +19,7 @@ export function groupProductRelations(rows: ProductRelationRow[]) {
       group = { images: [], sizes: [], colors: [], payments: [] };
       groups.set(row.productId, group);
     }
-    const entry = { position: row.position, rowId: row.rowId, value: row.value, price: row.price };
+    const entry = { position: row.position, rowId: row.rowId, value: row.value, price: row.price, soldOut: row.soldOut };
     if (row.kind === "image") group.images.push(entry);
     else if (row.kind === "size") group.sizes.push(entry);
     else if (row.kind === "color") group.colors.push(entry);
@@ -31,6 +32,8 @@ export function groupProductRelations(rows: ProductRelationRow[]) {
     images: sorted(group.images).map((item) => item.value),
     sizes: sorted(group.sizes).map((item) => item.value),
     colors: sorted(group.colors).map((item) => item.value),
+    soldOutColors: group.colors.filter((item) => item.soldOut === true || item.soldOut === 1 || item.soldOut === "1")
+      .map((item) => item.value),
     paymentPrices: sorted(group.payments).map((item) => {
       const price = Number(item.price);
       if (item.price === null || !Number.isFinite(price)) throw new Error("El precio guardado no es válido.");

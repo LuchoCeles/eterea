@@ -19,15 +19,15 @@ type AdminTheme = "light" | "dark";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
 const ADMIN_SECTION_STORAGE_KEY = "eterea-admin-section";
 
-export function AdminEditor({ email, children }: { email: string; children: ReactNode }) {
+export function AdminEditor({ name, owner, children }: { name: string; owner: boolean; children: ReactNode }) {
   return (
     <AdminSaveProvider>
-      <AdminEditorShell email={email}>{children}</AdminEditorShell>
+      <AdminEditorShell name={name} owner={owner}>{children}</AdminEditorShell>
     </AdminSaveProvider>
   );
 }
 
-function AdminEditorShell({ email, children }: { email: string; children: ReactNode }) {
+function AdminEditorShell({ name, owner, children }: { name: string; owner: boolean; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const contentRef = useRef<HTMLElement>(null);
@@ -114,7 +114,7 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
       onClickCapture={handleLinkClick}
     >
       <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
-        <AdminHeader email={email} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
+        <AdminHeader name={name} owner={owner} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           <main
             ref={contentRef}
@@ -124,7 +124,7 @@ function AdminEditorShell({ email, children }: { email: string; children: ReactN
           >
             {children}
           </main>
-          <AdminSidebar activeSection={activeSection} pendingSections={pendingSections} />
+          <AdminSidebar activeSection={activeSection} pendingSections={pendingSections} owner={owner} />
         </div>
       </div>
     </div>

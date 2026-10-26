@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Package, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { ProductCategorySelect } from "@/components/admin/ProductCategorySelect";
+import { ProductColorsEditor } from "@/components/admin/ProductColorsEditor";
 import { ProductOptionsEditor } from "@/components/admin/ProductOptionsEditor";
 import { ProductPaymentPricesEditor } from "@/components/admin/ProductPaymentPricesEditor";
 import { ProductStagedGallery, type GalleryItem } from "@/components/admin/ProductStagedGallery";
@@ -209,6 +210,19 @@ export function ProductEditorModal({
                     aria-label="Producto activo"
                   />
                 </label>
+                <label className="flex items-center justify-between gap-3 rounded-xl border bg-secondary/30 px-4 py-3">
+                  <span>
+                    <span className="block text-sm font-semibold">Producto agotado</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Seguirá visible, pero no se podrá agregar al carrito.
+                    </span>
+                  </span>
+                  <Switch
+                    checked={product.soldOut === true}
+                    onCheckedChange={(checked) => patch({ soldOut: checked })}
+                    aria-label="Producto agotado"
+                  />
+                </label>
                 <div>
                   <label
                     htmlFor={`description-${product.id}`}
@@ -265,7 +279,7 @@ export function ProductEditorModal({
               <section className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
                 <h3 className="text-base font-semibold">Variantes</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Agregá los talles y colores disponibles.
+                  Agregá talles y colores. Marcá los colores agotados por separado.
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <ProductOptionsEditor
@@ -274,11 +288,10 @@ export function ProductEditorModal({
                     items={product.sizes ?? []}
                     onChange={(sizes) => patch({ sizes })}
                   />
-                  <ProductOptionsEditor
-                    label="Colores"
-                    singular="Color"
-                    items={product.colors ?? []}
-                    onChange={(colors) => patch({ colors })}
+                  <ProductColorsEditor
+                    colors={product.colors ?? []}
+                    soldOutColors={product.soldOutColors ?? []}
+                    onChange={(colors, soldOutColors) => patch({ colors, soldOutColors })}
                   />
                 </div>
               </section>
