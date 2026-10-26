@@ -11,7 +11,7 @@ export default function NotFound() {
   return (
     <div className="relative isolate flex min-h-svh flex-col overflow-x-hidden bg-background text-foreground lg:h-svh">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <span className="absolute left-1/2 top-[56%] -translate-x-1/2 -translate-y-1/2 font-display text-[clamp(13rem,64vw,26rem)] leading-[0.72] tracking-[-0.08em] text-primary/[0.12] sm:left-[3%] sm:translate-x-0 sm:text-[clamp(18rem,27vw,32rem)]">404</span>
+        <span className="absolute left-[3%] top-[56%] hidden -translate-y-1/2 font-display text-[clamp(18rem,27vw,32rem)] leading-[0.72] tracking-[-0.08em] text-primary/[0.12] sm:block">404</span>
       </div>
 
       <header className="relative z-10 shrink-0 border-b border-foreground/10">
@@ -27,7 +27,8 @@ export default function NotFound() {
       </header>
 
       <main className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 items-center gap-7 px-4 py-7 sm:gap-10 sm:px-6 sm:py-10 lg:min-h-0 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 lg:px-10 lg:py-2 xl:gap-12">
-        <div className="relative z-10 max-w-xl">
+        <div className="relative z-10 isolate max-w-xl">
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center overflow-hidden font-display text-[clamp(12rem,52vw,18rem)] leading-[0.72] tracking-[-0.08em] text-primary/[0.12] sm:hidden">404</span>
           <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-[0.2em] text-accent">
             <span className="h-px w-8 bg-accent" aria-hidden="true" />
             Error 404 · Un pequeño desvío
