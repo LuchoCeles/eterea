@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { after as afterResponse } from "next/server";
 import type { InstagramPost } from "@/lib/content";
 import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-media";
-import { instagramPermalink, instagramProfileUrl } from "@/lib/storefront-rules";
+import { instagramPermalink, instagramProfileUrl, recentInstagramPosts } from "@/lib/storefront-rules";
 import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
 import { readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, updateStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
@@ -13,23 +13,21 @@ const refreshSeconds = 15 * 60;
 const day = 24 * 60 * 60 * 1000;
 const pendingRefreshes = new Map<string, Promise<unknown>>();
 
-function refreshAfterResponse(key: string, task: () => Promise<unknown>) {
-  afterResponse(() => {
-    const pending = pendingRefreshes.get(key);
-    if (pending) return pending.then(() => undefined);
-    const refresh = task().catch((error: unknown) => {
-      console.error("No se pudo renovar la caché de Instagram.", error);
-    }).finally(() => pendingRefreshes.delete(key));
-    pendingRefreshes.set(key, refresh);
-    return refresh.then(() => undefined);
-  });
+function refreshOnce<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const pending = pendingRefreshes.get(key);
+  if (pending) return pending as Promise<T>;
+  const refresh = task().finally(() => pendingRefreshes.delete(key));
+  pendingRefreshes.set(key, refresh);
+  return refresh;
 }
 
-type InstagramMedia = {
-  id?: unknown;
-  permalink?: unknown;
-  timestamp?: unknown;
-};
+function refreshAfterResponse(key: string, task: () => Promise<unknown>) {
+  afterResponse(() => {
+    return refreshOnce(key, task).catch(() => {
+      console.error("No se pudo renovar la caché de Instagram.");
+    }).then(() => undefined);
+  });
+}
 
 function encryptionSecret() {
   const secret = process.env.AUTH_SECRET;
@@ -128,9 +126,13 @@ export async function isInstagramEmbedUnavailable(value: string): Promise<boolea
   }
 }
 
-export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<Record<string, InstagramMediaAsset>> {
+export async function loadInstagramMediaAssets(posts: InstagramPost[], fromOwnFeed = false): Promise<Record<string, InstagramMediaAsset>> {
   const urls = [...new Set(posts.map((post) => instagramPermalink(post.url)).filter((url): url is string => url !== null))];
   if (!urls.length) return {};
+  const knownMediaIds = fromOwnFeed ? Object.fromEntries(posts.flatMap((post) => {
+    const url = instagramPermalink(post.url);
+    return url ? [[url, post.id]] : [];
+  })) : {};
   const connection = await storedConnection().catch(() => null);
   if (!connection) return {};
 
@@ -141,10 +143,11 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[]): Promise<
   }
   if (checked && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000) {
     refreshAfterResponse(`media:${connection.connectionId}:${[...urls].sort().join("|")}`,
-      () => refreshInstagramMediaAssets(urls, connection, cache));
+      () => refreshInstagramMediaAssets(urls, connection, cache, knownMediaIds));
     return cachedMediaAssets(urls, cache);
   }
-  return refreshInstagramMediaAssets(urls, connection, cache);
+  return refreshOnce(`media:${connection.connectionId}:${[...urls].sort().join("|")}`,
+    () => refreshInstagramMediaAssets(urls, connection, cache, knownMediaIds));
 }
 
 type MediaCache = Awaited<ReturnType<typeof readMediaCache>>;
@@ -153,10 +156,10 @@ function cachedMediaAssets(urls: string[], cache: NonNullable<MediaCache>) {
   return Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []));
 }
 
-async function refreshInstagramMediaAssets(urls: string[], connection: InstagramConnection, cache: MediaCache): Promise<Record<string, InstagramMediaAsset>> {
+async function refreshInstagramMediaAssets(urls: string[], connection: InstagramConnection, cache: MediaCache, knownMediaIds: Record<string, string>): Promise<Record<string, InstagramMediaAsset>> {
   try {
     const token = await accessToken(connection);
-    const mediaIds = { ...(cache?.mediaIds ?? {}) };
+    const mediaIds = { ...(cache?.mediaIds ?? {}), ...knownMediaIds };
     const missing = new Set(urls.filter((url) => !mediaIds[url] && (!cache || Date.now() - cache.fetchedAt >= day || !cache.checkedUrls.includes(url))));
     let after: string | undefined;
     const scanDeadline = Date.now() + 10_000;
@@ -201,10 +204,10 @@ async function refreshInstagramMediaAssets(urls: string[], connection: Instagram
     }));
 
     await writeMediaCache(connection.connectionId, Date.now(), urls, mediaIds, assets)
-      .catch(() => console.error("No se pudo guardar la caché de videos de Instagram."));
+      .catch(() => console.error("No se pudo guardar la caché de imágenes de Instagram."));
     return assets;
-  } catch (error) {
-    console.error("No se pudieron cargar los videos de Instagram.", error);
+  } catch {
+    console.error("No se pudieron cargar las imágenes de Instagram.");
     return cache && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000
       ? cachedMediaAssets(urls, cache)
       : {};
@@ -224,6 +227,9 @@ export async function saveInstagramConnection(token: string) {
   }
   if (typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) {
     throw new InstagramConnectionError("Meta no devolvió una cuenta de Instagram válida.");
+  }
+  if (profile.username.toLowerCase() !== "eterea.newconcept") {
+    throw new InstagramConnectionError("El token debe corresponder a @eterea.newconcept.");
   }
   if (!Array.isArray(feed.data)) {
     throw new InstagramConnectionError("Meta no devolvió una lista de publicaciones válida.");
@@ -248,43 +254,31 @@ export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null
     refreshAfterResponse(`feed:${connection.connectionId}`, () => refreshRecentInstagramPosts(connection, fallback));
     return fallback;
   }
-  return refreshRecentInstagramPosts(connection, fallback);
+  return refreshOnce(`feed:${connection.connectionId}`, () => refreshRecentInstagramPosts(connection, fallback));
 }
 
 async function refreshRecentInstagramPosts(connection: InstagramConnection, fallback: InstagramPost[] | null) {
   try {
     const token = await accessToken(connection);
-    const profile = await getInstagram<{ id?: unknown }>("/me?fields=id", token);
-    if (connection.accountId && profile.id !== connection.accountId) {
-      console.error("El token de Instagram no pertenece a la cuenta vinculada.");
-      return fallback;
+    const profile = await getInstagram<{ id?: unknown; username?: unknown }>("/me?fields=id,username", token);
+    if ((connection.accountId && profile.id !== connection.accountId) ||
+      typeof profile.username !== "string" || profile.username.toLowerCase() !== "eterea.newconcept") {
+      console.error("La conexión de Instagram no corresponde a @eterea.newconcept.");
+      return null;
     }
 
-    const feed = await getInstagram<{ data?: InstagramMedia[] }>(
+    const feed = await getInstagram<{ data?: unknown }>(
       "/me/media?fields=id,permalink,timestamp&limit=12",
       token,
     );
-
-    const posts = (Array.isArray(feed.data) ? feed.data : [])
-      .filter((item) => typeof item.id === "string" && typeof item.permalink === "string")
-      .sort((a, b) => String(b.timestamp ?? "").localeCompare(String(a.timestamp ?? "")))
-      .flatMap((item) => {
-        const url = instagramPermalink(item.permalink as string);
-        return url ? [{
-          id: item.id as string,
-          url,
-          image: "",
-          title: "",
-          kind: url.includes("/reel/") ? "reel" as const : "post" as const,
-        }] : [];
-      })
-      .slice(0, 6);
+    if (!Array.isArray(feed.data)) throw new Error("Meta no devolvió una lista de publicaciones.");
+    const posts = recentInstagramPosts(feed.data);
 
     await writeFeedCache(connection.connectionId, Date.now(), posts)
       .catch(() => console.error("No se pudo guardar la lista reciente de Instagram."));
     return posts;
-  } catch (error) {
-    console.error("No se pudieron cargar las publicaciones de Instagram.", error);
+  } catch {
+    console.error("No se pudieron cargar las publicaciones de Instagram.");
     return fallback;
   }
 }

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Grid3X3, Heart, Instagram, Play } from "lucide-react";
+import Image from "next/image";
 import { useContent } from "@/components/providers/ContentProvider";
-import { ProductImage } from "@/components/store/ProductImage";
+import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
 import { resolveImageSource } from "@/lib/image-source";
 import type { InstagramPost } from "@/lib/content";
 import type { InstagramMediaAsset } from "@/lib/instagram-media";
@@ -11,8 +12,21 @@ import { visibleInstagramPosts } from "@/lib/storefront-rules";
 
 const profileUrl = "https://www.instagram.com/eterea.newconcept/";
 const brandImage = "/assets/eterea-placeholder.svg";
+type InstagramCover = Pick<InstagramMediaAsset, "imageUrl" | "posterUrl">;
 
-export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramMediaAsset> }) {
+function InstagramThumbnail({ image, fromMeta, alt }: { image: string; fromMeta: boolean; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const optimized = fromMeta ? null : responsiveCloudinaryImage(image);
+  const className = "h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none";
+  if (failed) return <span className="flex h-full w-full items-center justify-center bg-pearl text-accent" aria-label="Imagen no disponible"><Instagram className="h-6 w-6" aria-hidden="true" /></span>;
+  return fromMeta ? (
+    <Image src={image} alt={alt} loading="lazy" sizes="108px" width={108} height={108} className={className} onError={() => setFailed(true)} />
+  ) : (
+    <img src={optimized?.src ?? image} srcSet={optimized?.srcSet} sizes={optimized?.srcSet ? "108px" : undefined} alt={alt} loading="lazy" width={108} height={108} className={className} onError={() => setFailed(true)} />
+  );
+}
+
+export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramCover> }) {
   const products = useContent("products");
   const { homeSections } = useContent("texts");
   const sectionRef = useRef<HTMLElement>(null);
@@ -21,7 +35,7 @@ export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[
   const thumbnails = visibleInstagramPosts(posts).flatMap((post) => {
     const asset = mediaAssets[post.url];
     const image = asset?.imageUrl || asset?.posterUrl || (post.image || post.productId ? resolveImageSource(post, products) : "");
-    return image ? [{ post, image }] : [];
+    return image ? [{ post, image, fromMeta: Boolean(asset?.imageUrl || asset?.posterUrl) }] : [];
   }).slice(0, 6);
 
   useEffect(() => {
@@ -65,9 +79,9 @@ export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[
               </div>
               {thumbnails.length ? (
                 <div className="grid min-h-[208px] grid-cols-3 content-start gap-1.5" aria-label="Publicaciones de Instagram de Etérea">
-                  {thumbnails.map(({ post, image }) => (
+                  {thumbnails.map(({ post, image, fromMeta }) => (
                     <a key={post.id} href={post.url} target="_blank" rel="noopener noreferrer" aria-label={"Abrir " + (post.kind === "reel" ? "reel" : "publicación") + " de Etérea" + (post.title ? ": " + post.title : "") + " en Instagram"} className="group relative aspect-square overflow-hidden rounded-xl bg-pearl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                      <ProductImage src={image} alt={post.title || "Publicación de Etérea"} loading="lazy" sizes="100px" width={108} height={108} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none" />
+                      <InstagramThumbnail image={image} fromMeta={fromMeta} alt={post.title || "Publicación de Etérea"} />
                       {post.kind === "reel" && <Play className="absolute bottom-1.5 right-1.5 h-4 w-4 fill-white text-white drop-shadow" aria-hidden="true" />}
                     </a>
                   ))}

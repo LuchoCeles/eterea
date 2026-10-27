@@ -6,18 +6,26 @@ const videoUrl = "https://scontent.cdninstagram.com/v/video.mp4?token=example";
 const thumbnailUrl = "https://scontent.xx.fbcdn.net/v/cover.jpg?token=example";
 
 describe("Archivos de publicaciones propias de Instagram", () => {
-  it("prepara videos y portadas para reproducirlos sin iniciar sesión", () => {
+  it("identifica el video y su portada sin exponer el token", () => {
     assert.deepEqual(instagramMediaAsset({ media_type: "VIDEO", media_url: videoUrl, thumbnail_url: thumbnailUrl }), {
       videoUrl,
       posterUrl: thumbnailUrl,
     });
   });
 
-  it("encuentra el video dentro de un carrusel", () => {
+  it("usa la primera imagen disponible como portada de un carrusel", () => {
     assert.deepEqual(instagramMediaAsset({ media_type: "CAROUSEL_ALBUM", children: { data: [
       { media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/photo.jpg" },
       { media_type: "VIDEO", media_url: videoUrl },
-    ] } }), { videoUrl, posterUrl: undefined });
+    ] } }), { imageUrl: "https://scontent.cdninstagram.com/v/photo.jpg" });
+  });
+
+  it("conserva la portada de un video aunque Meta no entregue el archivo", () => {
+    assert.deepEqual(instagramMediaAsset({ media_type: "VIDEO", thumbnail_url: thumbnailUrl }), { posterUrl: thumbnailUrl });
+    assert.deepEqual(instagramMediaAsset({ media_type: "CAROUSEL_ALBUM", children: { data: [
+      { media_type: "VIDEO", media_url: videoUrl },
+      { media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/photo.jpg" },
+    ] } }), { imageUrl: "https://scontent.cdninstagram.com/v/photo.jpg" });
   });
 
   it("rechaza archivos externos y publicaciones sin URL de media", () => {

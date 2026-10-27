@@ -24,12 +24,14 @@ export function instagramMediaAsset(value: unknown): InstagramMediaAsset | null 
   const media = value as Media;
   if (media.media_type === "CAROUSEL_ALBUM" && Array.isArray(media.children?.data)) {
     const assets = media.children.data.map(instagramMediaAsset).filter((asset): asset is InstagramMediaAsset => asset !== null);
-    return assets.find((asset) => asset.videoUrl) ?? assets[0] ?? null;
+    const cover = assets.find((asset) => asset.imageUrl || asset.posterUrl);
+    const fallback = safeMediaUrl(media.media_url);
+    return cover ?? (fallback ? { imageUrl: fallback } : null);
   }
   const url = safeMediaUrl(media.media_url);
-  if (!url) return null;
   if (media.media_type === "VIDEO") {
-    return { videoUrl: url, posterUrl: safeMediaUrl(media.thumbnail_url) ?? undefined };
+    const posterUrl = safeMediaUrl(media.thumbnail_url);
+    return url || posterUrl ? { ...(url ? { videoUrl: url } : {}), ...(posterUrl ? { posterUrl } : {}) } : null;
   }
-  return media.media_type === "IMAGE" ? { imageUrl: url } : null;
+  return media.media_type === "IMAGE" && url ? { imageUrl: url } : null;
 }

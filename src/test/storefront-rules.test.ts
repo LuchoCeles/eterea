@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
+import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, instagramProfileUrl, productWithoutOffers, recentInstagramPosts, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
 
 const product = { id: "real", name: "Prenda", category: "Vestidos", price: 45000, oldPrice: 60000, tag: "-25%", image: "" };
 
@@ -55,5 +55,24 @@ describe("Reglas de lanzamiento de Etérea", () => {
     assert.deepEqual(visibleInstagramPosts(posts), [
       { ...posts[0], url: "https://www.instagram.com/reel/ABC123/", kind: "reel" },
     ]);
+  });
+
+  it("ordena el feed real, elimina duplicados y conserva candidatas para seis portadas", () => {
+    const media = Array.from({ length: 13 }, (_, index) => ({
+      id: String(index), url: `https://www.instagram.com/p/P${index}/`,
+      permalink: `https://www.instagram.com/p/P${index}/`,
+      timestamp: new Date(Date.UTC(2026, 9, index + 1)).toISOString(),
+    }));
+    const posts = recentInstagramPosts([media[0], ...media.reverse(),
+      { ...media[0], id: "duplicado" },
+      { id: "ajeno", permalink: "https://otro.sitio/p/X/", timestamp: "2026-10-30T00:00:00Z" },
+    ]);
+    assert.equal(posts.length, 12);
+    assert.equal(posts[0]?.id, "12");
+    assert.equal(posts.at(-1)?.id, "1");
+    assert.equal(new Set(posts.map((post) => post.url)).size, 12);
+    assert.equal(recentInstagramPosts(posts.slice(0, 3).map((post, index) => ({
+      ...post, permalink: post.url, timestamp: new Date(Date.UTC(2026, 9, 13 - index)).toISOString(),
+    })), 6).length, 3);
   });
 });

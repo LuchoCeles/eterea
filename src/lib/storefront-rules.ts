@@ -63,3 +63,22 @@ export function visibleInstagramPosts(posts: InstagramPost[]): InstagramPost[] {
     return url ? [{ ...post, url, kind: url.includes("/reel/") ? "reel" as const : "post" as const }] : [];
   });
 }
+
+export function recentInstagramPosts(items: unknown, limit = 12): InstagramPost[] {
+  if (!Array.isArray(items)) return [];
+  const candidates = items.flatMap((item: { id?: unknown; permalink?: unknown; timestamp?: unknown }) => {
+    if (typeof item?.id !== "string" || typeof item.permalink !== "string" || typeof item.timestamp !== "string") return [];
+    const url = instagramPermalink(item.permalink);
+    const publishedAt = Date.parse(item.timestamp);
+    return url && Number.isFinite(publishedAt) ? [{
+      id: item.id, url, publishedAt,
+      kind: url.includes("/reel/") ? "reel" as const : "post" as const,
+    }] : [];
+  }).sort((a, b) => b.publishedAt - a.publishedAt);
+  const seen = new Set<string>();
+  return candidates.flatMap((item) => {
+    if (seen.has(item.url)) return [];
+    seen.add(item.url);
+    return [{ id: item.id, url: item.url, image: "", title: "", kind: item.kind }];
+  }).slice(0, limit);
+}
