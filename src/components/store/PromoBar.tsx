@@ -16,11 +16,11 @@ export function PromoBar() {
 
   if (!messages.length) return null;
   return (
-    <div className="overflow-hidden bg-primary text-primary-foreground">
+    <div className="overflow-hidden bg-black text-white">
       <p className="sr-only">Anuncios: {messages.join(". ")}</p>
       <div className="animate-promo-marquee flex w-max whitespace-nowrap" style={{ animationDuration: `${duration}s` }} aria-hidden="true">
         {Array.from({ length: 2 }).map((_, copy) => (
-          <div key={copy} className="flex min-w-[100vw] shrink-0 items-center gap-8 py-3 pr-8 text-[10px] font-medium uppercase sm:text-xs">
+          <div key={copy} className="flex min-w-[100vw] shrink-0 items-center gap-8 py-2 pr-8 text-[10px] font-medium uppercase sm:text-xs">
             {tickerMessages.map((message, index) => (
               <span key={`${index}-${message}`} className="flex shrink-0 items-center gap-8">
                 {message}

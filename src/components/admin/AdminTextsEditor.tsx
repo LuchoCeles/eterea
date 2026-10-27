@@ -5,13 +5,7 @@ import { hasUnsavedChanges, useAdminSave } from "@/components/admin/AdminSavePro
 import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility";
 import { AdminHomeCategoriesEditor } from "@/components/admin/AdminHomeCategoriesEditor";
 import { SharedImageField } from "@/components/admin/SharedImageField";
-import {
-  AddButton,
-  CollapsibleCard,
-  Field,
-  ListControls,
-  useList,
-} from "@/components/admin/AdminEditorFields";
+import { CollapsibleCard, Field } from "@/components/admin/AdminEditorFields";
 import type { TextSectionKey, Texts } from "@/lib/content";
 
 function SectionSaveButton({ section, label, value }: { section: TextSectionKey; label: string; value: Texts[TextSectionKey] }) {
@@ -39,13 +33,10 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
   const value: Texts = {
     ...savedValue,
     homeSections: get("homeSections"), homeCategoryCards: get("homeCategoryCards"),
-    benefits: get("benefits"), split: get("split"), club: get("club"),
-    marquee: get("marquee"), editorial: get("editorial"),
+    split: get("split"), club: get("club"),
   };
   const set = <K extends TextSectionKey>(key: K, next: Texts[K]) =>
     changeText(key, savedValue[key], next);
-  const benefits = useList(value.benefits, (next) => set("benefits", next));
-  const marquee = useList(value.marquee, (next) => set("marquee", next));
   return (
     <div className="space-y-2 sm:space-y-4">
       <CollapsibleCard
@@ -71,34 +62,6 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
           onChange={(cards) => set("homeCategoryCards", cards)}
           onUploaded={(url) => uploadedText("homeCategoryCards", savedValue.homeCategoryCards, [url])}
         />
-      </CollapsibleCard>
-      <CollapsibleCard
-        title="Franja publicitaria"
-        summary={`${value.benefits.length} mensajes de marca · debajo de los banners, como la barra superior`}
-        right={<SectionSaveButton section="benefits" label="Franja publicitaria" value={savedValue.benefits} />}
-      >
-        <div className="space-y-2 md:grid md:grid-cols-3 md:items-start">
-          {value.benefits.map((benefit, index) => (
-            <CollapsibleCard
-              key={index}
-              title={`Mensaje ${index + 1}`}
-              summary={benefit.t || "Sin título"}
-            >
-              <div className="space-y-3">
-                <Field
-                  label="Texto principal"
-                  value={benefit.t}
-                  onChange={(next) => benefits.set(index, { t: next })}
-                />
-                <Field
-                  label="Texto secundario"
-                  value={benefit.d}
-                  onChange={(next) => benefits.set(index, { d: next })}
-                />
-              </div>
-            </CollapsibleCard>
-          ))}
-        </div>
       </CollapsibleCard>
       <CollapsibleCard title="Banner de oferta" summary="Banner con foto" right={<SectionSaveButton section="split" label="Banner de oferta" value={savedValue.split} />}>
         <div className="grid gap-4 md:grid-cols-[auto_1fr]">
@@ -161,76 +124,6 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
             value={value.club.cta}
             onChange={(next) => set("club", { ...value.club, cta: next })}
           />
-        </div>
-      </CollapsibleCard>
-      <CollapsibleCard title="Cinta en movimiento" summary={`${value.marquee.length} textos`} right={<SectionSaveButton section="marquee" label="Cinta en movimiento" value={savedValue.marquee} />}>
-        <div className="space-y-2">
-          {value.marquee.map((message, index) => (
-            <CollapsibleCard
-              key={index}
-              title={`Texto ${index + 1}`}
-              summary={message || "Texto vacío"}
-              right={
-                <ListControls
-                  i={index}
-                  len={value.marquee.length}
-                  move={marquee.move}
-                  remove={marquee.remove}
-                />
-              }
-            >
-              <Field
-                label="Texto"
-                value={message}
-                onChange={(next) =>
-                  set(
-                    "marquee",
-                    value.marquee.map((item, current) => (current === index ? next : item)),
-                  )
-                }
-              />
-            </CollapsibleCard>
-          ))}
-        </div>
-        <AddButton onClick={() => marquee.add("Nuevo texto")}>Agregar texto</AddButton>
-      </CollapsibleCard>
-      <CollapsibleCard
-        title="Sección de la marca"
-        summary={value.editorial.title || "Foto y texto institucional"}
-        right={<SectionSaveButton section="editorial" label="Sección de la marca" value={savedValue.editorial} />}
-      >
-        <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-          <SharedImageField
-            label="Foto"
-            image={value.editorial.img}
-            productId={value.editorial.productId}
-            section="marca"
-            onUploaded={(url) => uploadedText("editorial", savedValue.editorial, [url])}
-            onChange={({ image, productId }) => set("editorial", { ...value.editorial, img: image, productId })}
-          />
-          <div className="grid gap-3">
-            <Field
-              label="Texto chico"
-              value={value.editorial.kicker}
-              onChange={(next) => set("editorial", { ...value.editorial, kicker: next })}
-            />
-            <Field
-              label="Título"
-              value={value.editorial.title}
-              onChange={(next) => set("editorial", { ...value.editorial, title: next })}
-            />
-            <Field
-              label="Texto"
-              multiline
-              value={value.editorial.text}
-              onChange={(next) => set("editorial", { ...value.editorial, text: next })}
-            />
-            <Field
-              label="Enlace"
-              value={value.editorial.cta}
-              onChange={(next) => set("editorial", { ...value.editorial, cta: next })}
-            />
-          </div>
         </div>
       </CollapsibleCard>
     </div>

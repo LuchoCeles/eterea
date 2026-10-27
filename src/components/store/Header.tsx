@@ -13,7 +13,7 @@ import type { HomeSections } from "@/lib/content";
 const links: { label: string; href: string; section?: keyof HomeSections }[] = [
   { label: "Lo nuevo", href: "/#nuevo", section: "newArrivals" },
   { label: "Prendas", href: "/productos" },
-  { label: "New Concept", href: "/#new-concept", section: "editorial" },
+  { label: "Quiénes somos", href: "/quienes-somos" },
   { label: "Instagram", href: "/#instagram", section: "instagram" },
 ];
 
@@ -90,7 +90,7 @@ export function Header({
             <SheetDescription>New Concept</SheetDescription>
             <nav className="mt-12 flex flex-col">
               {[...links.filter((link) => !link.section || homeSections[link.section]), ...(hasSale ? [{ label: "Descuentos", href: "/#descuentos" }] : [])].map((link) => (
-                <SheetClose asChild key={link.label}><a href={link.href} className="flex items-center justify-between border-b py-5 font-display text-2xl">{link.label}<ArrowUpRight className="h-4 w-4" /></a></SheetClose>
+                <SheetClose asChild key={link.label}><Link href={link.href} className="flex items-center justify-between border-b py-5 font-display text-2xl">{link.label}<ArrowUpRight className="h-4 w-4" /></Link></SheetClose>
               ))}
               {isAdmin && <SheetClose asChild><Link href="/admin" className="flex items-center justify-between border-b py-5 font-display text-2xl">Administración<LayoutDashboard className="h-4 w-4" /></Link></SheetClose>}
             </nav>

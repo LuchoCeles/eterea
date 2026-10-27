@@ -24,7 +24,7 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const isKnownProduct = productPath && visibleProducts.some((product) => (
     pathname === `/productos/${productSlug(product, products)}` || pathname === `/productos/${product.id}`
   ));
-  const isStorePage = ["/", "/auth", "/productos"].includes(pathname) || isKnownProduct;
+  const isStorePage = ["/", "/auth", "/productos", "/quienes-somos"].includes(pathname) || isKnownProduct;
 
   if (!isStorePage) return null;
 
