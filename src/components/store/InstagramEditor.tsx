@@ -24,11 +24,10 @@ export function InstagramEditor({
   return (
     <div className="space-y-3 sm:space-y-5">
       <p className="text-sm leading-6 text-muted-foreground">
-        Las publicaciones que cargues acá se muestran en la tienda. Si la lista está vacía
-        y Instagram está conectado, se muestran sus últimas publicaciones. Pegá enlaces
-        de publicaciones o reels de la cuenta vinculada. Cargá una portada de cada publicación
-        para mostrarla en la galería. Si la cuenta está conectada, se prioriza la imagen que entrega
-        Instagram; los reels se abren en la cuenta de la marca.
+        Si @eterea.newconcept está conectada, el Home muestra sus últimas publicaciones desde Instagram.
+        Esta lista manual se usa mientras no haya conexión. Pegá enlaces de publicaciones o reels
+        reales de la marca y cargá una portada para cada uno. Al tocar una imagen, se abre
+        la publicación en Instagram.
       </p>
       {value.map((post) => (
         <CollapsibleCard

@@ -19,10 +19,12 @@ export default async function HomePage() {
 
 async function InstagramContent({ content, instagramConnected }: { content: ContentSnapshot; instagramConnected: boolean }) {
   const connectedToEterea = instagramConnected && content.contact.instagramUsername.toLowerCase() === "eterea.newconcept";
-  let posts = visibleInstagramPosts(content.instagram);
-  if (!posts.length && connectedToEterea) {
-    posts = visibleInstagramPosts((await loadRecentInstagramPosts()) ?? []);
-  }
-  const instagramMediaAssets = connectedToEterea ? await loadInstagramMediaAssets(posts.slice(0, 12)) : {};
-  return <InstagramSection posts={posts} mediaAssets={instagramMediaAssets} />;
+  const posts = connectedToEterea
+    ? visibleInstagramPosts((await loadRecentInstagramPosts()) ?? [])
+    : visibleInstagramPosts(content.instagram);
+  const instagramMediaAssets = connectedToEterea ? await loadInstagramMediaAssets(posts, true) : {};
+  const covers = Object.fromEntries(Object.entries(instagramMediaAssets).map(([url, asset]) => [url, {
+    imageUrl: asset.imageUrl, posterUrl: asset.posterUrl,
+  }]));
+  return <InstagramSection posts={posts} mediaAssets={covers} />;
 }
