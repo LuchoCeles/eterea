@@ -61,7 +61,7 @@ export function InstagramConnection() {
     >
       <form onSubmit={save} className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Conectá @eterea.newconcept para mostrar sus últimas publicaciones en el celular del Home.
+          Vinculá la cuenta profesional de Instagram de la marca para mostrar sus últimas publicaciones en el Home.
         </p>
         <p className="text-sm" role="status">
           {status === "loading" && "Consultando conexión…"}

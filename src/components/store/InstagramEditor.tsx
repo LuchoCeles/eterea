@@ -24,7 +24,7 @@ export function InstagramEditor({
   return (
     <div className="space-y-3 sm:space-y-5">
       <p className="text-sm leading-6 text-muted-foreground">
-        Si @eterea.newconcept está conectada, el Home muestra sus últimas publicaciones desde Instagram.
+        Si la cuenta de Instagram de la marca está conectada, el Home muestra sus últimas publicaciones automáticamente.
         Esta lista manual se usa mientras no haya conexión. Pegá enlaces de publicaciones o reels
         reales de la marca y cargá una portada para cada uno. Al tocar una imagen, se abre
         la publicación en Instagram.
