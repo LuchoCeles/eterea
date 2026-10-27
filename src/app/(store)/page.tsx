@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Storefront } from "@/components/store/Storefront";
 import { InstagramSection } from "@/components/store/InstagramSection";
-import { loadRecentInstagramPosts, loadInstagramMediaAssets, isInstagramEmbedUnavailable } from "@/server/instagram";
+import { loadRecentInstagramPosts, loadInstagramMediaAssets } from "@/server/instagram";
 import { loadStorefrontData } from "@/server/storefront-content";
 import { visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { ContentSnapshot } from "@/lib/content";
@@ -18,15 +18,13 @@ export default async function HomePage() {
 }
 
 async function InstagramContent({ content, instagramConnected }: { content: ContentSnapshot; instagramConnected: boolean }) {
-  let posts = visibleInstagramPosts(content.instagram);
-  if (!posts.length && instagramConnected) {
-    posts = visibleInstagramPosts((await loadRecentInstagramPosts()) ?? []);
-  }
-  const instagramMediaAssets = instagramConnected ? await loadInstagramMediaAssets(posts) : {};
-  const unavailableChecks = await Promise.all(posts.filter((post) => !instagramMediaAssets[post.url]).map(async (post) => ({
-    url: post.url,
-    unavailable: await isInstagramEmbedUnavailable(post.url),
-  })));
-  const unavailableInstagramUrls = unavailableChecks.filter((post) => post.unavailable).map((post) => post.url);
-  return <InstagramSection posts={posts} unavailableUrls={unavailableInstagramUrls} mediaAssets={instagramMediaAssets} />;
+  const connectedToEterea = instagramConnected && content.contact.instagramUsername.toLowerCase() === "eterea.newconcept";
+  const posts = connectedToEterea
+    ? visibleInstagramPosts((await loadRecentInstagramPosts()) ?? [])
+    : visibleInstagramPosts(content.instagram);
+  const instagramMediaAssets = connectedToEterea ? await loadInstagramMediaAssets(posts, true) : {};
+  const covers = Object.fromEntries(Object.entries(instagramMediaAssets).map(([url, asset]) => [url, {
+    imageUrl: asset.imageUrl, posterUrl: asset.posterUrl,
+  }]));
+  return <InstagramSection posts={posts} mediaAssets={covers} />;
 }

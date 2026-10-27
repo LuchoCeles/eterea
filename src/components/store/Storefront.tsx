@@ -7,6 +7,7 @@ import { ProductCarousel } from "@/components/store/ProductCarousel";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ProductImage } from "@/components/store/ProductImage";
+import { ContactSection } from "@/components/store/ContactSection";
 import { Button } from "@/components/ui/button";
 import { instagramProfileUrl, productWithoutOffers, visibleAnnouncements, visibleSaleProducts } from "@/lib/storefront-rules";
 import { resolveImageSource } from "@/lib/image-source";
@@ -138,9 +139,6 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
           </div>
         </section>}
 
-        {/* Instagram */}
-        {instagramSection}
-
         {/* Newsletter */}
          {homeSections.newsletter && <section className="bg-primary text-primary-foreground">
           <div className="mx-auto grid max-w-[1600px] gap-8 px-4 py-16 md:grid-cols-2 md:items-end md:px-8">
@@ -148,6 +146,10 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
             <div><p className="max-w-md text-sm leading-7 text-primary-foreground/80">Encontrá novedades e inspiración en nuestro Instagram.</p>{instagramUrl && <Button asChild variant="outline" className="mt-6 h-12 rounded-none border-primary-foreground/40 bg-transparent text-primary-foreground"><a href={instagramUrl} target="_blank" rel="noreferrer">Seguir a Etérea <ArrowUpRight /></a></Button>}</div>
           </div>
         </section>}
+
+        {/* Instagram y contacto */}
+        {instagramSection}
+        <ContactSection />
       </main>
 
       <footer className="bg-background">

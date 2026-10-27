@@ -46,7 +46,7 @@ export function InstagramConnection() {
       setToken("");
       setStatus("saved");
       setUsername(result.username ?? null);
-      toast.success("Token guardado. Los videos propios podrán reproducirse en el home sin iniciar sesión.");
+      toast.success("Token guardado. El Home podrá mostrar las últimas publicaciones de la cuenta.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar el token.");
     } finally {
@@ -61,7 +61,7 @@ export function InstagramConnection() {
     >
       <form onSubmit={save} className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Conectá la cuenta de Instagram que publica los videos para reproducirlos en el home sin pedir inicio de sesión a los visitantes.
+          Conectá @eterea.newconcept para mostrar sus últimas publicaciones en el celular del Home.
         </p>
         <p className="text-sm" role="status">
           {status === "loading" && "Consultando conexión…"}
