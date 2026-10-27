@@ -228,9 +228,6 @@ export async function saveInstagramConnection(token: string) {
   if (typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) {
     throw new InstagramConnectionError("Meta no devolvió una cuenta de Instagram válida.");
   }
-  if (profile.username.toLowerCase() !== "eterea.newconcept") {
-    throw new InstagramConnectionError("El token debe corresponder a @eterea.newconcept.");
-  }
   if (!Array.isArray(feed.data)) {
     throw new InstagramConnectionError("Meta no devolvió una lista de publicaciones válida.");
   }
@@ -262,8 +259,8 @@ async function refreshRecentInstagramPosts(connection: InstagramConnection, fall
     const token = await accessToken(connection);
     const profile = await getInstagram<{ id?: unknown; username?: unknown }>("/me?fields=id,username", token);
     if ((connection.accountId && profile.id !== connection.accountId) ||
-      typeof profile.username !== "string" || profile.username.toLowerCase() !== "eterea.newconcept") {
-      console.error("La conexión de Instagram no corresponde a @eterea.newconcept.");
+      typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) {
+      console.error("La cuenta conectada de Instagram cambió o devolvió datos no válidos.");
       return null;
     }
 

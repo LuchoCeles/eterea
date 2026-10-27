@@ -1,8 +1,6 @@
 import { Instagram, MessageCircle, Phone } from "lucide-react";
-
-const instagramUrl = "https://www.instagram.com/eterea.newconcept/";
-const whatsappMessage = "¡Hola! Estuve viendo la web de Etérea y me gustaría hacer una consulta.";
-const whatsappUrl = "https://wa.me/5492234495025?text=" + encodeURIComponent(whatsappMessage);
+import { useContent } from "@/components/providers/ContentProvider";
+import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 
 function WhatsAppIcon() {
   return (
@@ -14,6 +12,14 @@ function WhatsAppIcon() {
 }
 
 export function ContactSection() {
+  const contact = useContent("contact");
+  const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
+  const instagramUrl = instagramProfileUrl(instagramUsername);
+  const whatsappNumber = normalizeWhatsAppNumber(contact.whatsapp);
+  const whatsappUrl = whatsappNumber
+    ? "https://wa.me/" + whatsappNumber + "?text=" + encodeURIComponent("¡Hola! Estuve viendo la web de Etérea y me gustaría hacer una consulta.")
+    : null;
+
   return (
     <section id="contacto" aria-labelledby="contact-title" className="border-t bg-background px-4 py-16 sm:px-6 md:py-24">
       <div className="mx-auto max-w-[1000px] text-center">
@@ -23,14 +29,15 @@ export function ContactSection() {
           ¿Querés saber más sobre una prenda o hacernos una consulta? Escribinos, nos va a encantar leerte.
         </p>
         <div className="mx-auto mt-9 grid max-w-[680px] gap-3 sm:grid-cols-2">
-          <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 text-left transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sea focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
+          {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 text-left transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sea focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background text-accent"><Instagram className="h-5 w-5" strokeWidth={1.7} aria-hidden="true" /></span>
-            <span className="min-w-0"><span className="block text-sm font-medium">Escribinos por Instagram</span><span className="mt-1 block text-xs text-muted-foreground">@eterea.newconcept</span></span>
-          </a>
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 text-left transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sea focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
+            <span className="min-w-0"><span className="block text-sm font-medium">Escribinos por Instagram</span><span className="mt-1 block text-xs text-muted-foreground">@{instagramUsername}</span></span>
+          </a>}
+          {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="group flex min-h-[76px] items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 text-left transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sea focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background text-accent"><WhatsAppIcon /></span>
-            <span className="min-w-0"><span className="block text-sm font-medium">Escribinos por WhatsApp</span><span className="mt-1 block text-xs text-muted-foreground">223 449-5025</span></span>
-          </a>
+            <span className="min-w-0"><span className="block text-sm font-medium">Escribinos por WhatsApp</span><span className="mt-1 block text-xs text-muted-foreground">{contact.whatsapp}</span></span>
+          </a>}
+          {!instagramUrl && !whatsappUrl && <p className="text-sm text-muted-foreground sm:col-span-2">Todavía no hay medios de contacto configurados.</p>}
         </div>
       </div>
     </section>
