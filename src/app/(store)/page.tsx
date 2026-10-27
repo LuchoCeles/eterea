@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Storefront } from "@/components/store/Storefront";
 import { InstagramSection } from "@/components/store/InstagramSection";
-import { loadRecentInstagramPosts, loadInstagramMediaAssets, isInstagramEmbedUnavailable } from "@/server/instagram";
+import { loadRecentInstagramPosts, loadInstagramMediaAssets } from "@/server/instagram";
 import { loadStorefrontData } from "@/server/storefront-content";
 import { visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { ContentSnapshot } from "@/lib/content";
@@ -18,15 +18,11 @@ export default async function HomePage() {
 }
 
 async function InstagramContent({ content, instagramConnected }: { content: ContentSnapshot; instagramConnected: boolean }) {
+  const connectedToEterea = instagramConnected && content.contact.instagramUsername.toLowerCase() === "eterea.newconcept";
   let posts = visibleInstagramPosts(content.instagram);
-  if (!posts.length && instagramConnected) {
+  if (!posts.length && connectedToEterea) {
     posts = visibleInstagramPosts((await loadRecentInstagramPosts()) ?? []);
   }
-  const instagramMediaAssets = instagramConnected ? await loadInstagramMediaAssets(posts) : {};
-  const unavailableChecks = await Promise.all(posts.filter((post) => !instagramMediaAssets[post.url]).map(async (post) => ({
-    url: post.url,
-    unavailable: await isInstagramEmbedUnavailable(post.url),
-  })));
-  const unavailableInstagramUrls = unavailableChecks.filter((post) => post.unavailable).map((post) => post.url);
-  return <InstagramSection posts={posts} unavailableUrls={unavailableInstagramUrls} mediaAssets={instagramMediaAssets} />;
+  const instagramMediaAssets = connectedToEterea ? await loadInstagramMediaAssets(posts.slice(0, 12)) : {};
+  return <InstagramSection posts={posts} mediaAssets={instagramMediaAssets} />;
 }
