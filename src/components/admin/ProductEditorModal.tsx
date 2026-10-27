@@ -301,14 +301,14 @@ export function ProductEditorModal({
         <div className="shrink-0 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-7 sm:py-4">
           <div className="mx-auto flex max-w-[1100px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              {saving ? (
+              {saving && phase.startsWith("Subiendo") ? (
                 phase
-              ) : (
+              ) : !saving ? (
                 <>
                   <Check className="mr-1 inline h-3.5 w-3.5" />
                   Las fotos se subirán cuando guardes.
                 </>
-              )}
+              ) : null}
             </p>
             <div className="flex gap-2">
               <button

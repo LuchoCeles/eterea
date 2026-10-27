@@ -32,7 +32,7 @@ export function groupProductRelations(rows: ProductRelationRow[]) {
     images: sorted(group.images).map((item) => item.value),
     sizes: sorted(group.sizes).map((item) => item.value),
     colors: sorted(group.colors).map((item) => item.value),
-    soldOutColors: group.colors.filter((item) => item.soldOut === true || item.soldOut === 1 || item.soldOut === "1")
+    soldOutColors: group.colors.filter((item) => Number(item.soldOut) === 1)
       .map((item) => item.value),
     paymentPrices: sorted(group.payments).map((item) => {
       const price = Number(item.price);

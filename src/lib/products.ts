@@ -29,6 +29,10 @@ export function sortProductsByCreation<T extends Product>(products: T[]): T[] {
   });
 }
 
+export function isProductSoldOut(product: Product): boolean {
+  return product.soldOut === true || !!(product.colors?.length && product.colors.every((color) => product.soldOutColors?.includes(color)));
+}
+
 export function prepareProductsForSave<T extends Product>(incoming: T[], current: T[], now: number): T[] {
   const existing = new Map(current.map((product) => [product.id, product.createdAt]));
   const previousOrder = new Map(current.map((product, index) => [product.id, index]));

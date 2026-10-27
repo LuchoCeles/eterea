@@ -7,7 +7,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
 import { hasRealDiscount, instagramProfileUrl } from "@/lib/storefront-rules";
-import { catalogProducts } from "@/lib/catalog-products";
+import { catalogProducts, sortProductsByAvailability } from "@/lib/catalog-products";
 import type { StoreCategory } from "@/lib/content";
 
 const PRODUCTS_PER_PAGE = 12;
@@ -39,10 +39,11 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     const matchesSearch = !normalizedSearch || `${product.name} ${product.category}`.toLocaleLowerCase("es-AR").includes(normalizedSearch);
     return matchesCategory && matchesSearch && (!discountOnly || hasRealDiscount(product));
   });
-  const sortedProducts = [...filteredProducts];
+  let sortedProducts = [...filteredProducts];
   if (sort === "price-asc") sortedProducts.sort((a, b) => a.price - b.price);
   if (sort === "price-desc") sortedProducts.sort((a, b) => b.price - a.price);
   if (sort === "name") sortedProducts.sort((a, b) => a.name.localeCompare(b.name, "es-AR"));
+  sortedProducts = sortProductsByAvailability(sortedProducts);
   const saleCount = visibleProducts.filter(hasRealDiscount).length;
   const pageCount = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
   const visiblePage = Math.min(currentPage, Math.max(pageCount, 1));
