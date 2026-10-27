@@ -10,8 +10,6 @@ import { ProductImage } from "@/components/store/ProductImage";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import type { HomeSections } from "@/lib/content";
 
-const logo = "/assets/eterea-placeholder.svg";
-
 const links: { label: string; href: string; section?: keyof HomeSections }[] = [
   { label: "Lo nuevo", href: "/#nuevo", section: "newArrivals" },
   { label: "Prendas", href: "/productos" },
@@ -84,9 +82,9 @@ export function Header({
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto grid h-24 max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
+      <div className="relative mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 md:h-[72px] md:px-8">
         <Sheet>
-          <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label="Abrir menú" className="h-11 w-11"><Menu /></Button></SheetTrigger>
+          <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label="Abrir menú" className="h-9 w-9"><Menu /></Button></SheetTrigger>
           <SheetContent side="left" className="w-[85%] sm:max-w-sm">
             <SheetTitle className="mt-8 font-display text-3xl">Etérea</SheetTitle>
             <SheetDescription>New Concept</SheetDescription>
@@ -98,14 +96,14 @@ export function Header({
             </nav>
           </SheetContent>
         </Sheet>
-        <Link href="/" aria-label="Etérea inicio" className="block">
-          <img src={logo} alt="Etérea New Concept" className="h-[72px] w-[144px] object-contain md:h-20 md:w-[180px]" />
+        <Link href="/" aria-label="Etérea inicio" className="absolute left-1/2 -translate-x-1/2 font-display text-[21px] font-medium tracking-[0.16em] text-foreground transition-colors hover:text-accent sm:text-2xl md:text-[26px]">
+          ETÉREA
         </Link>
-        <div className="flex items-center justify-end">
-          <Link href="/productos" className="mr-3 hidden text-sm hover:text-accent sm:inline">Ver prendas</Link>
+        <div className="ml-auto flex items-center justify-end gap-1">
+          <Link href="/productos" className="mr-1 text-[11px] hover:text-accent sm:mr-2 sm:text-sm">Ver prendas</Link>
           {isAdmin && <Button asChild variant="outline" className="mr-3 hidden h-9 rounded-none px-3 sm:inline-flex"><Link href="/admin"><LayoutDashboard className="mr-2 h-4 w-4" />Admin</Link></Button>}
           <Sheet>
-            <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label={`Carrito, ${cartCount} prendas`} className="relative h-11 w-11">
+            <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label={`Carrito, ${cartCount} prendas`} className="relative h-9 w-9">
             <ShoppingBag key={cartAnimationKey} onAnimationEnd={handleCartAnimationEnd} className={`h-5 w-5 ${cartAnimationKey > 0 ? "animate-cart-bounce" : ""}`} />
             <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
               {cartCount}

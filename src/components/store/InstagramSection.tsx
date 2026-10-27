@@ -8,9 +8,8 @@ import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
 import { resolveImageSource } from "@/lib/image-source";
 import type { InstagramPost } from "@/lib/content";
 import type { InstagramMediaAsset } from "@/lib/instagram-media";
-import { visibleInstagramPosts } from "@/lib/storefront-rules";
+import { instagramProfileUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 
-const profileUrl = "https://www.instagram.com/eterea.newconcept/";
 const brandImage = "/assets/eterea-placeholder.svg";
 type InstagramCover = Pick<InstagramMediaAsset, "imageUrl" | "posterUrl">;
 
@@ -28,6 +27,9 @@ function InstagramThumbnail({ image, fromMeta, alt }: { image: string; fromMeta:
 
 export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramCover> }) {
   const products = useContent("products");
+  const contact = useContent("contact");
+  const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
+  const profileUrl = instagramProfileUrl(instagramUsername);
   const { homeSections } = useContent("texts");
   const sectionRef = useRef<HTMLElement>(null);
   const [observing, setObserving] = useState(false);
@@ -69,7 +71,7 @@ export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[
                   <img src={brandImage} alt="Identidad visual de Etérea" className="h-full w-full object-cover" width={56} height={56} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">@eterea.newconcept</p>
+                  {instagramUsername && <p className="truncate text-sm font-semibold text-foreground">@{instagramUsername}</p>}
                   <p className="text-[11px] tracking-wide text-muted-foreground">ETÉREA NEW CONCEPT</p>
                 </div>
               </div>
@@ -103,9 +105,9 @@ export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[
         </div>
         <h2 id="instagram-title" className="mt-9 font-display text-3xl leading-tight text-sea-foreground sm:text-4xl">Un poquito más de Etérea</h2>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-sea-foreground/80 sm:text-base">Descubrí nuestras novedades y acompañanos en este nuevo concepto.</p>
-        <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
+        {profileUrl && <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none">
           Seguinos en Instagram <Instagram className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-        </a>
+        </a>}
       </div>
     </section>
   );
