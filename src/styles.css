@@ -256,6 +256,12 @@ header a[aria-label="Etérea inicio"] {
   font-family: "Bodoni Moda", Georgia, serif;
 }
 
+.no-native-drag :is(a, button, img) {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
 @utility eyebrow {
   font-size: 0.7rem;
   letter-spacing: 0;

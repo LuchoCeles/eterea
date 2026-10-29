@@ -29,7 +29,10 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   if (!isStorePage) return null;
 
   return (
-    <div className="sticky top-0 z-40">
+    <div
+      className={`sticky top-0 z-40 ${pathname === "/" ? "no-native-drag" : ""}`}
+      onDragStart={pathname === "/" ? (event) => event.preventDefault() : undefined}
+    >
       {homeSections.promoBar && <PromoBar />}
       <Header
         cartItems={items}

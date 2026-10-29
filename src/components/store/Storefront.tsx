@@ -28,7 +28,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
     return category && !category.hidden && visibleProducts.some((product) => product.categoryId === category.id) ? [{ ...card, category }] : [];
   });
   return (
-    <div className="min-h-screen">
+    <div className="no-native-drag min-h-screen" onDragStart={(event) => event.preventDefault()}>
       <main>
         <HeroCarousel />
 
