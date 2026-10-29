@@ -155,14 +155,11 @@ export function ProductEditorModal({
             disabled={saving}
             className="mx-auto grid min-w-0 max-w-[1100px] items-start gap-5 border-0 p-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-6"
           >
-            <ProductStagedGallery
-              items={items}
-              onChange={setItems}
-              onObjectUrl={(url) => objectUrls.current.add(url)}
-              disabled={saving}
-            />
             <div className="space-y-5">
-              <section className="space-y-5 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+              <section
+                tabIndex={0}
+                className="no-scrollbar space-y-5 rounded-2xl border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 lg:h-[min(70dvh,640px)] lg:overflow-y-auto"
+              >
                 <div>
                   <h3 className="text-base font-semibold">Información del producto</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -196,7 +193,6 @@ export function ProductEditorModal({
                       <option value="nuevo">Lo nuevo</option>
                       <option value="sale">Ofertas</option>
                     </select>
-                    <span className="font-normal">Sin sección: aparece en el catálogo, pero no en el inicio.</span>
                   </label>
                 </div>
                 <label className="flex items-center justify-between gap-3 rounded-xl border bg-secondary/30 px-4 py-3">
@@ -243,7 +239,18 @@ export function ProductEditorModal({
                   />
                 </div>
               </section>
-              <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+              <ProductStagedGallery
+                items={items}
+                onChange={setItems}
+                onObjectUrl={(url) => objectUrls.current.add(url)}
+                disabled={saving}
+              />
+            </div>
+            <div className="space-y-5">
+              <section
+                tabIndex={0}
+                className="no-scrollbar space-y-4 rounded-2xl border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 lg:h-[min(70dvh,640px)] lg:overflow-y-auto"
+              >
                 <div>
                   <h3 className="text-base font-semibold">Precios y etiquetas</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
