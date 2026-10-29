@@ -79,6 +79,7 @@ export function Header({
   isAdmin: boolean;
 }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [cartAnimationKey, setCartAnimationKey] = useState(0);
   const [sectionRequest, setSectionRequest] = useState(0);
   const previousCartAddCount = useRef(cartAddCount);
@@ -146,6 +147,7 @@ export function Header({
 
   function handleSectionLinkClick(event: MouseEvent<HTMLAnchorElement>, href: string) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setMenuOpen(false);
     if (!href.startsWith("/#") || pathname !== "/") return;
 
     event.preventDefault();
@@ -172,7 +174,7 @@ export function Header({
   return (
     <header className="border-b bg-background">
       <div className="relative mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 md:h-[72px] md:px-8">
-        <Sheet>
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label="Abrir menú" className="h-9 w-9"><Menu /></Button></SheetTrigger>
           <SheetContent
             side="left"
@@ -186,7 +188,7 @@ export function Header({
             <SheetDescription>New Concept</SheetDescription>
             <nav className="mt-12 flex flex-col">
               {[...links.filter((link) => !link.section || homeSections[link.section]), ...(hasSale ? [{ label: "Descuentos", href: "/#descuentos" }] : [])].map((link) => (
-                <SheetClose asChild key={link.label}><Link href={link.href} scroll={!link.href.startsWith("/#")} onClick={(event) => handleSectionLinkClick(event, link.href)} className="group flex items-center justify-between border-b py-5 font-display text-2xl transition-colors duration-200 hover:text-accent focus-visible:text-accent motion-reduce:transition-none">{link.label}<ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transition-none" /></Link></SheetClose>
+                <Link key={link.label} href={link.href} scroll={!link.href.startsWith("/#")} onClick={(event) => handleSectionLinkClick(event, link.href)} className="group flex items-center justify-between border-b py-5 font-display text-2xl transition-colors duration-200 hover:text-accent focus-visible:text-accent motion-reduce:transition-none">{link.label}<ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transition-none" /></Link>
               ))}
             </nav>
           </SheetContent>
