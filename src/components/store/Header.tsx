@@ -82,6 +82,7 @@ export function Header({
   const [cartAnimationKey, setCartAnimationKey] = useState(0);
   const [sectionRequest, setSectionRequest] = useState(0);
   const previousCartAddCount = useRef(cartAddCount);
+  const menuTitleRef = useRef<HTMLHeadingElement>(null);
   const isCartAnimating = useRef(false);
   const hasPendingCartAnimation = useRef(false);
 
@@ -173,12 +174,19 @@ export function Header({
       <div className="relative mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 md:h-[72px] md:px-8">
         <Sheet>
           <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label="Abrir menú" className="h-9 w-9"><Menu /></Button></SheetTrigger>
-          <SheetContent side="left" className="w-[85%] sm:max-w-sm">
-            <SheetTitle className="mt-8 font-display text-3xl">Etérea</SheetTitle>
+          <SheetContent
+            side="left"
+            className="w-[85%] sm:max-w-sm"
+            onOpenAutoFocus={(event) => {
+              event.preventDefault();
+              menuTitleRef.current?.focus();
+            }}
+          >
+            <SheetTitle ref={menuTitleRef} tabIndex={-1} className="mt-8 font-display text-3xl outline-none">Etérea</SheetTitle>
             <SheetDescription>New Concept</SheetDescription>
             <nav className="mt-12 flex flex-col">
               {[...links.filter((link) => !link.section || homeSections[link.section]), ...(hasSale ? [{ label: "Descuentos", href: "/#descuentos" }] : [])].map((link) => (
-                <SheetClose asChild key={link.label}><Link href={link.href} scroll={!link.href.startsWith("/#")} onClick={(event) => handleSectionLinkClick(event, link.href)} className="flex items-center justify-between border-b py-5 font-display text-2xl">{link.label}<ArrowUpRight className="h-4 w-4" /></Link></SheetClose>
+                <SheetClose asChild key={link.label}><Link href={link.href} scroll={!link.href.startsWith("/#")} onClick={(event) => handleSectionLinkClick(event, link.href)} className="group flex items-center justify-between border-b py-5 font-display text-2xl transition-colors duration-200 hover:text-accent focus-visible:text-accent motion-reduce:transition-none">{link.label}<ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-focus-visible:-translate-y-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transition-none" /></Link></SheetClose>
               ))}
             </nav>
           </SheetContent>
