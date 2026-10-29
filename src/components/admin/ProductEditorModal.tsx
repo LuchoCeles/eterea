@@ -272,6 +272,7 @@ export function ProductEditorModal({
                 />
                 <ProductPaymentPricesEditor
                   basePrice={product.price}
+                  oldPrice={product.oldPrice}
                   prices={product.paymentPrices ?? []}
                   onChange={(paymentPrices) =>
                     patch({ paymentPrices: paymentPrices.length ? paymentPrices : undefined })
