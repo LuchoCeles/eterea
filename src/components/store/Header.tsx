@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ShoppingBag, Menu, ArrowUpRight, MessageCircle, Minus, Plus, Trash2, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
 import { formatPrice, type CartItem } from "@/lib/products";
@@ -16,6 +17,47 @@ const links: { label: string; href: string; section?: keyof HomeSections }[] = [
   { label: "Quiénes somos", href: "/quienes-somos" },
   { label: "Instagram", href: "/#instagram", section: "instagram" },
 ];
+
+function scrollToSection(section: HTMLElement) {
+  const startY = window.scrollY;
+  const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  const targetY = Math.min(maxY, Math.max(0, startY + section.getBoundingClientRect().top));
+  const distance = targetY - startY;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || Math.abs(distance) < 2) {
+    window.scrollTo(window.scrollX, targetY);
+    return () => {};
+  }
+
+  const duration = Math.min(2200, Math.max(1100, Math.abs(distance) * 0.45));
+  let frame = 0;
+  let startedAt: number | undefined;
+
+  function cancelAnimation() {
+    window.cancelAnimationFrame(frame);
+    window.removeEventListener("wheel", cancelAnimation);
+    window.removeEventListener("touchstart", cancelAnimation);
+    window.removeEventListener("pointerdown", cancelAnimation);
+    window.removeEventListener("keydown", cancelAnimation);
+  }
+
+  function animate(now: number) {
+    startedAt ??= now;
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = (1 - Math.cos(Math.PI * progress)) / 2;
+    window.scrollTo(window.scrollX, startY + distance * eased);
+
+    if (progress < 1) frame = window.requestAnimationFrame(animate);
+    else cancelAnimation();
+  }
+
+  window.addEventListener("wheel", cancelAnimation, { passive: true });
+  window.addEventListener("touchstart", cancelAnimation, { passive: true });
+  window.addEventListener("pointerdown", cancelAnimation);
+  window.addEventListener("keydown", cancelAnimation);
+  frame = window.requestAnimationFrame(animate);
+  return cancelAnimation;
+}
 
 export function Header({
   cartItems,
@@ -36,7 +78,9 @@ export function Header({
   hasSale?: boolean;
   isAdmin: boolean;
 }) {
+  const pathname = usePathname();
   const [cartAnimationKey, setCartAnimationKey] = useState(0);
+  const [sectionRequest, setSectionRequest] = useState(0);
   const previousCartAddCount = useRef(cartAddCount);
   const isCartAnimating = useRef(false);
   const hasPendingCartAnimation = useRef(false);
@@ -54,6 +98,41 @@ export function Header({
     setCartAnimationKey((current) => current + 1);
   }, [cartAddCount]);
 
+  useEffect(() => {
+    if (pathname !== "/" || !window.location.hash) return;
+
+    const sectionId = window.location.hash.slice(1);
+    if (!["nuevo", "instagram", "descuentos"].includes(sectionId)) return;
+    let observer: MutationObserver | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let cancelAnimation: (() => void) | undefined;
+
+    function tryScrollToSection() {
+      const section = document.getElementById(sectionId);
+      if (!section) return false;
+
+      cancelAnimation = scrollToSection(section);
+      return true;
+    }
+
+    if (!tryScrollToSection()) {
+      observer = new MutationObserver(() => {
+        if (tryScrollToSection()) {
+          observer?.disconnect();
+          clearTimeout(timeout);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      timeout = setTimeout(() => observer?.disconnect(), 15000);
+    }
+
+    return () => {
+      observer?.disconnect();
+      clearTimeout(timeout);
+      cancelAnimation?.();
+    };
+  }, [pathname, sectionRequest]);
+
   function handleCartAnimationEnd() {
     if (hasPendingCartAnimation.current) {
       hasPendingCartAnimation.current = false;
@@ -62,6 +141,15 @@ export function Header({
     }
 
     isCartAnimating.current = false;
+  }
+
+  function handleSectionLinkClick(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!href.startsWith("/#") || pathname !== "/") return;
+
+    event.preventDefault();
+    if (window.location.hash !== href.slice(1)) window.history.pushState(null, "", href);
+    setSectionRequest((current) => current + 1);
   }
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
@@ -90,9 +178,8 @@ export function Header({
             <SheetDescription>New Concept</SheetDescription>
             <nav className="mt-12 flex flex-col">
               {[...links.filter((link) => !link.section || homeSections[link.section]), ...(hasSale ? [{ label: "Descuentos", href: "/#descuentos" }] : [])].map((link) => (
-                <SheetClose asChild key={link.label}><Link href={link.href} className="flex items-center justify-between border-b py-5 font-display text-2xl">{link.label}<ArrowUpRight className="h-4 w-4" /></Link></SheetClose>
+                <SheetClose asChild key={link.label}><Link href={link.href} scroll={!link.href.startsWith("/#")} onClick={(event) => handleSectionLinkClick(event, link.href)} className="flex items-center justify-between border-b py-5 font-display text-2xl">{link.label}<ArrowUpRight className="h-4 w-4" /></Link></SheetClose>
               ))}
-              {isAdmin && <SheetClose asChild><Link href="/admin" className="flex items-center justify-between border-b py-5 font-display text-2xl">Administración<LayoutDashboard className="h-4 w-4" /></Link></SheetClose>}
             </nav>
           </SheetContent>
         </Sheet>
