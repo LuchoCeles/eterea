@@ -7,7 +7,7 @@ import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-m
 import { instagramPermalink, instagramProfileUrl, recentInstagramPosts } from "@/lib/storefront-rules";
 import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
 import { getInstagram, instagramAccountPath, instagramGraphApi, InstagramMetaError, validateInstagramAccount } from "@/server/instagram-meta";
-import { readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
+import { deleteStoredConnection, readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
 const refreshSeconds = 15 * 60;
 const day = 24 * 60 * 60 * 1000;
@@ -75,9 +75,9 @@ export async function loadInstagramConnectionInfo() {
 
 export async function instagramConnectionStatus() {
   const connection = await storedConnection();
-  if (!connection) return { saved: false, username: null, accountId: null };
+  if (!connection) return { saved: false, username: null };
   const profile = await readInstagramProfile(connection).catch(() => null);
-  return { saved: true, username: profile?.username ?? connection.username ?? null, accountId: connection.accountId ?? null };
+  return { saved: true, username: profile?.username ?? connection.username ?? null };
 }
 
 export async function isInstagramEmbedUnavailable(value: string): Promise<boolean> {
@@ -205,6 +205,11 @@ export async function saveInstagramConnection(token: string, accountId: string, 
   await replaceStoredConnection(data);
   recentMediaAssets.clear();
   return profile;
+}
+
+export async function disconnectInstagramConnection() {
+  await deleteStoredConnection();
+  recentMediaAssets.clear();
 }
 
 export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null> {

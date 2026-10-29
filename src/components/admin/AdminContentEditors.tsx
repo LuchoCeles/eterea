@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { InstagramEditor } from "@/components/store/InstagramEditor";
 import { TextsEditor } from "@/components/admin/AdminTextsEditor";
 import { InstagramConnection } from "@/components/admin/InstagramConnection";
@@ -60,15 +61,26 @@ export function AdminContentEditor({
     return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
   if (k === "texts") return <TextsEditor value={draft as Texts} />;
   return (
+    <SocialSettings
+      posts={draft as InstagramPost[]}
+      onChange={onChange}
+      onUploaded={(url) => onUploaded([url])}
+    />
+  );
+}
+
+function SocialSettings({ posts, onChange, onUploaded }: {
+  posts: InstagramPost[];
+  onChange: (value: InstagramPost[]) => void;
+  onUploaded: (url: string) => void;
+}) {
+  const [connected, setConnected] = useState<boolean | null>(null);
+  return (
     <div className="space-y-3 sm:space-y-5">
       <WhatsAppSettings />
-      <InstagramConnection />
-      <InstagramProfileSettings />
-      <InstagramEditor
-        value={draft as InstagramPost[]}
-        onChange={onChange}
-        onUploaded={(url) => onUploaded([url])}
-      />
+      <InstagramConnection onConnectionChange={setConnected} />
+      {connected === false && <InstagramProfileSettings />}
+      <InstagramEditor value={posts} onChange={onChange} onUploaded={onUploaded} />
     </div>
   );
 }

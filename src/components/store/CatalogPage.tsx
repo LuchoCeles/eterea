@@ -34,8 +34,11 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   });
   const categories = storeCategories.filter((item) => categoryCounts.has(item.id));
   const activeCategory = categories.find((item) => item.id === category || item.name === category)?.id ?? "";
+  const categoryProducts = activeCategory
+    ? visibleProducts.filter((product) => product.categoryId === activeCategory)
+    : visibleProducts;
   const sizeCounts = new Map<string, number>();
-  visibleProducts.forEach((product) => {
+  categoryProducts.forEach((product) => {
     for (const option of new Set(product.sizes ?? [])) {
       sizeCounts.set(option, (sizeCounts.get(option) ?? 0) + 1);
     }
@@ -46,7 +49,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     ...categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 })),
   ];
   const sizeOptions = [
-    { label: "Todos", value: "", count: visibleProducts.length },
+    { label: "Todos", value: "", count: categoryProducts.length },
     ...sizes.map((label) => ({ label, value: label, count: sizeCounts.get(label) ?? 0 })),
   ];
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
@@ -71,6 +74,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
 
   function selectCategory(value: string) {
     setCategory(value);
+    setSize("");
     setCurrentPage(1);
   }
 

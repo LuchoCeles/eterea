@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequest } from "@/server/auth";
-import { instagramConnectionStatus, InstagramConnectionError, saveInstagramConnection, validateInstagramConnection } from "@/server/instagram";
+import { disconnectInstagramConnection, instagramConnectionStatus, InstagramConnectionError, saveInstagramConnection, validateInstagramConnection } from "@/server/instagram";
 import { invalidateStorefrontContent } from "@/server/storefront-content";
 
 const connectionSchema = z.object({
@@ -52,5 +52,16 @@ export async function PUT(request: Request) {
   } catch (error) {
     const message = error instanceof InstagramConnectionError ? error.message : "No se pudo guardar la conexión de Instagram.";
     return NextResponse.json({ error: message }, { status: error instanceof InstagramConnectionError ? error.status : 500, headers: privateHeaders });
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401, headers: privateHeaders });
+  try {
+    await disconnectInstagramConnection();
+    invalidateStorefrontContent();
+    return NextResponse.json({ saved: false }, { headers: privateHeaders });
+  } catch {
+    return NextResponse.json({ error: "No se pudo desvincular la cuenta de Instagram." }, { status: 500, headers: privateHeaders });
   }
 }
