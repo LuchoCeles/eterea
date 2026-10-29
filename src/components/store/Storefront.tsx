@@ -9,16 +9,13 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ContactSection } from "@/components/store/ContactSection";
-import { Button } from "@/components/ui/button";
-import { instagramProfileUrl, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
+import { productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
 import { resolveImageSource } from "@/lib/image-source";
 import { visibleStoreProducts } from "@/lib/content";
 
 export function Storefront({ instagramSection }: { instagramSection: ReactNode }) {
   const { add } = useCart();
   const T = useContent("texts");
-  const contact = useContent("contact");
-  const instagramUrl = instagramProfileUrl(contact.instagramUsername);
   const products = useContent("products");
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
@@ -85,14 +82,6 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
         </section>}
 
         {homeSections.sale && sale.length > 0 && <ProductCarousel id="descuentos" kicker="Descuentos" title="Prendas con descuento" products={sale} onAdd={add} />}
-
-        {/* Newsletter */}
-         {homeSections.newsletter && <section className="bg-primary text-primary-foreground">
-          <div className="mx-auto grid max-w-[1600px] gap-8 px-4 py-16 md:grid-cols-2 md:items-end md:px-8">
-            <h2 className="text-4xl font-normal md:text-5xl">Sigamos cerca.</h2>
-            <div><p className="max-w-md text-sm leading-7 text-primary-foreground/80">Encontrá novedades e inspiración en nuestro Instagram.</p>{instagramUrl && <Button asChild variant="outline" className="mt-6 h-12 rounded-none border-primary-foreground/40 bg-transparent text-primary-foreground"><a href={instagramUrl} target="_blank" rel="noreferrer">Seguir a Etérea <ArrowUpRight /></a></Button>}</div>
-          </div>
-        </section>}
 
         {/* Instagram y contacto */}
         {instagramSection}

@@ -11,7 +11,6 @@ const sectionLabels: { key: keyof HomeSections; label: string }[] = [
   { key: "offerBanners", label: "Banners de ofertas" },
   { key: "sale", label: "Descuentos" },
   { key: "instagram", label: "Instagram" },
-  { key: "newsletter", label: "Invitación a seguir a Etérea" },
 ];
 
 export function HomeSectionVisibility({
