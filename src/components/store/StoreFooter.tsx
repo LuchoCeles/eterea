@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useContent } from "@/components/providers/ContentProvider";
-import { instagramProfileUrl, productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
+import { instagramProfileUrl } from "@/lib/storefront-rules";
+import { homeProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts } from "@/lib/content";
 
 const logo = "/assets/eterea-placeholder.svg";
@@ -13,9 +14,7 @@ export function StoreFooter() {
   const products = useContent("products");
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
-  const newArrivals = visibleProducts.filter((product) => product.section === "nuevo")
-    .map((product) => productWithoutOffers(product, texts.offers.enabled));
-  const sale = visibleSaleProducts(visibleProducts.filter((product) => product.section === "sale"), texts.offers.enabled);
+  const { newArrivals, sale } = homeProducts(visibleProducts, texts.offers.enabled);
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
   const columns = [
     { title: "Tienda", links: [

@@ -9,7 +9,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ContactSection } from "@/components/store/ContactSection";
-import { productWithoutOffers, visibleSaleProducts } from "@/lib/storefront-rules";
+import { homeProducts } from "@/lib/catalog-products";
 import { resolveImageSource } from "@/lib/image-source";
 import { visibleStoreProducts } from "@/lib/content";
 
@@ -20,8 +20,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
   const homeSections = T.homeSections;
-  const newArrivals = visibleProducts.filter((p) => p.section === "nuevo").map((p) => productWithoutOffers(p, T.offers.enabled));
-  const sale = visibleSaleProducts(visibleProducts.filter((p) => p.section === "sale"), T.offers.enabled);
+  const { newArrivals, sale } = homeProducts(visibleProducts, T.offers.enabled);
   const visibleHomeSections = { ...homeSections, newArrivals: homeSections.newArrivals && newArrivals.length > 0 };
   const homeCategoryCards = T.homeCategoryCards.filter((card) => !card.hidden).flatMap((card) => {
     const category = categories.find((item) => item.id === card.categoryId);

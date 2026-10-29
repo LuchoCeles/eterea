@@ -5,10 +5,9 @@ import { useCart } from "@/components/providers/CartProvider";
 import { useContent } from "@/components/providers/ContentProvider";
 import { Header } from "@/components/store/Header";
 import { PromoBar } from "@/components/store/PromoBar";
-import { catalogProducts } from "@/lib/catalog-products";
+import { homeProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts } from "@/lib/content";
 import { productSlug } from "@/lib/product-slugs";
-import { hasRealDiscount } from "@/lib/storefront-rules";
 
 export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname().replace(/\/+$/, "") || "/";
@@ -18,8 +17,9 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const { offers, homeSections } = useContent("texts");
   const contact = useContent("contact");
   const visibleProducts = visibleStoreProducts(products, categories);
-  const hasNewArrivals = visibleProducts.some((product) => product.section === "nuevo");
-  const hasSale = homeSections.sale && catalogProducts(products, categories, offers.enabled).some(hasRealDiscount);
+  const { newArrivals, sale } = homeProducts(visibleProducts, offers.enabled);
+  const hasNewArrivals = newArrivals.length > 0;
+  const hasSale = homeSections.sale && sale.length > 0;
   const productPath = pathname.startsWith("/productos/") && pathname.split("/").length === 3;
   const isKnownProduct = productPath && visibleProducts.some((product) => (
     pathname === `/productos/${productSlug(product, products)}` || pathname === `/productos/${product.id}`

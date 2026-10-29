@@ -184,17 +184,19 @@ export function ProductEditorModal({
                     }
                   />
                   <label className="flex min-w-0 flex-col gap-2 text-xs font-semibold text-muted-foreground">
-                    Sección
+                    Sección del inicio (opcional)
                     <select
-                      value={product.section}
+                      value={product.section ?? ""}
                       onChange={(event) =>
-                        patch({ section: event.target.value as StoreProduct["section"] })
+                        patch({ section: event.target.value ? event.target.value as "nuevo" | "sale" : null })
                       }
                       className="min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
+                      <option value="">Sin sección</option>
                       <option value="nuevo">Lo nuevo</option>
-                      <option value="sale">Sale</option>
+                      <option value="sale">Ofertas</option>
                     </select>
+                    <span className="font-normal">Sin sección: aparece en el catálogo, pero no en el inicio.</span>
                   </label>
                 </div>
                 <label className="flex items-center justify-between gap-3 rounded-xl border bg-secondary/30 px-4 py-3">
@@ -245,7 +247,7 @@ export function ProductEditorModal({
                 <div>
                   <h3 className="text-base font-semibold">Precios y etiquetas</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Configurá cómo se muestra el precio.
+                    Configurá cómo se muestra el precio. Si el precio anterior supera al base, se muestra como oferta cuando las ofertas están activas.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">

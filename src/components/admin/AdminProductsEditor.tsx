@@ -74,7 +74,7 @@ export function AdminProductsEditor({
       colors: [],
       soldOutColors: [],
       soldOut: false,
-      section: "nuevo",
+      section: null,
       hidden: false,
     };
     setEditingProduct(product);
@@ -163,7 +163,7 @@ export function AdminProductsEditor({
                   </td>
                   <td className="px-4 py-3 tabular-nums">{formatPrice(product.price)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {product.section === "sale" ? "Sale" : "Lo nuevo"}
+                    {product.section === "sale" ? "Ofertas" : product.section === "nuevo" ? "Lo nuevo" : "Sin sección"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatCreatedAt(product.createdAt)}

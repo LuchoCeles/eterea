@@ -33,6 +33,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const unavailable = !!product.soldOut || (colors.length > 0 && colors.every((option) => soldOutColors.has(option)));
   const paymentPrices = visiblePaymentPrices(product.paymentPrices ?? [], offersEnabled);
   const discounted = hasRealDiscount(product);
+  const discount = discounted ? Math.round((1 - product.price / (product.oldPrice ?? product.price)) * 100) : 0;
 
   function addSelectedProduct() {
     if (unavailable) {
@@ -85,6 +86,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
             {unavailable && <p className="mt-4 inline-block bg-muted px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Agotada</p>}
             {!unavailable && product.tag && <span className="eyebrow mt-5 inline-block bg-sand px-3 py-1.5 text-foreground">{product.tag}</span>}
+            {!unavailable && discounted && <span className="eyebrow mt-5 ml-2 inline-block bg-accent px-3 py-1.5 text-accent-foreground">−{discount}%</span>}
             <div className="mt-6 flex flex-wrap items-baseline gap-3 border-b pb-7">
               <p className={`text-2xl font-medium tabular-nums ${discounted ? "text-accent" : ""}`}>{formatPrice(product.price)}</p>
               {discounted && <p className="text-sm text-muted-foreground line-through">{formatPrice(product.oldPrice ?? product.price)}</p>}

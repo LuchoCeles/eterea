@@ -3,7 +3,7 @@ import type { Offers } from "@/lib/storefront-rules";
 
 export type ImageSource = { img: string; productId?: string };
 export type Slide = ImageSource & { kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
-export type StoreProduct = Product & { section: "nuevo" | "sale"; hidden?: boolean };
+export type StoreProduct = Product & { section: "nuevo" | "sale" | null; hidden?: boolean };
 export type StoreCategory = { id: string; name: string; hidden?: boolean };
 export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };

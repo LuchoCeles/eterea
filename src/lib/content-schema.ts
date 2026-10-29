@@ -50,7 +50,7 @@ const product = z.object({
   colors: productOptions.optional(),
   soldOut: z.boolean().optional(),
   soldOutColors: productOptions.optional(),
-  section: z.enum(["nuevo", "sale"]),
+  section: z.enum(["nuevo", "sale"]).nullable(),
 }).refine((item) => (item.soldOutColors ?? []).every((color) => item.colors?.includes(color)), {
   message: "Los colores agotados deben pertenecer a los colores de la prenda.",
   path: ["soldOutColors"],
