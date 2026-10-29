@@ -6,12 +6,13 @@ import { loadProductRelations } from "@/server/product-relations";
 
 type CatalogDb = Pick<Prisma.TransactionClient, "category" | "product" | "productPaymentPrice" | "productImage" | "productSize" | "productColor" | "homeCategoryCard" | "$queryRaw">;
 
-export async function loadRelationalCatalog(db: CatalogDb) {
+export async function loadRelationalCatalog(db: CatalogDb, includeCards = true) {
   const [categoryRows, productRows, cardRows, relations] = await Promise.all([
     db.category.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, name: true, hidden: true } }),
     db.product.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
-    db.homeCategoryCard.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }],
-      select: { id: true, categoryId: true, img: true, hidden: true, productId: true, position: true } }),
+    includeCards ? db.homeCategoryCard.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: { id: true, categoryId: true, img: true, hidden: true, productId: true, position: true } })
+      : Promise.resolve([]),
     loadProductRelations(db),
   ]);
   const categories: StoreCategory[] = categoryRows.map((row) => ({ id: row.id, name: row.name, hidden: row.hidden }));

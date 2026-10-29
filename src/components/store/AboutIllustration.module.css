@@ -1,0 +1,26 @@
+.fabric {
+  transform-origin: 600px 185px;
+  animation: float 9s ease-in-out infinite alternate;
+}
+
+.current {
+  animation: flow 11s ease-in-out infinite alternate;
+}
+
+.ripple {
+  animation: flow 8s ease-in-out -3s infinite alternate-reverse;
+}
+
+@keyframes float {
+  to { transform: translateY(-5px) rotate(0.7deg); }
+}
+
+@keyframes flow {
+  to { transform: translateX(9px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fabric,
+  .current,
+  .ripple { animation: none; }
+}
