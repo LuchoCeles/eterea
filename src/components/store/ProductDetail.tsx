@@ -8,6 +8,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
 import { ProductDetailPrice } from "@/components/store/ProductDetailPrice";
 import { ProductImage } from "@/components/store/ProductImage";
+import { ProductImageLightbox } from "@/components/store/ProductImageLightbox";
 import { automaticProductTag } from "@/lib/storefront-rules";
 import type { StoreProduct } from "@/lib/content";
 
@@ -16,6 +17,8 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const products = useContent("products");
   const offersEnabled = useContent("texts").offers.enabled;
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [selectionError, setSelectionError] = useState("");
@@ -26,12 +29,17 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
     const item = relatedById.get(id);
     return item ? [item] : [];
   });
-  const images = product.images?.length ? product.images : product.image ? [product.image] : [];
+  const images = product.images?.length ? product.images : [product.image ?? ""];
   const sizes = product.sizes ?? [];
   const colors = product.colors ?? [];
   const soldOutColors = new Set(product.soldOutColors ?? []);
   const unavailable = !!product.soldOut || (colors.length > 0 && colors.every((option) => soldOutColors.has(option)));
   const tag = automaticProductTag(product, offersEnabled);
+
+  function openLightbox(index: number) {
+    setLightboxImage(index);
+    setLightboxOpen(true);
+  }
 
   function addSelectedProduct() {
     if (unavailable) {
@@ -69,7 +77,9 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <section aria-label={`Fotos de ${product.name}`} className="min-w-0">
             <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
               <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
-                <ProductImage src={images[activeImage] ?? product.image} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
+                <button type="button" onClick={() => openLightbox(activeImage)} aria-label={`Ampliar foto ${activeImage + 1} de ${product.name}`} className="h-full w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
+                  <ProductImage src={images[activeImage]} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
+                </button>
                 {(unavailable || tag) && (
                   <span className={`eyebrow pointer-events-none absolute left-3 top-3 px-3 py-1.5 sm:left-4 sm:top-4 ${unavailable ? "bg-muted text-muted-foreground" : tag === "Oferta" ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
                     {unavailable ? "Agotada" : tag}
@@ -77,7 +87,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
                 )}
               </div>
               {images.length > 1 && <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
-                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => setActiveImage(index)} aria-label={`Ver foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
+                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => { setActiveImage(index); openLightbox(index); }} aria-label={`Ampliar foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
                   <ProductImage src={src} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
                 </button>)}
               </div>}
@@ -124,6 +134,8 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           </div>
         </section>}
       </main>
+
+      {lightboxOpen && <ProductImageLightbox images={images} productName={product.name} initialImage={lightboxImage} onOpenChange={setLightboxOpen} />}
 
       <footer className="border-t px-4 py-8 text-center text-xs text-muted-foreground md:px-8">© 2026 Etérea New Concept · <Link href="/productos" className="underline underline-offset-4">Volver a la tienda</Link></footer>
     </div>
