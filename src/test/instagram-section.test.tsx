@@ -78,8 +78,8 @@ describe("Galería del Home", () => {
     assert.ok(configured.includes("Sigamos cerca."));
     assert.ok(configured.includes("Descubrí nuestras novedades, inspirate con Etérea y escribinos cuando quieras."));
     assert.ok(!configured.includes("Un poquito más de Etérea"));
-    assert.ok(configured.includes('href="https://wa.me/5492235550188?text='));
-    assert.ok(configured.includes("Escribinos por WhatsApp"));
+    assert.ok(!configured.includes("wa.me/"));
+    assert.ok(!configured.includes("Escribinos por WhatsApp"));
 
     const noWhatsApp = renderInstagram({}, [], { ...defaults.contact, whatsapp: "sin número" });
     assert.ok(!noWhatsApp.includes("wa.me/"));

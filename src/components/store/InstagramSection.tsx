@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { CirclePlus, Clapperboard, Grid3X3, Heart, House, Instagram, Menu, Play, Search, UserRound, Wifi } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
-import { WhatsAppIcon } from "@/components/store/WhatsAppIcon";
 import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
 import { resolveImageSource } from "@/lib/image-source";
 import type { InstagramPost } from "@/lib/content";
 import type { InstagramMediaAsset } from "@/lib/instagram-media";
-import { instagramProfileUrl, normalizeWhatsAppNumber, visibleInstagramPosts } from "@/lib/storefront-rules";
+import { instagramProfileUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 
 type InstagramCover = Pick<InstagramMediaAsset, "imageUrl" | "posterUrl">;
 type InstagramThumbnailData = { post: InstagramPost; image: string; fromMeta: boolean };
@@ -110,10 +109,6 @@ export function InstagramSection({ posts, mediaAssets, profilePicture = null }: 
   const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
   const picture = profilePicture?.username.toLowerCase() === instagramUsername.toLowerCase() ? profilePicture : null;
   const profileUrl = instagramProfileUrl(instagramUsername);
-  const whatsappNumber = normalizeWhatsAppNumber(contact.whatsapp);
-  const whatsappUrl = whatsappNumber
-    ? "https://wa.me/" + whatsappNumber + "?text=" + encodeURIComponent("¡Hola! Estuve viendo la web de Etérea y me gustaría hacer una consulta.")
-    : null;
   const { homeSections } = useContent("texts");
   const sectionRef = useRef<HTMLElement>(null);
   const [observing, setObserving] = useState(false);
@@ -149,14 +144,11 @@ export function InstagramSection({ posts, mediaAssets, profilePicture = null }: 
           <p className="eyebrow mb-2 text-sea-foreground/70">Nuestro universo en Instagram</p>
           <h2 id="instagram-title" className="font-display text-3xl leading-tight text-sea-foreground sm:text-4xl">Sigamos cerca.</h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-sea-foreground/80 sm:text-base lg:mx-0">Descubrí nuestras novedades, inspirate con Etérea y escribinos cuando quieras.</p>
-          <div className="mt-5 flex w-full flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-            {profileUrl && <a href={profileUrl} target="_blank" rel="noopener noreferrer" aria-label={"Seguinos en Instagram @" + instagramUsername} className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
+          {profileUrl && <div className="mt-5 flex w-full flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+            <a href={profileUrl} target="_blank" rel="noopener noreferrer" aria-label={"Seguinos en Instagram @" + instagramUsername} className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
               <Instagram className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" /> Seguinos en Instagram
-            </a>}
-            {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="Escribinos por WhatsApp" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-primary bg-transparent px-6 py-3 text-sm font-medium text-primary transition-[background-color,transform,color] duration-300 hover:-translate-y-0.5 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
-              <WhatsAppIcon /> Escribinos por WhatsApp
-            </a>}
-          </div>
+            </a>
+          </div>}
         </div>
         <div className={"mx-auto mt-5 w-full max-w-[380px] transition-[opacity,transform] duration-700 ease-out motion-reduce:transform-none motion-reduce:transition-none lg:mt-0 " + (observing && !visible ? "translate-y-6 opacity-0" : "translate-y-0 opacity-100")}>
           <InstagramPhone username={instagramUsername} thumbnails={thumbnails} picture={picture} />

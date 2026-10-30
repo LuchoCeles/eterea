@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useContent } from "@/components/providers/ContentProvider";
-import { instagramProfileUrl } from "@/lib/storefront-rules";
+import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import { homeProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts } from "@/lib/content";
 
@@ -15,7 +15,13 @@ export function StoreFooter() {
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
   const { newArrivals, sale } = homeProducts(visibleProducts);
-  const instagramUrl = instagramProfileUrl(contact.instagramUsername);
+  const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
+  const instagramUrl = instagramProfileUrl(instagramUsername);
+  const whatsappNumber = normalizeWhatsAppNumber(contact.whatsapp);
+  const contactLinks = [
+    ...(whatsappNumber ? [{ name: "WhatsApp", href: `https://wa.me/${whatsappNumber}`, external: true }] : []),
+    ...(instagramUrl ? [{ name: "Instagram", href: instagramUrl, external: true }] : []),
+  ];
   const columns = [
     { title: "Tienda", links: [
       ...(texts.homeSections.newArrivals && newArrivals.length ? [{ name: "Lo nuevo", href: "/#nuevo" }] : []),
@@ -24,9 +30,8 @@ export function StoreFooter() {
     ] },
     { title: "Etérea", links: [
       { name: "Quiénes somos", href: "/quienes-somos" },
-      ...(texts.homeSections.instagram ? [{ name: "Instagram", href: "/#instagram" }] : []),
     ] },
-    { title: "Contacto", links: instagramUrl ? [{ name: "Escribinos por Instagram", href: instagramUrl, external: true }] : [] },
+    { title: "Contacto", links: contactLinks },
   ];
 
   return (
