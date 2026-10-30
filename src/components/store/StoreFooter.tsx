@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useContent } from "@/components/providers/ContentProvider";
+import { FooterCredit } from "@/components/store/FooterCredit";
 import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import { homeProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts } from "@/lib/content";
@@ -55,7 +56,10 @@ export function StoreFooter() {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground md:px-8">
         <p>© 2026 Etérea New Concept</p>
-        <img src="/assets/sticker-concha.webp" alt="" aria-hidden="true" width={512} height={459} loading="lazy" className="pointer-events-none h-12 w-14 object-contain" />
+        <div className="flex items-center gap-4">
+          <FooterCredit />
+          <img src="/assets/sticker-concha.webp" alt="" aria-hidden="true" width={512} height={459} loading="lazy" className="pointer-events-none h-12 w-14 object-contain" />
+        </div>
       </div>
     </footer>
   );

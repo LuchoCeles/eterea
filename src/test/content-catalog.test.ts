@@ -26,6 +26,14 @@ describe("URLs de productos", () => {
 });
 
 describe("Catálogo y categorías heredadas", () => {
+  it("muestra el catálogo vacío cuando no se guardó contenido", () => {
+    const products = resolveContent("products", undefined);
+    const categories = catalogCategories(null, resolveContent("texts", undefined), products);
+    assert.deepEqual(products, []);
+    assert.deepEqual(categories, []);
+    assert.deepEqual(catalogProducts(products, categories), []);
+  });
+
   it("guarda productos sin sección y los muestra solo en el catálogo", () => {
     const categories = [{ id: "vestidos", name: "Vestidos" }];
     const products = resolveContent("products", [{
