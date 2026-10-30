@@ -52,7 +52,7 @@ Las secciones vacías se distinguen de las que usan valores por defecto mediante
 
 ## Publicaciones de Instagram en el home
 
-La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta seis publicaciones recientes de la cuenta vinculada. La lista se revisa cada 15 minutos; si Meta no responde, el Home conserva la última lista recibida durante un día. Con la cuenta conectada, el servidor consulta las publicaciones propias mediante la API de Meta sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador.
+La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta nueve publicaciones recientes de la cuenta vinculada. La lista se revisa cada 15 minutos; si Meta no responde, el Home conserva la última lista recibida durante un día. Con la cuenta conectada, el servidor consulta las publicaciones propias mediante la API de Meta sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador.
 
 La integración actual usa un System User Access Token (SUAT), `instagram_basic` y `graph.facebook.com`; no usa el token del flujo clásico `graph.instagram.com` ni una renovación OAuth automática.
 
@@ -60,7 +60,9 @@ La integración actual usa un System User Access Token (SUAT), `instagram_basic`
 2. Obtené el Instagram User ID de ese activo. El ID de Instagram no es el App ID ni el Business ID.
 3. Iniciá sesión en `/auth`, abrí **Redes y contacto** (`/admin/redes-y-contacto`) y buscá **Conexión automática con Instagram**. Ingresá el token y el ID, y presioná **Validar cuenta**.
 4. Confirmá que Meta identifique el usuario esperado y presioná **Confirmar y guardar conexión**. El servidor vuelve a validar el perfil y el feed antes de guardar el token cifrado.
-5. La galería muestra hasta seis publicaciones recientes con portada disponible y conserva los enlaces a las publicaciones originales. Las URLs de portadas de Meta son temporales: se refrescan cada 15 minutos y no se guardan como URLs permanentes.
+5. La galería muestra hasta nueve publicaciones recientes con portada disponible y conserva los enlaces a las publicaciones originales. Las URLs de portadas de Meta son temporales: se refrescan cada 15 minutos y no se guardan como URLs permanentes.
+
+El avatar del iPhone consulta `profile_picture_url` junto con el ID y el usuario de la cuenta conectada. La URL no se guarda en la base ni en la caché de publicaciones; si falta, falla o pertenece a otra cuenta, se muestra el icono genérico.
 
 La base de datos de cada entorno guarda una conexión global para la tienda. El proyecto actual no ofrece conexiones por tenant ni varias cuentas simultáneas en la misma base.
 

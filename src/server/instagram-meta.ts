@@ -2,6 +2,7 @@ const graphApi = "https://graph.facebook.com/v25.0";
 
 type MetaStage = "profile" | "media";
 type InstagramProfile = { id: string; username: string };
+type InstagramPictureProfile = InstagramProfile & { profilePictureUrl: string | null };
 type MetaFailure = "token" | "permission" | "account" | "unavailable" | "invalid_response";
 
 const messages: Record<MetaFailure, string> = {
@@ -75,6 +76,23 @@ export async function validateInstagramAccount(token: string, accountId: string,
     sampleCount: feed.data.length,
   };
   return result;
+}
+
+export async function getInstagramPictureProfile(token: string, accountId: string, fetcher: typeof fetch = fetch): Promise<InstagramPictureProfile | null> {
+  const profile = await graphGet<{ id?: unknown; username?: unknown; profile_picture_url?: unknown }>(
+    `/${encodeURIComponent(accountId)}?fields=id,username,profile_picture_url`, token, "profile", fetcher,
+  );
+  if (profile.id !== accountId || typeof profile.username !== "string" || !/^[\w.]{1,30}$/.test(profile.username)) return null;
+  let profilePictureUrl: string | null = null;
+  if (typeof profile.profile_picture_url === "string") {
+    try {
+      const url = new URL(profile.profile_picture_url);
+      if (url.protocol === "https:" && !url.username && !url.password) profilePictureUrl = url.href;
+    } catch {
+      // Meta puede omitir el campo o devolver una URL temporal inválida.
+    }
+  }
+  return { id: profile.id, username: profile.username, profilePictureUrl };
 }
 
 export function instagramAccountPath(accountId: string, suffix = "") {

@@ -125,6 +125,8 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
         ...product,
         image: images[0] ?? "",
         images,
+        imageSettings: product.imageSettings?.length === images.length ? product.imageSettings : images.map(() => null),
+        coverSettings: product.coverSettings ?? null,
         description: product.description ?? "",
         sizes: product.sizes ?? [],
         colors,

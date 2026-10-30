@@ -21,9 +21,9 @@ export function CatalogProductCard({ product, onAdd }: { product: StoreProduct; 
 
   return (
     <article className="group flex h-full min-w-0 flex-col">
-      <div className="relative aspect-[4/5] overflow-hidden bg-card">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#edeae2]">
         <Link href={href} aria-label={`Ver ${product.name}`} draggable={false} className="block h-full w-full">
-          <ProductImage src={product.image} alt={product.name} loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          <ProductImage src={product.image} alt={product.name} presentation={product.coverSettings} cover loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className={`h-full w-full transition-transform duration-700 group-hover:scale-105 ${product.coverSettings ? "object-contain" : "object-cover"}`} />
         </Link>
         {(unavailable || tag) && (
           <span className={`eyebrow absolute left-3 top-3 px-3 py-1.5 ${unavailable ? "bg-muted text-muted-foreground" : tag === "Oferta" ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>

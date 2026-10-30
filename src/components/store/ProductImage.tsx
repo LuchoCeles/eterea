@@ -2,6 +2,7 @@
 
 import { PRODUCT_IMAGE_FALLBACK } from "@/lib/products";
 import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
+import type { CropSettings, ImageSettings } from "@/lib/image-presentation";
 
 export function ProductImage({
   src,
@@ -12,6 +13,8 @@ export function ProductImage({
   width,
   height,
   fetchPriority,
+  presentation,
+  cover = false,
 }: {
   src?: string | null;
   alt: string;
@@ -21,9 +24,11 @@ export function ProductImage({
   width?: number;
   height?: number;
   fetchPriority?: "high" | "low" | "auto";
+  presentation?: ImageSettings | CropSettings | null;
+  cover?: boolean;
 }) {
   const imageSrc = src?.trim() || PRODUCT_IMAGE_FALLBACK;
-  const optimized = responsiveCloudinaryImage(imageSrc);
+  const optimized = responsiveCloudinaryImage(imageSrc, presentation, cover);
 
   return (
     <img

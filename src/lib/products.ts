@@ -1,3 +1,5 @@
+import type { CropSettings, ImageSettings } from "@/lib/image-presentation";
+
 export type Product = {
   id: string;
   name: string;
@@ -10,6 +12,8 @@ export type Product = {
   tag?: string;
   image: string;
   images?: string[];
+  imageSettings?: (ImageSettings | null)[];
+  coverSettings?: CropSettings | null;
   description?: string;
   sizes?: string[];
   colors?: string[];

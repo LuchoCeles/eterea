@@ -191,12 +191,12 @@ export function Header({
             </nav>
           </SheetContent>
         </Sheet>
-        <Link href="/" aria-label="Etérea inicio" className="absolute left-1/2 -translate-x-1/2 font-display text-[21px] font-medium tracking-[0.16em] text-foreground transition-colors hover:text-accent sm:text-2xl md:text-[26px]">
-          ETÉREA
+        <Link href="/" aria-label="Etérea inicio" className="absolute left-1/2 flex min-h-11 -translate-x-1/2 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+          <img src="/assets/eterea-header-logo.svg" alt="" width={1280} height={640} className="h-auto w-20 object-contain sm:w-[120px] md:w-[132px]" />
         </Link>
         <div className="ml-auto flex items-center justify-end gap-1">
-          <Link href="/productos" className="mr-1 text-[11px] hover:text-accent sm:mr-2 sm:text-sm">Ver prendas</Link>
-          {isAdmin && <Button asChild variant="outline" className="mr-3 hidden h-9 rounded-none px-3 sm:inline-flex"><Link href="/admin"><LayoutDashboard className="mr-2 h-4 w-4" />Admin</Link></Button>}
+          <Link href="/productos" className="mr-1 hidden text-[11px] hover:text-accent sm:inline sm:mr-2 sm:text-sm">Ver prendas</Link>
+          {isAdmin && <Button asChild variant="outline" className="mr-1 inline-flex h-8 rounded-none px-2 text-xs sm:mr-3 sm:h-9 sm:px-3 sm:text-sm"><Link href="/admin"><LayoutDashboard className="mr-1 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />Admin</Link></Button>}
           <Sheet>
             <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label={`Carrito, ${cartCount} prendas`} className="relative h-9 w-9">
             <ShoppingBag key={cartAnimationKey} onAnimationEnd={handleCartAnimationEnd} className={`h-5 w-5 ${cartAnimationKey > 0 ? "animate-cart-bounce" : ""}`} />
