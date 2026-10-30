@@ -87,7 +87,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
                 )}
               </div>
               {images.length > 1 && <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
-                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => { setActiveImage(index); openLightbox(index); }} aria-label={`Ampliar foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
+                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => setActiveImage(index)} aria-label={`Mostrar foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
                   <ProductImage src={src} presentation={product.imageSettings?.[index]} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
                 </button>)}
               </div>}
