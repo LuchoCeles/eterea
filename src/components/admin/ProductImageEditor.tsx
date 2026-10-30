@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { imageFormats, imageRatio, type CropSettings, type ImageFormat, type ImageSettings } from "@/lib/image-presentation";
+import { PRODUCT_COVER_RATIO, editableImageFormats, type CropSettings, type ImageSettings } from "@/lib/image-presentation";
 
 const PREVIEW_WIDTH = 600;
 type Point = { x: number; y: number };
@@ -57,18 +57,24 @@ export function ProductImageEditor({
   onClose: () => void;
   onApply: (settings: ImageSettings | CropSettings) => void;
 }) {
+  const editableSettings = cover || !initialSettings || !("format" in initialSettings)
+    || initialSettings.format === "1:1";
+  const initialZoom = editableSettings ? initialSettings?.zoom ?? 1 : 1;
+  const initialOffset = {
+    x: editableSettings ? initialSettings?.x ?? 0 : 0,
+    y: editableSettings ? initialSettings?.y ?? 0 : 0,
+  };
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointersRef = useRef(new Map<number, Point>());
   const dragRef = useRef<{ pointerId: number; start: Point; offset: Point } | null>(null);
   const pinchRef = useRef<{ distance: number; zoom: number; focal: Point } | null>(null);
-  const zoomRef = useRef(initialSettings?.zoom ?? 1);
-  const offsetRef = useRef<Point>({ x: initialSettings?.x ?? 0, y: initialSettings?.y ?? 0 });
+  const zoomRef = useRef(initialZoom);
+  const offsetRef = useRef<Point>(initialOffset);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [format, setFormat] = useState<ImageFormat>(cover ? "16:9" : initialSettings && "format" in initialSettings ? initialSettings.format : "original");
-  const [zoom, setZoom] = useState(initialSettings?.zoom ?? 1);
-  const [offset, setOffset] = useState({ x: initialSettings?.x ?? 0, y: initialSettings?.y ?? 0 });
+  const [zoom, setZoom] = useState(initialZoom);
+  const [offset, setOffset] = useState(initialOffset);
   const [error, setError] = useState("");
-  const ratio = image ? imageRatio(format, image.naturalWidth, image.naturalHeight) : 4 / 3;
+  const ratio = cover ? PRODUCT_COVER_RATIO : 1;
   const previewHeight = Math.round(PREVIEW_WIDTH / ratio);
 
   useEffect(() => {
@@ -110,7 +116,7 @@ export function ProductImageEditor({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas && image) drawCrop(canvas, image, zoom, offset.x, offset.y);
-  }, [image, zoom, offset, format, previewHeight]);
+  }, [image, zoom, offset, previewHeight]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -232,13 +238,13 @@ export function ProductImageEditor({
 
   function apply() {
     if (!image) return;
-    if (cover && (image.naturalWidth < 16 || image.naturalHeight < 9)) {
-      setError("La foto de portada debe medir al menos 16 × 9 píxeles.");
+    if (cover && (image.naturalWidth < 4 || image.naturalHeight < 5)) {
+      setError("La foto es demasiado pequeña para usarla como portada.");
       return;
     }
     const settings = { zoom: zoomRef.current, x: offsetRef.current.x, y: offsetRef.current.y,
       width: image.naturalWidth, height: image.naturalHeight };
-    onApply(cover ? settings : { ...settings, format });
+    onApply(cover ? settings : { ...settings, format: editableImageFormats[0] });
   }
 
   return (
@@ -248,25 +254,17 @@ export function ProductImageEditor({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden border-0 p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[min(92vw,780px)] sm:rounded-2xl sm:border">
-        <DialogHeader className="border-b px-5 py-5 text-left sm:px-7">
-          <DialogTitle className="text-xl">{cover ? "Ajustar portada" : "Ajustar foto"}</DialogTitle>
+      <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden border-0 p-0 sm:h-[min(96dvh,900px)] sm:w-[min(92vw,620px)] sm:rounded-2xl sm:border">
+        <DialogHeader className="shrink-0 border-b px-5 py-5 text-left sm:px-7">
+          <DialogTitle className="text-xl">{cover ? "Ajustar portada para tarjetas" : "Ajustar foto"}</DialogTitle>
           <DialogDescription>
-            {cover ? "Las imágenes utilizadas como portada deben tener una relación de aspecto 16:9. Podés ajustar el encuadre antes de guardar." : "Elegí el formato y arrastrá para mover la foto. En el celular, usá dos dedos para acercar o alejar."}
+            {cover
+              ? "Elegí qué parte de la foto se verá en las tarjetas. Arrastrá para moverla o usá dos dedos para acercar."
+              : "Elegí qué parte de la foto se verá en la ficha del producto. Arrastrá para moverla o usá dos dedos para acercar."}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto bg-secondary/30 p-4 sm:p-7">
-          {image && !cover && <label className="w-full max-w-[420px] text-xs text-muted-foreground">Formato
-            <select value={format} onChange={(event) => {
-              setFormat(event.target.value as ImageFormat);
-              zoomRef.current = 1; offsetRef.current = { x: 0, y: 0 };
-              setZoom(1); setOffset({ x: 0, y: 0 });
-            }} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 text-sm text-foreground">
-              {imageFormats.map((item) => <option key={item} value={item}>{item === "original" ? "Original" : item}</option>)}
-            </select>
-          </label>}
-          {image && <img src={image.src} alt="Imagen original sin recortar" className="max-h-28 max-w-full object-contain" />}
-          <div className="relative w-full max-w-[420px] overflow-hidden rounded-xl border bg-background shadow-xl" style={{ aspectRatio: ratio }}>
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 overflow-hidden bg-secondary/30 p-3 sm:gap-4 sm:p-5">
+          <div className="relative flex min-h-0 min-w-0 items-center justify-center">
             <canvas
               ref={canvasRef}
               width={PREVIEW_WIDTH}
@@ -290,7 +288,7 @@ export function ProductImageEditor({
               onPointerMove={move}
               onPointerUp={endPointer}
               onPointerCancel={endPointer}
-              className="block h-full w-full touch-none cursor-grab active:cursor-grabbing"
+              className="block max-h-full max-w-full touch-none cursor-grab rounded-xl border bg-background shadow-xl active:cursor-grabbing"
               aria-label="Vista previa del recorte; arrastrá para mover, pellizcá con dos dedos o usá la rueda del mouse para ampliar"
             />
             {!image && (
@@ -299,46 +297,49 @@ export function ProductImageEditor({
               </div>
             )}
           </div>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            Usá la rueda del mouse para ampliar o reducir y arrastrá para mover la foto.
-          </p>
-          <div className="flex w-full max-w-[420px] items-center gap-3 rounded-xl border bg-background px-4 py-3">
-            <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <label htmlFor="product-image-zoom" className="sr-only">
-              Zoom de la foto
-            </label>
-            <input
-              id="product-image-zoom"
-              type="range"
-              min="1"
-              max="3"
-              step="0.01"
-              value={zoom}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                zoomRef.current = next;
-                setZoom(next);
-              }}
-              className="w-full accent-primary"
-            />
-            <span className="w-10 text-right text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
-            <button
-              type="button"
-              onClick={() => {
-                zoomRef.current = 1;
-                offsetRef.current = { x: 0, y: 0 };
-                setZoom(1);
-                setOffset({ x: 0, y: 0 });
-              }}
-              aria-label="Restablecer encuadre"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg hover:bg-secondary"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
+          <div className="mx-auto flex w-full max-w-[520px] min-w-0 flex-col gap-3">
+            <p className="text-center text-xs text-muted-foreground">
+              <span className="sm:hidden">Arrastrá para mover la foto y usá dos dedos para ampliar o reducir.</span>
+              <span className="hidden sm:inline">Usá la rueda del mouse para ampliar o reducir y arrastrá para mover la foto.</span>
+            </p>
+            <div className="flex w-full items-center gap-2 rounded-xl border bg-background px-3 py-2 sm:py-3">
+              <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <label htmlFor="product-image-zoom" className="sr-only">
+                Zoom de la foto
+              </label>
+              <input
+                id="product-image-zoom"
+                type="range"
+                min="1"
+                max="3"
+                step="0.01"
+                value={zoom}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  zoomRef.current = next;
+                  setZoom(next);
+                }}
+                className="min-w-0 flex-1 accent-primary"
+              />
+              <span className="w-10 text-right text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => {
+                  zoomRef.current = 1;
+                  offsetRef.current = { x: 0, y: 0 };
+                  setZoom(1);
+                  setOffset({ x: 0, y: 0 });
+                }}
+                aria-label="Restablecer encuadre"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg hover:bg-secondary"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+            </div>
+            {error && image && <p className="text-sm text-destructive">{error}</p>}
           </div>
-          {error && image && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        <div className="flex gap-3 border-t bg-background px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:justify-end sm:px-7">
+        <div className="flex shrink-0 gap-3 border-t bg-background px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:justify-end sm:px-7">
           <button
             type="button"
             onClick={onClose}

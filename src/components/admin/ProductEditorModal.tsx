@@ -113,7 +113,7 @@ export function ProductEditorModal({
       return;
     }
     if (needsCoverConfirmation(initial.image, items[0]?.url ?? "", items[0]?.coverSettings)) {
-      toast.error("Confirmá el encuadre 16:9 de la nueva portada antes de guardar.");
+      toast.error("Confirmá el encuadre de la nueva portada antes de guardar.");
       return;
     }
     setSaving(true);

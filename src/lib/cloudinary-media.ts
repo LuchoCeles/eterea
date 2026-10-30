@@ -1,5 +1,5 @@
 import { imageSections } from "@/lib/media";
-import { cropRegion, imageRatio, validCropSettings, type CropSettings, type ImageSettings } from "@/lib/image-presentation";
+import { PRODUCT_COVER_RATIO, cropRegion, imageRatio, validCropSettings, type CropSettings, type ImageSettings } from "@/lib/image-presentation";
 
 const CLOUDINARY_HOST = "res.cloudinary.com";
 const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -34,15 +34,15 @@ const responsiveWidths = [240, 480, 720, 960, 1280, 1920];
 export function responsiveCloudinaryImage(url: string, settings?: ImageSettings | CropSettings | null, cover = false) {
   if (!parseCloudinaryAssetUrl(url, "eterea")) return { src: url, srcSet: undefined };
   const marker = "/image/upload/";
-  const ratio = cover ? 16 / 9 : settings && "format" in settings
+  const ratio = cover ? PRODUCT_COVER_RATIO : settings && "format" in settings
     ? imageRatio(settings.format, settings.width, settings.height) : 0;
   const region = settings && ratio && validCropSettings(settings) ? cropRegion(settings, ratio) : null;
   let cropWidth = region ? Math.max(1, Math.min(settings!.width, Math.round(region.width * settings!.width))) : 0;
   let cropHeight = region ? Math.max(1, Math.min(settings!.height, Math.round(region.height * settings!.height))) : 0;
-  if (cover && region && settings!.width >= 16 && settings!.height >= 9) {
-    const units = Math.max(1, Math.floor(Math.min(region.width * settings!.width / 16, region.height * settings!.height / 9)));
-    cropWidth = units * 16;
-    cropHeight = units * 9;
+  if (cover && region && settings!.width >= 4 && settings!.height >= 5) {
+    const units = Math.max(1, Math.floor(Math.min(region.width * settings!.width / 4, region.height * settings!.height / 5)));
+    cropWidth = units * 4;
+    cropHeight = units * 5;
   }
   const cropX = region ? Math.max(0, Math.min(settings!.width - cropWidth,
     Math.round((region.left + region.width / 2) * settings!.width - cropWidth / 2))) : 0;

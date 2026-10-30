@@ -194,7 +194,7 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
         const previous = previousById.get(product.id);
         return needsCoverConfirmation(previous?.images?.[0] ?? previous?.image ?? "", first, product.coverSettings);
       })) {
-        throw new ContentValidationError("Confirmá el encuadre 16:9 de cada portada nueva antes de guardar.");
+        throw new ContentValidationError("Confirmá el encuadre de cada portada nueva antes de guardar.");
       }
       const currentCategories = savedKeys.has("categories") ? stored.categories : fallback!.snapshot.categories;
       const categories = new Map(currentCategories.map((category) => [category.id, category.name]));

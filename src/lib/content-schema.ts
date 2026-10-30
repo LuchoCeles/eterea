@@ -53,8 +53,8 @@ const product = z.object({
   image,
   images: productImages.optional(),
   imageSettings: z.array(imageSettings.nullable()).max(5).optional(),
-  coverSettings: cropSettings.refine((value) => value.width >= 16 && value.height >= 9,
-    "La foto de portada debe medir al menos 16 × 9 píxeles.").nullable().optional(),
+  coverSettings: cropSettings.refine((value) => value.width >= 4 && value.height >= 5,
+    "La foto de portada no tiene dimensiones válidas.").nullable().optional(),
   description: shortText.optional(),
   sizes: productOptions.optional(),
   colors: productOptions.optional(),
@@ -65,7 +65,7 @@ const product = z.object({
   message: "Los colores agotados deben pertenecer a los colores de la prenda.",
   path: ["soldOutColors"],
 }).refine((item) => !item.imageSettings || item.imageSettings.length === (item.images?.length ?? (item.image ? 1 : 0)), {
-  message: "Cada foto debe conservar su propio formato.", path: ["imageSettings"],
+  message: "Faltan datos de presentación de una o más fotos.", path: ["imageSettings"],
 }).refine((item) => !item.coverSettings || !!(item.images?.[0] ?? item.image), {
   message: "Elegí una foto para la portada.", path: ["coverSettings"],
 }).refine((item) => !item.coverSettings || !item.imageSettings?.[0]

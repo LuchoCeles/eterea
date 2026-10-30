@@ -75,8 +75,8 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
 
         <div className="mx-auto grid max-w-[1600px] gap-8 px-4 pb-20 md:px-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-16">
           <section aria-label={`Fotos de ${product.name}`} className="min-w-0">
-            <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
-              <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
+            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3">
+              <div className="relative aspect-square w-full overflow-hidden bg-background">
                 <button type="button" onClick={() => openLightbox(activeImage)} aria-label={`Ampliar foto ${activeImage + 1} de ${product.name}`} className="h-full w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
                   <ProductImage src={images[activeImage]} presentation={product.imageSettings?.[activeImage]} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
                 </button>
