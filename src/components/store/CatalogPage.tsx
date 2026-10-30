@@ -17,7 +17,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   const [category, setCategory] = useState(initialCategory);
   const [size, setSize] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
+  const [sort, setSort] = useState("");
   const [discountOnly, setDiscountOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
@@ -43,14 +43,8 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     }
   });
   const sizes = [...sizeCounts.keys()];
-  const categoryOptions = [
-    { label: "Todas", value: "", count: visibleProducts.length },
-    ...categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 })),
-  ];
-  const sizeOptions = [
-    { label: "Todos", value: "", count: categoryProducts.length },
-    ...sizes.map((label) => ({ label, value: label, count: sizeCounts.get(label) ?? 0 })),
-  ];
+  const categoryOptions = categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 }));
+  const sizeOptions = sizes.map((label) => ({ label, value: label, count: sizeCounts.get(label) ?? 0 }));
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
   const filteredProducts = visibleProducts.filter((product) => {
     const matchesCategory = !activeCategory || product.categoryId === activeCategory;
@@ -61,7 +55,6 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   let sortedProducts = [...filteredProducts];
   if (sort === "price-asc") sortedProducts.sort((a, b) => a.price - b.price);
   if (sort === "price-desc") sortedProducts.sort((a, b) => b.price - a.price);
-  if (sort === "name") sortedProducts.sort((a, b) => a.name.localeCompare(b.name, "es-AR"));
   sortedProducts = sortProductsByAvailability(sortedProducts);
   const saleCount = visibleProducts.filter(hasRealDiscount).length;
   const pageCount = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
@@ -73,7 +66,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
 
   function selectCategory(value: string) {
     setCategory(value);
-    setSize("");
+    if (value) setSize("");
     setCurrentPage(1);
   }
 
@@ -87,7 +80,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     setSize("");
     setSearch("");
     setDiscountOnly(false);
-    setSort("recent");
+    setSort("");
     setCurrentPage(1);
   }
 
@@ -95,7 +88,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     setCategory("");
     setSize("");
     setDiscountOnly(false);
-    setSort("recent");
+    setSort("");
     setCurrentPage(1);
   }
 

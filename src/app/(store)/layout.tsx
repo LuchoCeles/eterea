@@ -12,7 +12,7 @@ export default async function StoreLayout({ children }: { children: ReactNode })
 
   return (
     <ContentProvider initialContent={contentForStorefront(content)}>
-      <div className="min-h-screen">
+      <div className="flex min-h-svh flex-col">
         <SiteHeader isAdmin={isAdmin} />
         {children}
       </div>

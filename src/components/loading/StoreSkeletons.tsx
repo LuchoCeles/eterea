@@ -313,13 +313,13 @@ export function ProductDetailSkeleton() {
 export function AuthSkeleton() {
   return (
     <main
-      className="grid min-h-screen place-items-center bg-background px-4"
+      className="grid flex-1 place-items-center bg-background px-4 py-4"
       aria-busy="true"
       aria-label="Cargando acceso"
     >
-      <div className="w-full max-w-sm space-y-5 border bg-card p-8" aria-hidden="true">
+      <div className="w-full max-w-sm space-y-4 border bg-card p-6 sm:space-y-5 sm:p-8" aria-hidden="true">
         <div>
-          <Skeleton className="mx-auto mb-6 h-24 w-48 rounded-none" />
+          <Skeleton className="mx-auto mb-4 h-20 w-48 rounded-none sm:mb-6 sm:h-24" />
           <Skeleton className="h-3 w-24 rounded-none" />
           <Skeleton className="mt-2 h-10 w-44 rounded-none" />
           <Skeleton className="mt-3 h-10 w-full rounded-none" />
