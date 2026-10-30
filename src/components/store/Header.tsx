@@ -5,10 +5,12 @@ import { ShoppingBag, Menu, ArrowUpRight, MessageCircle, Minus, Plus, Trash2, La
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
 import { formatPrice, type CartItem } from "@/lib/products";
 import { ProductImage } from "@/components/store/ProductImage";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
+import { availableCartPayments, cartCheckout } from "@/lib/cart-checkout";
 import type { HomeSections } from "@/lib/content";
 
 const links: { label: string; href: string; section?: keyof HomeSections }[] = [
@@ -82,6 +84,7 @@ export function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartAnimationKey, setCartAnimationKey] = useState(0);
   const [sectionRequest, setSectionRequest] = useState(0);
+  const [selectedPaymentKey, setSelectedPaymentKey] = useState("");
   const previousCartAddCount = useRef(cartAddCount);
   const menuTitleRef = useRef<HTMLHeadingElement>(null);
   const isCartAnimating = useRef(false);
@@ -156,19 +159,14 @@ export function Header({
   }
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
-  const total = cartItems.reduce((amount, item) => amount + item.price * item.quantity, 0);
+  const paymentOptions = availableCartPayments(cartItems);
+  const selectedPayment = paymentOptions.find((option) => option.key === selectedPaymentKey) ?? paymentOptions[0];
   const hasPaymentPrices = cartItems.some((item) => item.paymentPrices?.length);
+  const noCommonPayment = hasPaymentPrices && paymentOptions.length === 0;
+  const checkout = cartCheckout(cartItems, selectedPayment);
   const phone = normalizeWhatsAppNumber(whatsappNumber);
-  const message = [
-    "Hola, quiero comprar estas prendas de Etérea:",
-    "",
-    ...cartItems.map((item) => "• " + item.name + " (" + [item.category, item.size && `talle ${item.size}`, item.color && `color ${item.color}`].filter(Boolean).join(", ") + ") — " + item.quantity + " × " + formatPrice(item.price) + " = " + formatPrice(item.price * item.quantity)),
-    "",
-    (hasPaymentPrices ? "Subtotal al precio base: " : "Total: ") + formatPrice(total),
-    ...(hasPaymentPrices ? ["El importe final depende de la forma de pago."] : []),
-  ].join("\n");
-  const checkoutUrl = phone && cartItems.length
-    ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(message)
+  const checkoutUrl = phone && cartItems.length && !noCommonPayment
+    ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(checkout.message)
     : null;
 
   return (
@@ -206,46 +204,70 @@ export function Header({
               {cartCount}
             </span>
             </Button></SheetTrigger>
-            <SheetContent className="flex flex-col overflow-y-auto">
+            <SheetContent className="flex h-dvh flex-col overflow-hidden">
               <SheetTitle className="mt-8 font-display text-3xl">Tu carrito</SheetTitle>
               <SheetDescription className="mt-4">
                 {cartCount ? cartCount + " " + (cartCount === 1 ? "prenda seleccionada." : "prendas seleccionadas.") : "Todavía no agregaste prendas."}
                 {cartItems.length > 0 && !phone ? " El checkout por WhatsApp todavía no está configurado." : ""}
               </SheetDescription>
               {cartItems.length > 0 && (
-                <div className="mt-6 max-h-[50vh] space-y-4 overflow-y-auto pr-1">
-                  {cartItems.map((item) => (
+                <div className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+                  {checkout.lines.map(({ item, unitPrice, discounted, total: lineTotal }) => (
                     <div key={item.lineKey} className="flex gap-3 border-b pb-4">
                       <ProductImage src={item.image} alt="" sizes="64px" className="h-20 w-16 object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">{item.name}</p>
                         {(item.size || item.color) && <p className="mt-1 text-xs text-muted-foreground">{[item.size && `Talle ${item.size}`, item.color && `Color ${item.color}`].filter(Boolean).join(" · ")}</p>}
-                        <p className="mt-1 text-xs text-muted-foreground">{formatPrice(item.price)} c/u</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{formatPrice(unitPrice)} c/u</p>
                         <div className="mt-2 flex items-center gap-2">
                           <button type="button" onClick={() => onQuantityChange(item.lineKey, item.quantity - 1)} aria-label={"Quitar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Minus className="h-3 w-3" /></button>
                           <span className="min-w-4 text-center text-xs">{item.quantity}</span>
                           <button type="button" onClick={() => onQuantityChange(item.lineKey, item.quantity + 1)} aria-label={"Agregar una unidad de " + item.name} className="grid h-7 w-7 place-items-center border hover:bg-card"><Plus className="h-3 w-3" /></button>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end justify-between">
-                        <p className="text-sm">{formatPrice(item.price * item.quantity)}</p>
+                      <div className="flex shrink-0 flex-col items-end justify-between text-right tabular-nums">
+                        <div>
+                          {discounted && <p className="text-xs text-muted-foreground line-through">{formatPrice(item.price * item.quantity)}</p>}
+                          <p className={discounted ? "mt-0.5 text-base font-semibold text-accent" : "text-sm"}>{formatPrice(lineTotal)}</p>
+                        </div>
                         <button type="button" onClick={() => onRemove(item.lineKey)} aria-label={"Quitar " + item.name + " del carrito"} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <div className="mt-auto border-t pt-5">
-                {cartItems.length > 0 && <div className="mb-4"><p className="flex justify-between font-medium"><span>{hasPaymentPrices ? "Subtotal al precio base" : "Total"}</span><span>{formatPrice(total)}</span></p>{hasPaymentPrices && <p className="mt-2 text-xs text-muted-foreground">El importe final depende de la forma de pago.</p>}</div>}
+              <div className="mt-auto shrink-0 border-t bg-background pt-5">
+                <div className="mb-4 h-44 max-h-[30dvh] overflow-y-auto pr-1">
+                  {cartItems.length > 0 && <div className="space-y-3">
+                  {paymentOptions.length > 1 && <div>
+                    <p id="cart-payment-label" className="text-sm font-medium">Medio de pago</p>
+                    <Select value={selectedPayment.key} onValueChange={setSelectedPaymentKey}>
+                      <SelectTrigger aria-labelledby="cart-payment-label" className="mt-2 h-11 rounded-none border-input bg-background text-foreground shadow-none hover:border-primary focus:ring-primary">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent side="bottom" className="z-[60] rounded-none border-border bg-background">
+                        {paymentOptions.map((option) => <SelectItem key={option.key} value={option.key} className="rounded-none focus:bg-secondary focus:text-foreground">{option.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>}
+                  {paymentOptions.length === 1 && <p className="text-sm">Medio de pago: <span className="font-medium">{selectedPayment.label}</span></p>}
+                  {checkout.discount > 0 && <>
+                    <p className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(checkout.baseTotal)}</span></p>
+                    <p className="flex justify-between text-sm text-accent"><span>Descuento</span><span>−{formatPrice(checkout.discount)}</span></p>
+                  </>}
+                  <p className="flex justify-between font-medium"><span>Total a pagar</span><span>{formatPrice(checkout.total)}</span></p>
+                  {noCommonPayment && <p className="text-xs text-accent">No hay un medio de pago disponible para todas las prendas. Revisá el carrito para continuar.</p>}
+                  </div>}
+                </div>
                 {checkoutUrl ? (
                   <SheetClose asChild>
-                    <Button asChild className="w-full rounded-none">
+                    <Button asChild className="h-11 w-full shrink-0 rounded-none">
                       <a href={checkoutUrl} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4" /> Continuar por WhatsApp</a>
                     </Button>
                   </SheetClose>
                 ) : (
-                  <Button disabled className="w-full rounded-none">
-                    <MessageCircle className="h-4 w-4" /> {cartItems.length ? "WhatsApp sin configurar" : "Agregá prendas para continuar"}
+                  <Button disabled className="h-11 w-full shrink-0 rounded-none">
+                    <MessageCircle className="h-4 w-4" /> {noCommonPayment ? "Sin medio de pago en común" : cartItems.length ? "WhatsApp sin configurar" : "Agregá prendas para continuar"}
                   </Button>
                 )}
               </div>
