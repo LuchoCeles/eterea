@@ -91,7 +91,7 @@ export function ProductCarousel({
                   key={key}
                   className="group min-w-0 basis-[calc(70%_+_1rem)] shrink-0 grow-0 pr-4 sm:basis-[calc(42%_+_1rem)] lg:basis-[calc(23.5%_+_1rem)]"
                 >
-                  <div className="relative aspect-[4/5] overflow-hidden bg-card">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#edeae2]">
                     <Link
                       href={href}
                       aria-label={`Ver ${p.name}`}
@@ -100,10 +100,12 @@ export function ProductCarousel({
                     >
                       <ProductImage
                         src={p.image}
+                        presentation={p.coverSettings}
+                        cover
                         alt={p.name}
                         loading="lazy"
                         sizes="(min-width: 1024px) 25vw, (min-width: 640px) 42vw, 70vw"
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className={`h-full w-full transition-transform duration-700 group-hover:scale-105 ${p.coverSettings ? "object-contain" : "object-cover"}`}
                       />
                     </Link>
                     {(unavailable || tag) && (

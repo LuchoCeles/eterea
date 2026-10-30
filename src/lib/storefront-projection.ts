@@ -11,6 +11,7 @@ export function productForListing(product: StoreProduct): StoreProduct {
     ...(product.oldPrice !== undefined ? { oldPrice: product.oldPrice } : {}),
     ...(product.paymentPrices ? { paymentPrices: product.paymentPrices } : {}),
     image: product.image,
+    ...(product.coverSettings ? { coverSettings: product.coverSettings } : {}),
     ...(product.sizes?.length ? { sizes: product.sizes } : {}),
     ...(product.colors?.length ? { colors: product.colors } : {}),
     ...(product.soldOut ? { soldOut: true } : {}),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { InstagramMetaError, validateInstagramAccount } from "../server/instagram-meta";
+import { getInstagramPictureProfile, InstagramMetaError, validateInstagramAccount } from "../server/instagram-meta";
 
 const accountId = "11111111111111111";
 const testToken = "token-sintetico-no-utilizable-en-meta";
@@ -10,6 +10,26 @@ function jsonResponse(value: unknown, status = 200) {
 }
 
 describe("Instagram Unified Login mediante Graph API", () => {
+  it("obtiene la foto de perfil con el permiso de perfil existente y valida la cuenta", async () => {
+    const paths: string[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      paths.push(String(input));
+      return jsonResponse({ id: accountId, username: "eterea.newconcept", profile_picture_url: "https://scontent.cdninstagram.com/profile.jpg" });
+    };
+    assert.deepEqual(await getInstagramPictureProfile(testToken, accountId, fetcher), {
+      id: accountId, username: "eterea.newconcept", profilePictureUrl: "https://scontent.cdninstagram.com/profile.jpg",
+    });
+    assert.deepEqual(paths, [`https://graph.facebook.com/v25.0/${accountId}?fields=id,username,profile_picture_url`]);
+
+    const otherAccount: typeof fetch = async () => jsonResponse({ id: "otro-id", username: "otra.cuenta", profile_picture_url: "https://scontent.cdninstagram.com/old.jpg" });
+    assert.equal(await getInstagramPictureProfile(testToken, accountId, otherAccount), null);
+    const missingPicture: typeof fetch = async () => jsonResponse({ id: accountId, username: "eterea.newconcept" });
+    assert.deepEqual(await getInstagramPictureProfile(testToken, accountId, missingPicture), {
+      id: accountId, username: "eterea.newconcept", profilePictureUrl: null,
+    });
+    const unsafePicture: typeof fetch = async () => jsonResponse({ id: accountId, username: "eterea.newconcept", profile_picture_url: "http://example.com/old.jpg" });
+    assert.equal((await getInstagramPictureProfile(testToken, accountId, unsafePicture))?.profilePictureUrl, null);
+  });
   it("valida perfil y lectura de publicaciones con el ID configurado", async () => {
     const requests: { url: string; authorization: string | null }[] = [];
     const fetcher: typeof fetch = async (input, init) => {

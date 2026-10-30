@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
 import { uploadImages } from "@/lib/media-client";
 import { productEditorSnapshot } from "@/lib/product-editor-snapshot";
+import { needsCoverConfirmation } from "@/lib/image-presentation";
 
 type Category = { id: string; name: string; hidden?: boolean };
 
@@ -47,14 +48,16 @@ export function ProductEditorModal({
   ));
   const [paymentEditorVersion, setPaymentEditorVersion] = useState(0);
   const [items, setItems] = useState<GalleryItem[]>(() =>
-    (initial.images?.length ? initial.images : initial.image ? [initial.image] : []).map((url) => ({
+    (initial.images?.length ? initial.images : initial.image ? [initial.image] : []).map((url, index) => ({
       id: crypto.randomUUID(),
       url,
+      settings: initial.imageSettings?.[index] ?? null,
+      coverSettings: index === 0 ? initial.coverSettings ?? null : null,
     })),
   );
-  const [initialSnapshot] = useState(() => productEditorSnapshot(initial, items.map((item) => item.url)));
+  const [initialSnapshot] = useState(() => productEditorSnapshot(initial, items));
   const baseline = useProductEditorBaseline(initial.id, initialSnapshot);
-  const hasChanges = productEditorSnapshot(product, items.map((item) => item.url)) !== baseline;
+  const hasChanges = productEditorSnapshot(product, items) !== baseline;
   const [saving, setSaving] = useState(false);
   const [phase, setPhase] = useState("");
   const objectUrls = useRef(new Set<string>());
@@ -109,6 +112,10 @@ export function ProductEditorModal({
       toast.error("Ingresá un precio válido.");
       return;
     }
+    if (needsCoverConfirmation(initial.image, items[0]?.url ?? "", items[0]?.coverSettings)) {
+      toast.error("Confirmá el encuadre de la nueva portada antes de guardar.");
+      return;
+    }
     setSaving(true);
     try {
       const pending = items.filter((item) => item.file);
@@ -128,11 +135,13 @@ export function ProductEditorModal({
       }
       setPhase("Guardando producto…");
       const images = nextItems.map((item) => item.url);
+      const imageSettings = nextItems.map((item) => item.settings ?? null);
+      const coverSettings = nextItems[0]?.coverSettings ?? null;
       const paymentPrices = basePayment && product.paymentPrices
         ? product.paymentPrices.map((payment, index) => index === 0 ? { ...payment, price: product.price } : payment)
         : product.paymentPrices;
       const result = await onSave(
-        { ...product, name, tag: undefined, paymentPrices, images, image: images[0] ?? "" },
+        { ...product, name, tag: undefined, paymentPrices, images, imageSettings, coverSettings, image: images[0] ?? "" },
         uploadedUrls.current,
       );
       if (result) {

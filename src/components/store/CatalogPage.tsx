@@ -197,7 +197,6 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-muted-foreground">
             <a href="/" className="hover:text-foreground">Inicio</a>
             {instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">Escribinos <ArrowUpRight className="h-3.5 w-3.5" /></a>}
-            <a href="/admin" className="hover:text-foreground">Administración</a>
           </div>
         </div>
         <div className="border-t px-4 py-4 text-center text-xs text-muted-foreground">© 2026 Etérea New Concept</div>

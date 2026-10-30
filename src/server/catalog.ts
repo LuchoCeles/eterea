@@ -30,6 +30,8 @@ export async function loadRelationalCatalog(db: CatalogDb, includeCards = true) 
       ...(row.tag ? { tag: row.tag } : {}),
       image: images[0] ?? row.image,
       images: images.length ? images : (row.image ? [row.image] : []),
+      ...(related?.imageSettings ? { imageSettings: related.imageSettings } : {}),
+      ...(related?.coverSettings ? { coverSettings: related.coverSettings } : {}),
       description: row.description ?? "",
       sizes: related?.sizes ?? [],
       colors: related?.colors ?? [],
@@ -67,6 +69,8 @@ function sameProduct(a: StoreProduct, b: StoreProduct) {
     && !!a.hidden === !!b.hidden && a.createdAt === b.createdAt
     && !!a.soldOut === !!b.soldOut
     && JSON.stringify(a.images ?? (a.image ? [a.image] : [])) === JSON.stringify(b.images ?? (b.image ? [b.image] : []))
+    && JSON.stringify(a.imageSettings ?? []) === JSON.stringify(b.imageSettings ?? [])
+    && JSON.stringify(a.coverSettings ?? null) === JSON.stringify(b.coverSettings ?? null)
     && JSON.stringify(a.sizes ?? []) === JSON.stringify(b.sizes ?? [])
     && JSON.stringify(a.colors ?? []) === JSON.stringify(b.colors ?? [])
     && JSON.stringify(a.soldOutColors ?? []) === JSON.stringify(b.soldOutColors ?? [])
@@ -102,10 +106,23 @@ export async function saveProductRows(db: CatalogDb, products: StoreProduct[], c
       createdAt: product.createdAt ? new Date(product.createdAt) : null, position,
     };
     await db.product.upsert({ where: { id: product.id }, create: { id: product.id, ...data }, update: data });
-    if (JSON.stringify(previous?.images ?? (previous?.image ? [previous.image] : [])) !== JSON.stringify(images)) {
+    if (JSON.stringify(previous?.images ?? (previous?.image ? [previous.image] : [])) !== JSON.stringify(images)
+      || JSON.stringify(previous?.imageSettings ?? []) !== JSON.stringify(product.imageSettings ?? [])
+      || JSON.stringify(previous?.coverSettings ?? null) !== JSON.stringify(product.coverSettings ?? null)) {
       await db.productImage.deleteMany({ where: { productId: product.id } });
       if (images.length) await db.productImage.createMany({
-        data: images.map((url, imagePosition) => ({ productId: product.id, position: imagePosition, url })),
+        data: images.map((url, imagePosition) => {
+          const settings = product.imageSettings?.[imagePosition];
+          const cover = imagePosition === 0 ? product.coverSettings : null;
+          const dimensions = settings ?? cover;
+          return {
+            productId: product.id, position: imagePosition, url,
+            format: settings?.format ?? null,
+            zoom: settings?.zoom ?? null, offsetX: settings?.x ?? null, offsetY: settings?.y ?? null,
+            sourceWidth: dimensions?.width ?? null, sourceHeight: dimensions?.height ?? null,
+            coverZoom: cover?.zoom ?? null, coverX: cover?.x ?? null, coverY: cover?.y ?? null,
+          };
+        }),
       });
     }
     if (JSON.stringify(previous?.sizes ?? []) !== JSON.stringify(product.sizes ?? [])) {

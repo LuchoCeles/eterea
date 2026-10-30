@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ContentProvider } from "@/components/providers/ContentProvider";
 import { SiteHeader } from "@/components/store/SiteHeader";
+import { StorageNotice } from "@/components/store/StorageNotice";
 import { isCurrentUserAdmin } from "@/server/auth";
 import { loadStorefrontContent } from "@/server/storefront-content";
 import { contentForStorefront } from "@/lib/storefront-projection";
@@ -16,6 +17,7 @@ export default async function StoreLayout({ children }: { children: ReactNode })
         <SiteHeader isAdmin={isAdmin} />
         {children}
       </div>
+      <StorageNotice />
     </ContentProvider>
   );
 }

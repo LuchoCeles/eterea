@@ -3,16 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import { CirclePlus, Clapperboard, Grid3X3, Heart, House, Instagram, Menu, Play, Search, UserRound, Wifi } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
-import { WhatsAppIcon } from "@/components/store/WhatsAppIcon";
 import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
 import { resolveImageSource } from "@/lib/image-source";
 import type { InstagramPost } from "@/lib/content";
 import type { InstagramMediaAsset } from "@/lib/instagram-media";
-import { instagramProfileUrl, normalizeWhatsAppNumber, visibleInstagramPosts } from "@/lib/storefront-rules";
+import { instagramProfileUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 
-const brandImage = "/assets/eterea-placeholder.svg";
 type InstagramCover = Pick<InstagramMediaAsset, "imageUrl" | "posterUrl">;
 type InstagramThumbnailData = { post: InstagramPost; image: string; fromMeta: boolean };
+type InstagramProfilePicture = { username: string; url: string } | null;
+
+function InstagramAvatar({ picture, small = false }: { picture: InstagramProfilePicture; small?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (picture && !failed) {
+    return <img src={picture.url} alt="" className="h-full w-full object-cover" width={small ? 24 : 58} height={small ? 24 : 58} onError={() => setFailed(true)} referrerPolicy="no-referrer" />;
+  }
+  return <UserRound className={small ? "h-full w-full text-black/60" : "h-[9cqw] w-[9cqw] text-[#9c9489]"} strokeWidth={1.5} aria-hidden="true" />;
+}
 
 function InstagramThumbnail({ image, fromMeta, alt }: { image: string; fromMeta: boolean; alt: string }) {
   const [failed, setFailed] = useState(false);
@@ -22,9 +29,7 @@ function InstagramThumbnail({ image, fromMeta, alt }: { image: string; fromMeta:
   return <img src={optimized?.src ?? image} srcSet={optimized?.srcSet} sizes={optimized?.srcSet ? "128px" : undefined} alt={alt} loading="lazy" width={128} height={128} className={className} onError={() => setFailed(true)} />;
 }
 
-function InstagramPhone({ username, thumbnails }: { username: string; thumbnails: InstagramThumbnailData[] }) {
-  const isEtereaAccount = username.toLowerCase() === "eterea.newconcept";
-
+function InstagramPhone({ username, thumbnails, picture }: { username: string; thumbnails: InstagramThumbnailData[]; picture: InstagramProfilePicture }) {
   return (
     <div className="mx-auto w-full max-w-[290px] lg:max-w-[380px] [container-type:inline-size]">
       <div className="relative w-full aspect-[1/2] rounded-[clamp(30px,13cqw,39px)] border border-[#494741] bg-[linear-gradient(135deg,#dedbd3_0%,#5d5a54_8%,#c6c2b9_15%,#302f2c_25%,#77736b_46%,#d9d6ce_69%,#45433f_100%)] p-[1.8cqw] shadow-[0_28px_58px_-36px_rgba(45,38,31,0.72)]">
@@ -54,15 +59,10 @@ function InstagramPhone({ username, thumbnails }: { username: string; thumbnails
 
             <div className="flex shrink-0 items-center gap-[4cqw] px-[4.5cqw] py-[1.3cqw]">
               <div className="flex h-[17.5cqw] w-[17.5cqw] shrink-0 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-[#e9e4dc]">
-                {isEtereaAccount ? (
-                  <img src={brandImage} alt="" className="h-full w-full object-cover" width={58} height={58} />
-                ) : (
-                  <UserRound className="h-[9cqw] w-[9cqw] text-[#9c9489]" strokeWidth={1.5} aria-hidden="true" />
-                )}
+                <InstagramAvatar key={`main:${picture?.username}:${picture?.url}`} picture={picture} />
               </div>
               <div className="min-w-0">
                 {username && <p className="truncate text-[4.4cqw] font-semibold">@{username}</p>}
-                {isEtereaAccount && <p className="mt-[1cqw] truncate text-[3.4cqw] text-black/60">ETÉREA NEW CONCEPT</p>}
               </div>
             </div>
 
@@ -93,7 +93,7 @@ function InstagramPhone({ username, thumbnails }: { username: string; thumbnails
               <Search className="h-[6.5cqw] w-[6.5cqw]" strokeWidth={1.8} />
               <CirclePlus className="h-[6.5cqw] w-[6.5cqw]" strokeWidth={1.8} />
               <Clapperboard className="h-[6.5cqw] w-[6.5cqw]" strokeWidth={1.8} />
-              <span className="flex h-[7.5cqw] w-[7.5cqw] items-center justify-center overflow-hidden rounded-full border border-black/25 bg-sand p-[0.8cqw]"><UserRound className="h-full w-full text-black/60" strokeWidth={1.5} /></span>
+              <span className="flex h-[7.5cqw] w-[7.5cqw] items-center justify-center overflow-hidden rounded-full border border-black/25 bg-sand p-[0.8cqw]"><InstagramAvatar key={`nav:${picture?.username}:${picture?.url}`} picture={picture} small /></span>
             </div>
             <div className="flex h-[7.5cqw] shrink-0 items-center justify-center bg-white" aria-hidden="true"><span className="h-[1.2cqw] w-[25cqw] rounded-full bg-black/80" /></div>
           </div>
@@ -103,15 +103,12 @@ function InstagramPhone({ username, thumbnails }: { username: string; thumbnails
   );
 }
 
-export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramCover> }) {
+export function InstagramSection({ posts, mediaAssets, profilePicture = null }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramCover>; profilePicture?: InstagramProfilePicture }) {
   const products = useContent("products");
   const contact = useContent("contact");
   const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
+  const picture = profilePicture?.username.toLowerCase() === instagramUsername.toLowerCase() ? profilePicture : null;
   const profileUrl = instagramProfileUrl(instagramUsername);
-  const whatsappNumber = normalizeWhatsAppNumber(contact.whatsapp);
-  const whatsappUrl = whatsappNumber
-    ? "https://wa.me/" + whatsappNumber + "?text=" + encodeURIComponent("¡Hola! Estuve viendo la web de Etérea y me gustaría hacer una consulta.")
-    : null;
   const { homeSections } = useContent("texts");
   const sectionRef = useRef<HTMLElement>(null);
   const [observing, setObserving] = useState(false);
@@ -147,17 +144,14 @@ export function InstagramSection({ posts, mediaAssets }: { posts: InstagramPost[
           <p className="eyebrow mb-2 text-sea-foreground/70">Nuestro universo en Instagram</p>
           <h2 id="instagram-title" className="font-display text-3xl leading-tight text-sea-foreground sm:text-4xl">Sigamos cerca.</h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-sea-foreground/80 sm:text-base lg:mx-0">Descubrí nuestras novedades, inspirate con Etérea y escribinos cuando quieras.</p>
-          <div className="mt-5 flex w-full flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-            {profileUrl && <a href={profileUrl} target="_blank" rel="noopener noreferrer" aria-label={"Seguinos en Instagram @" + instagramUsername} className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
+          {profileUrl && <div className="mt-5 flex w-full flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+            <a href={profileUrl} target="_blank" rel="noopener noreferrer" aria-label={"Seguinos en Instagram @" + instagramUsername} className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 hover:-translate-y-0.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
               <Instagram className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" /> Seguinos en Instagram
-            </a>}
-            {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="Escribinos por WhatsApp" className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-primary bg-transparent px-6 py-3 text-sm font-medium text-primary transition-[background-color,transform,color] duration-300 hover:-translate-y-0.5 hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transform-none motion-reduce:transition-none sm:w-auto">
-              <WhatsAppIcon /> Escribinos por WhatsApp
-            </a>}
-          </div>
+            </a>
+          </div>}
         </div>
         <div className={"mx-auto mt-5 w-full max-w-[380px] transition-[opacity,transform] duration-700 ease-out motion-reduce:transform-none motion-reduce:transition-none lg:mt-0 " + (observing && !visible ? "translate-y-6 opacity-0" : "translate-y-0 opacity-100")}>
-          <InstagramPhone username={instagramUsername} thumbnails={thumbnails} />
+          <InstagramPhone username={instagramUsername} thumbnails={thumbnails} picture={picture} />
         </div>
       </div>
     </section>
