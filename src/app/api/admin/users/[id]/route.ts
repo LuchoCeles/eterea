@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { hashPassword, isOwnerRequest } from "@/server/auth";
+import { isOwnerRequest } from "@/server/auth";
 import { prisma } from "@/server/prisma";
 
 const noStore = { "Cache-Control": "no-store" };
 const editUserSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   username: z.string().trim().min(3).max(191).regex(/^[a-z0-9._@+-]+$/i).optional(),
-  password: z.string().min(12).max(128).optional(),
-}).refine(({ name, username, password }) => name !== undefined || username !== undefined || password !== undefined);
+}).strict().refine(({ name, username }) => name !== undefined || username !== undefined);
 type Context = { params: Promise<{ id: string }> };
 
 async function editableUser(id: string) {
@@ -27,10 +26,10 @@ export async function PATCH(request: Request, context: Context) {
   if (!target) return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404, headers: noStore });
   const parsed = editUserSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Ingresá un nombre, un usuario válido o una contraseña de al menos 12 caracteres." }, { status: 400, headers: noStore });
+    return NextResponse.json({ error: "Ingresá un nombre o un usuario válido." }, { status: 400, headers: noStore });
   }
-  if (target.roles.some(({ role }) => role === "owner") && (parsed.data.username !== undefined || parsed.data.password !== undefined)) {
-    return NextResponse.json({ error: "El nombre del dueño se puede editar, pero sus credenciales están protegidas." }, { status: 403, headers: noStore });
+  if (target.roles.some(({ role }) => role === "owner") && parsed.data.username !== undefined) {
+    return NextResponse.json({ error: "El usuario de acceso del dueño está protegido." }, { status: 403, headers: noStore });
   }
   try {
     const user = await prisma.user.update({
@@ -38,7 +37,6 @@ export async function PATCH(request: Request, context: Context) {
       data: {
         ...(parsed.data.name !== undefined && { name: parsed.data.name }),
         ...(parsed.data.username !== undefined && { username: parsed.data.username.toLowerCase() }),
-        ...(parsed.data.password !== undefined && { passwordHash: await hashPassword(parsed.data.password) }),
       },
       select: { id: true, name: true, username: true },
     });

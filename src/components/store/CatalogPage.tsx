@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowUpRight, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
 import { CatalogSearchPanel } from "@/components/store/CatalogSearchPanel";
+import { FooterCredit } from "@/components/store/FooterCredit";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
@@ -199,7 +200,10 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
             {instagramUrl && <a href={instagramUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">Escribinos <ArrowUpRight className="h-3.5 w-3.5" /></a>}
           </div>
         </div>
-        <div className="border-t px-4 py-4 text-center text-xs text-muted-foreground">© 2026 Etérea New Concept</div>
+        <div className="flex flex-col items-center justify-between gap-2 border-t px-4 py-4 text-xs text-muted-foreground sm:flex-row md:px-8">
+          <span>© 2026 Etérea New Concept</span>
+          <FooterCredit />
+        </div>
       </footer>
     </div>
   );
