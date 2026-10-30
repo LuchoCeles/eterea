@@ -1,4 +1,4 @@
-import { categoryIdForName, newArrivals, sale, sortProductsByCreation, type Product } from "@/lib/products";
+import { categoryIdForName, sortProductsByCreation, type Product } from "@/lib/products";
 import type { Offers } from "@/lib/storefront-rules";
 
 export type ImageSource = { img: string; productId?: string };
@@ -47,10 +47,7 @@ export const defaults = {
     { img: placeholder, kicker: "Sastrería · Inspiración europea", title: "Etérea", cta: "Ver lo nuevo", align: "right", promo: "" },
     { img: placeholder, kicker: "Naturaleza · Texturas · Calma", title: "Etérea", cta: "Descubrir prendas", align: "left", promo: "" },
   ] as Slide[],
-  products: [
-    ...newArrivals.map((product) => ({ ...product, section: "nuevo" as const })),
-    ...sale.map((product) => ({ ...product, section: "sale" as const })),
-  ] as StoreProduct[],
+  products: [] as StoreProduct[],
   categories: [] as StoreCategory[],
   instagram: [] as InstagramPost[],
   contact: { whatsapp: "", instagramUsername: "" } as ContactSettings,
@@ -74,7 +71,7 @@ export const defaults = {
       { t: "Inspiración europea", d: "Una mirada delicada y actual" },
       { t: "Frescura natural", d: "Belleza que se lleva con comodidad" },
     ],
-    categories: [...new Set([...newArrivals, ...sale].map((product) => product.category)), "Noche"].map((name) => ({ id: categoryIdForName(name), name })),
+    categories: [] as StoreCategory[],
     homeCategoryCards: [] as HomeCategoryCard[],
     split: { kicker: "", big: "", sub: "", cta: "Ver prendas", img: placeholder },
     club: { kicker: "", big: "", text: "", code: "", cta: "Ver prendas" },

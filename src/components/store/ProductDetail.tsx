@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, ShoppingBag } from "lucide-
 import { useCart } from "@/components/providers/CartProvider";
 import { useContent } from "@/components/providers/ContentProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
+import { FooterCredit } from "@/components/store/FooterCredit";
 import { ProductDetailPrice } from "@/components/store/ProductDetailPrice";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ProductImageLightbox } from "@/components/store/ProductImageLightbox";
@@ -137,7 +138,10 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
 
       {lightboxOpen && <ProductImageLightbox images={images} imageSettings={product.imageSettings} productName={product.name} initialImage={lightboxImage} onOpenChange={setLightboxOpen} />}
 
-      <footer className="border-t px-4 py-8 text-center text-xs text-muted-foreground md:px-8">© 2026 Etérea New Concept · <Link href="/productos" className="underline underline-offset-4">Volver a la tienda</Link></footer>
+      <footer className="flex flex-col items-center justify-between gap-2 border-t px-4 py-8 text-center text-xs text-muted-foreground sm:flex-row md:px-8">
+        <span>© 2026 Etérea New Concept · <Link href="/productos" className="underline underline-offset-4">Volver a la tienda</Link></span>
+        <FooterCredit />
+      </footer>
     </div>
   );
 }
