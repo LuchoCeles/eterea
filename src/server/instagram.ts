@@ -6,12 +6,13 @@ import type { InstagramPost } from "@/lib/content";
 import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-media";
 import { instagramPermalink, instagramProfileUrl, recentInstagramPosts } from "@/lib/storefront-rules";
 import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
-import { readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, updateStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
+import { getInstagram, instagramAccountPath, instagramGraphApi, InstagramMetaError, validateInstagramAccount } from "@/server/instagram-meta";
+import { deleteStoredConnection, readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
-const api = "https://graph.instagram.com/v25.0";
 const refreshSeconds = 15 * 60;
 const day = 24 * 60 * 60 * 1000;
 const pendingRefreshes = new Map<string, Promise<unknown>>();
+const recentMediaAssets = new Map<string, { fetchedAt: number; assets: Record<string, InstagramMediaAsset> }>();
 
 function refreshOnce<T>(key: string, task: () => Promise<T>): Promise<T> {
   const pending = pendingRefreshes.get(key);
@@ -35,13 +36,13 @@ function encryptionSecret() {
   return secret;
 }
 
-type InstagramConnection = { token: string; connectionId: string; nextRefreshAt: number; updatedAt: Date; accountId?: string; username?: string };
+type InstagramConnection = { token: string; connectionId: string; updatedAt: Date; accountId?: string; username?: string };
 
 async function storedConnection(): Promise<InstagramConnection | null> {
   const row = await readStoredConnection();
   if (!row) return null;
   const token = decryptInstagramToken(row.data, encryptionSecret());
-  return token ? { token, connectionId: row.data.connectionId, nextRefreshAt: row.data.nextRefreshAt,
+  return token ? { token, connectionId: row.data.connectionId,
     updatedAt: row.updatedAt, accountId: row.data.accountId, username: row.data.username } : null;
 }
 
@@ -49,52 +50,21 @@ export async function hasInstagramConnection() {
   return (await storedConnection()) !== null;
 }
 
-async function accessToken(connection: InstagramConnection): Promise<string> {
-  const { token, connectionId } = connection;
-  if (Date.now() < connection.nextRefreshAt) return token;
-
-  let refreshed = token;
-  let nextRefreshAt = Date.now() + day;
-  try {
-    const url = new URL("https://graph.instagram.com/refresh_access_token");
-    url.searchParams.set("grant_type", "ig_refresh_token");
-    url.searchParams.set("access_token", token);
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-    if (!response.ok) throw new Error("No se pudo renovar el token de Instagram.");
-    const result = await response.json() as { access_token?: unknown };
-    if (typeof result.access_token !== "string" || !result.access_token) throw new Error("Meta devolvió un token inválido.");
-    refreshed = result.access_token;
-    nextRefreshAt = Date.now() + 30 * day;
-  } catch {
-    console.error("No se pudo renovar el token de Instagram; se volverá a intentar mañana.");
+export class InstagramConnectionError extends Error {
+  constructor(message: string, readonly status = 400) {
+    super(message);
   }
-
-  const data = encryptInstagramToken(refreshed, connectionId, nextRefreshAt, encryptionSecret(), { accountId: connection.accountId, username: connection.username });
-  await updateStoredConnection(data, connection.updatedAt)
-    .catch(() => console.error("No se pudo guardar el token renovado de Instagram."));
-
-  return refreshed;
 }
-
-async function getInstagram<T>(path: string, token: string): Promise<T> {
-  const response = await fetch(`${api}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!response.ok) throw new Error(`Instagram respondió con HTTP ${response.status}`);
-  return response.json() as Promise<T>;
-}
-
-export class InstagramConnectionError extends Error {}
 
 type InstagramProfile = { id: string; username: string };
 
 async function readInstagramProfile(connection: InstagramConnection): Promise<InstagramProfile | null> {
-  const token = await accessToken(connection);
-  const profile = await getInstagram<{ id?: unknown; username?: unknown }>("/me?fields=id,username", token);
+  if (!connection.accountId) return null;
+  const profile = await getInstagram<{ id?: unknown; username?: unknown }>(
+    `${instagramAccountPath(connection.accountId)}?fields=id,username`, connection.token,
+  );
   if (typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) return null;
-  if (connection.accountId && connection.accountId !== profile.id) return null;
+  if (connection.accountId !== profile.id) return null;
   return { id: profile.id, username: profile.username };
 }
 
@@ -134,37 +104,37 @@ export async function loadInstagramMediaAssets(posts: InstagramPost[], fromOwnFe
     return url ? [[url, post.id]] : [];
   })) : {};
   const connection = await storedConnection().catch(() => null);
-  if (!connection) return {};
+  if (!connection || !connection.accountId) return {};
+
+  const key = `media:${connection.connectionId}:${[...urls].sort().join("|")}`;
+  const memoryCache = recentMediaAssets.get(key);
+  if (memoryCache && Date.now() - memoryCache.fetchedAt < refreshSeconds * 1000) return memoryCache.assets;
 
   const cache = await readMediaCache(connection.connectionId).catch(() => null);
-  const checked = cache && urls.every((url) => cache.checkedUrls.includes(url));
-  if (checked && Date.now() - cache.fetchedAt < refreshSeconds * 1000) {
-    return cachedMediaAssets(urls, cache);
-  }
-  if (checked && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000) {
-    refreshAfterResponse(`media:${connection.connectionId}:${[...urls].sort().join("|")}`,
-      () => refreshInstagramMediaAssets(urls, connection, cache, knownMediaIds));
-    return cachedMediaAssets(urls, cache);
-  }
-  return refreshOnce(`media:${connection.connectionId}:${[...urls].sort().join("|")}`,
-    () => refreshInstagramMediaAssets(urls, connection, cache, knownMediaIds));
+  return refreshOnce(key, async () => {
+    const assets = await refreshInstagramMediaAssets(urls, connection, cache, knownMediaIds);
+    if (!assets) return {};
+    const fetchedAt = Date.now();
+    for (const [cacheKey, value] of recentMediaAssets) {
+      if (fetchedAt - value.fetchedAt >= refreshSeconds * 1000) recentMediaAssets.delete(cacheKey);
+    }
+    recentMediaAssets.set(key, { fetchedAt, assets });
+    return assets;
+  });
 }
 
 type MediaCache = Awaited<ReturnType<typeof readMediaCache>>;
 
-function cachedMediaAssets(urls: string[], cache: NonNullable<MediaCache>) {
-  return Object.fromEntries(urls.flatMap((url) => cache.assets[url] ? [[url, cache.assets[url]]] : []));
-}
-
-async function refreshInstagramMediaAssets(urls: string[], connection: InstagramConnection, cache: MediaCache, knownMediaIds: Record<string, string>): Promise<Record<string, InstagramMediaAsset>> {
+async function refreshInstagramMediaAssets(urls: string[], connection: InstagramConnection, cache: MediaCache, knownMediaIds: Record<string, string>): Promise<Record<string, InstagramMediaAsset> | null> {
   try {
-    const token = await accessToken(connection);
+    const { token, accountId } = connection;
+    if (!accountId) return null;
     const mediaIds = { ...(cache?.mediaIds ?? {}), ...knownMediaIds };
     const missing = new Set(urls.filter((url) => !mediaIds[url] && (!cache || Date.now() - cache.fetchedAt >= day || !cache.checkedUrls.includes(url))));
     let after: string | undefined;
     const scanDeadline = Date.now() + 10_000;
     for (let page = 0; page < 30 && missing.size && Date.now() < scanDeadline; page += 1) {
-      const path = new URL("/me/media", api);
+      const path = new URL(instagramAccountPath(accountId, "/media"), instagramGraphApi());
       path.searchParams.set("fields", "id,permalink");
       path.searchParams.set("limit", "100");
       if (after) path.searchParams.set("after", after);
@@ -203,38 +173,43 @@ async function refreshInstagramMediaAssets(urls: string[], connection: Instagram
       }
     }));
 
-    await writeMediaCache(connection.connectionId, Date.now(), urls, mediaIds, assets)
+    // Las URLs firmadas de Meta son temporales: solo persistimos IDs estables y refrescamos las portadas en memoria.
+    await writeMediaCache(connection.connectionId, Date.now(), urls, mediaIds, {})
       .catch(() => console.error("No se pudo guardar la caché de imágenes de Instagram."));
     return assets;
   } catch {
     console.error("No se pudieron cargar las imágenes de Instagram.");
-    return cache && Date.now() - cache.fetchedAt < 2 * 60 * 60 * 1000
-      ? cachedMediaAssets(urls, cache)
-      : {};
+    return null;
   }
 }
 
-export async function saveInstagramConnection(token: string) {
-  let profile: { id?: unknown; username?: unknown };
-  let feed: { data?: unknown };
+export async function validateInstagramConnection(token: string, accountId: string) {
   try {
-    [profile, feed] = await Promise.all([
-      getInstagram<{ id?: unknown; username?: unknown }>("/me?fields=id,username", token),
-      getInstagram<{ data?: unknown }>("/me/media?fields=id,permalink,timestamp&limit=1", token),
-    ]);
-  } catch {
-    throw new InstagramConnectionError("Meta rechazó el token o no permitió leer las publicaciones.");
+    const profile = await validateInstagramAccount(token, accountId);
+    if (!instagramProfileUrl(profile.username)) throw new InstagramConnectionError("Meta no devolvió un usuario de Instagram válido.");
+    return profile;
+  } catch (error) {
+    if (error instanceof InstagramMetaError) throw new InstagramConnectionError(error.message, error.status);
+    throw error;
   }
-  if (typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) {
-    throw new InstagramConnectionError("Meta no devolvió una cuenta de Instagram válida.");
-  }
-  if (!Array.isArray(feed.data)) {
-    throw new InstagramConnectionError("Meta no devolvió una lista de publicaciones válida.");
+}
+
+export async function saveInstagramConnection(token: string, accountId: string, confirmedUsername: string) {
+  const profile = await validateInstagramConnection(token, accountId);
+  if (confirmedUsername.replace(/^@/, "").trim().toLowerCase() !== profile.username.toLowerCase()) {
+    throw new InstagramConnectionError("La cuenta identificada cambió. Volvé a validar y confirmá el usuario que muestra Meta.");
   }
 
+  // nextRefreshAt queda por compatibilidad con el esquema; Unified Login no renueva el SUAT desde Instagram.
   const data = encryptInstagramToken(token, randomBytes(16).toString("hex"), Date.now() + day, encryptionSecret(), { accountId: profile.id, username: profile.username });
   await replaceStoredConnection(data);
-  return { id: profile.id, username: profile.username };
+  recentMediaAssets.clear();
+  return profile;
+}
+
+export async function disconnectInstagramConnection() {
+  await deleteStoredConnection();
+  recentMediaAssets.clear();
 }
 
 export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null> {
@@ -256,16 +231,19 @@ export async function loadRecentInstagramPosts(): Promise<InstagramPost[] | null
 
 async function refreshRecentInstagramPosts(connection: InstagramConnection, fallback: InstagramPost[] | null) {
   try {
-    const token = await accessToken(connection);
-    const profile = await getInstagram<{ id?: unknown; username?: unknown }>("/me?fields=id,username", token);
-    if ((connection.accountId && profile.id !== connection.accountId) ||
+    const { token, accountId } = connection;
+    if (!accountId) throw new Error("La conexión no tiene ID de Instagram.");
+    const profile = await getInstagram<{ id?: unknown; username?: unknown }>(
+      `${instagramAccountPath(accountId)}?fields=id,username`, token,
+    );
+    if (profile.id !== accountId ||
       typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) {
       console.error("La cuenta conectada de Instagram cambió o devolvió datos no válidos.");
       return null;
     }
 
     const feed = await getInstagram<{ data?: unknown }>(
-      "/me/media?fields=id,permalink,timestamp&limit=12",
+      `${instagramAccountPath(accountId, "/media")}?fields=id,permalink,timestamp&limit=12`,
       token,
     );
     if (!Array.isArray(feed.data)) throw new Error("Meta no devolvió una lista de publicaciones.");

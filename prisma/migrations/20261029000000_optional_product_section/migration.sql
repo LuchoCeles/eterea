@@ -1,0 +1,1 @@
+ALTER TABLE `Product` MODIFY `section` VARCHAR(20) NULL;

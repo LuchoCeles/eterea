@@ -1,31 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
+import { CatalogSearchPanel } from "@/components/store/CatalogSearchPanel";
 import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { Button } from "@/components/ui/button";
 import { hasRealDiscount, instagramProfileUrl } from "@/lib/storefront-rules";
 import { catalogProducts, sortProductsByAvailability } from "@/lib/catalog-products";
-import type { StoreCategory } from "@/lib/content";
 
 const PRODUCTS_PER_PAGE = 12;
 
 export function CatalogPage({ initialCategory = "" }: { initialCategory?: string }) {
   const { add } = useCart();
   const [category, setCategory] = useState(initialCategory);
+  const [size, setSize] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
+  const [sort, setSort] = useState("");
   const [discountOnly, setDiscountOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
   const storeCategories = useContent("categories");
-  const { offers } = useContent("texts");
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
-  const visibleProducts = catalogProducts(products, storeCategories, offers.enabled);
+  const visibleProducts = catalogProducts(products, storeCategories);
   const categoryCounts = new Map<string, number>();
   visibleProducts.forEach((product) => {
     const id = product.categoryId ?? "";
@@ -33,16 +33,28 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   });
   const categories = storeCategories.filter((item) => categoryCounts.has(item.id));
   const activeCategory = categories.find((item) => item.id === category || item.name === category)?.id ?? "";
+  const categoryProducts = activeCategory
+    ? visibleProducts.filter((product) => product.categoryId === activeCategory)
+    : visibleProducts;
+  const sizeCounts = new Map<string, number>();
+  categoryProducts.forEach((product) => {
+    for (const option of new Set(product.sizes ?? [])) {
+      sizeCounts.set(option, (sizeCounts.get(option) ?? 0) + 1);
+    }
+  });
+  const sizes = [...sizeCounts.keys()];
+  const categoryOptions = categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 }));
+  const sizeOptions = sizes.map((label) => ({ label, value: label, count: sizeCounts.get(label) ?? 0 }));
   const normalizedSearch = search.trim().toLocaleLowerCase("es-AR");
   const filteredProducts = visibleProducts.filter((product) => {
     const matchesCategory = !activeCategory || product.categoryId === activeCategory;
+    const matchesSize = !size || product.sizes?.includes(size) === true;
     const matchesSearch = !normalizedSearch || `${product.name} ${product.category}`.toLocaleLowerCase("es-AR").includes(normalizedSearch);
-    return matchesCategory && matchesSearch && (!discountOnly || hasRealDiscount(product));
+    return matchesCategory && matchesSize && matchesSearch && (!discountOnly || hasRealDiscount(product));
   });
   let sortedProducts = [...filteredProducts];
   if (sort === "price-asc") sortedProducts.sort((a, b) => a.price - b.price);
   if (sort === "price-desc") sortedProducts.sort((a, b) => b.price - a.price);
-  if (sort === "name") sortedProducts.sort((a, b) => a.name.localeCompare(b.name, "es-AR"));
   sortedProducts = sortProductsByAvailability(sortedProducts);
   const saleCount = visibleProducts.filter(hasRealDiscount).length;
   const pageCount = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
@@ -50,18 +62,33 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   const pageProducts = sortedProducts.slice((visiblePage - 1) * PRODUCTS_PER_PAGE, visiblePage * PRODUCTS_PER_PAGE);
   const firstVisibleProduct = sortedProducts.length === 0 ? 0 : (visiblePage - 1) * PRODUCTS_PER_PAGE + 1;
   const lastVisibleProduct = Math.min(visiblePage * PRODUCTS_PER_PAGE, sortedProducts.length);
+  const activeFilterCount = Number(Boolean(activeCategory)) + Number(Boolean(size)) + Number(discountOnly);
 
   function selectCategory(value: string) {
     setCategory(value);
-    setDiscountOnly(false);
+    if (value) setSize("");
+    setCurrentPage(1);
+  }
+
+  function selectSize(value: string) {
+    setSize(value);
     setCurrentPage(1);
   }
 
   function clearFilters() {
     setCategory("");
+    setSize("");
     setSearch("");
     setDiscountOnly(false);
-    setSort("recent");
+    setSort("");
+    setCurrentPage(1);
+  }
+
+  function clearPanelFilters() {
+    setCategory("");
+    setSize("");
+    setDiscountOnly(false);
+    setSort("");
     setCurrentPage(1);
   }
 
@@ -83,55 +110,35 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
         </section>
 
         <section className="mx-auto max-w-[1600px] px-4 py-8 md:px-8 md:py-12">
-          <div className="grid gap-8 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-10">
-            <aside className="min-w-0">
-              <div className="lg:sticky lg:top-32">
-                <CategoryAccordion
-                  categories={categories}
-                  categoryCounts={categoryCounts}
-                  totalCount={visibleProducts.length}
-                  activeCategory={activeCategory}
-                  onSelect={selectCategory}
-                />
-                {offers.enabled && saleCount > 0 && (
-                  <label className="mt-5 hidden cursor-pointer items-center gap-3 border-t pt-5 text-sm lg:flex">
-                    <input type="checkbox" checked={discountOnly} onChange={(event) => { setDiscountOnly(event.target.checked); setCurrentPage(1); }} className="h-4 w-4 accent-[var(--primary)]" />
-                    Solo con descuento
-                  </label>
-                )}
-              </div>
-            </aside>
-
             <div className="min-w-0">
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex h-11 items-center gap-3 border bg-background px-3 sm:max-w-sm sm:flex-1">
                   <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <input value={search} onChange={(event) => { setSearch(event.target.value); setCurrentPage(1); }} placeholder="Buscar prendas…" aria-label="Buscar prendas" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
                 </label>
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                  {offers.enabled && saleCount > 0 && (
-                    <label className="flex items-center gap-2 text-xs lg:hidden">
-                      <input type="checkbox" checked={discountOnly} onChange={(event) => { setDiscountOnly(event.target.checked); setCurrentPage(1); }} className="h-4 w-4 accent-[var(--primary)]" />
-                      Con descuento
-                    </label>
-                  )}
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    Ordenar
-                    <select value={sort} onChange={(event) => { setSort(event.target.value); setCurrentPage(1); }} className="h-11 border bg-background px-3 text-sm text-foreground">
-                      <option value="recent">Más recientes</option>
-                      <option value="price-asc">Menor precio</option>
-                      <option value="price-desc">Mayor precio</option>
-                      <option value="name">Nombre</option>
-                    </select>
-                  </label>
-                </div>
+                <CatalogSearchPanel
+                  categoryOptions={categoryOptions}
+                  sizeOptions={sizeOptions}
+                  activeCategory={activeCategory}
+                  activeSize={size}
+                  onCategoryChange={selectCategory}
+                  onSizeChange={selectSize}
+                  discountOnly={discountOnly}
+                  onDiscountChange={(value) => { setDiscountOnly(value); setCurrentPage(1); }}
+                  showDiscount={saleCount > 0}
+                  discountCount={saleCount}
+                  sort={sort}
+                  onSortChange={(value) => { setSort(value); setCurrentPage(1); }}
+                  resultCount={filteredProducts.length}
+                  activeFilterCount={activeFilterCount}
+                  onClear={clearPanelFilters}
+                />
               </div>
-
               {sortedProducts.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 md:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {pageProducts.map((product) => (
-                      <CatalogProductCard key={`${product.id}-${product.name}`} product={product} offersEnabled={offers.enabled} onAdd={add} />
+                      <CatalogProductCard key={`${product.id}-${product.name}`} product={product} onAdd={add} />
                     ))}
                   </div>
                   <div className="mt-10 flex flex-col items-center gap-4 border-t pt-6 sm:flex-row sm:justify-between">
@@ -181,7 +188,6 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
                 </div>
               )}
             </div>
-          </div>
         </section>
       </main>
 
@@ -197,57 +203,5 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
         <div className="border-t px-4 py-4 text-center text-xs text-muted-foreground">© 2026 Etérea New Concept</div>
       </footer>
     </div>
-  );
-}
-
-function CategoryAccordion({
-  categories,
-  categoryCounts,
-  totalCount,
-  activeCategory,
-  onSelect,
-}: {
-  categories: StoreCategory[];
-  categoryCounts: Map<string, number>;
-  totalCount: number;
-  activeCategory: string;
-  onSelect: (value: string) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(true);
-
-  return (
-    <section className="border-y">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        aria-controls="catalog-category-options"
-        className="flex w-full items-center justify-between py-4 text-left"
-      >
-        <span className="text-sm font-medium">Categorías <span className="ml-1 text-xs font-normal text-muted-foreground">({categories.length})</span></span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-      </button>
-      <nav
-        id="catalog-category-options"
-        aria-label="Filtrar prendas por categoría"
-        className={`space-y-1 pb-4 ${isOpen ? "block" : "hidden"}`}
-      >
-        {[{ label: "Todas", value: "", count: totalCount }, ...categories.map((item) => ({ label: item.name, value: item.id, count: categoryCounts.get(item.id) ?? 0 }))].map((item) => {
-          const active = activeCategory === item.value;
-          return (
-            <button
-              key={item.value || "todas"}
-              type="button"
-              onClick={() => onSelect(item.value)}
-              aria-pressed={active}
-              className={`flex w-full items-center justify-between gap-3 py-2 text-left text-sm transition-colors hover:text-primary ${active ? "font-medium text-primary" : "text-muted-foreground"}`}
-            >
-              <span>{item.label}</span>
-              <span className="text-xs text-muted-foreground">{item.count}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </section>
   );
 }

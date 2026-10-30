@@ -1,15 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasRealDiscount, instagramEmbedUrl, instagramPermalink, instagramProfileUrl, productWithoutOffers, recentInstagramPosts, visibleAnnouncements, visibleInstagramPosts, visibleSaleProducts } from "../lib/storefront-rules";
+import { automaticProductTag, hasRealDiscount, instagramEmbedUrl, instagramPermalink, instagramProfileUrl, recentInstagramPosts, visibleAnnouncements, visibleInstagramPosts } from "../lib/storefront-rules";
 
 const product = { id: "real", name: "Prenda", category: "Vestidos", price: 45000, oldPrice: 60000, tag: "-25%", image: "" };
 
 describe("Reglas de lanzamiento de Etérea", () => {
-  it("oculta los productos con descuento hasta que se habiliten las ofertas", () => {
-    assert.deepEqual(visibleSaleProducts([product], false), []);
-    assert.deepEqual(visibleSaleProducts([product], true), [product]);
-  });
-
   it("exige un precio actual positivo menor al precio anterior", () => {
     assert.equal(hasRealDiscount(product), true);
     assert.equal(hasRealDiscount({ ...product, price: 60000 }), false);
@@ -24,12 +19,19 @@ describe("Reglas de lanzamiento de Etérea", () => {
     );
   });
 
-  it("oculta precios tachados y etiquetas de descuento mientras las ofertas están apagadas", () => {
-    const visible = productWithoutOffers(product, false);
-    assert.equal(visible.oldPrice, undefined);
-    assert.equal(visible.tag, undefined);
-    assert.equal(visible.price, 60000);
-    assert.equal(productWithoutOffers({ ...product, tag: "Nuevo" }, false).tag, "Nuevo");
+  it("activa Oferta por los precios aunque el producto no esté en esa sección", () => {
+    assert.equal(automaticProductTag({ ...product, section: null }, true), "Oferta");
+    assert.equal(automaticProductTag({ ...product, section: "nuevo" }, true), "Oferta");
+    assert.equal(automaticProductTag({ ...product, section: "sale" }, true), "Oferta");
+  });
+
+  it("respeta el interruptor de ofertas y usa Nuevo solo para la sección correspondiente", () => {
+    assert.equal(automaticProductTag({ ...product, section: null }, false), undefined);
+    assert.equal(automaticProductTag({ ...product, section: "sale" }, false), undefined);
+    assert.equal(automaticProductTag({ ...product, section: "nuevo", oldPrice: undefined }, true), "Nuevo");
+    assert.equal(automaticProductTag({ ...product, section: "nuevo" }, false), "Nuevo");
+    assert.equal(automaticProductTag({ ...product, section: "sale", oldPrice: undefined }, true), undefined);
+    assert.equal(automaticProductTag({ ...product, section: null, oldPrice: 40_000 }, true), undefined);
   });
 
   it("acepta solo enlaces seguros de publicaciones y reels de Instagram", () => {

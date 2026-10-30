@@ -6,9 +6,10 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, ShoppingBag } from "lucide-
 import { useCart } from "@/components/providers/CartProvider";
 import { useContent } from "@/components/providers/ContentProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
+import { ProductDetailPrice } from "@/components/store/ProductDetailPrice";
 import { ProductImage } from "@/components/store/ProductImage";
-import { formatPrice } from "@/lib/products";
-import { hasRealDiscount, productWithoutOffers, visiblePaymentPrices } from "@/lib/storefront-rules";
+import { ProductImageLightbox } from "@/components/store/ProductImageLightbox";
+import { automaticProductTag } from "@/lib/storefront-rules";
 import type { StoreProduct } from "@/lib/content";
 
 export function ProductDetail({ source, relatedIds }: { source: StoreProduct; relatedIds: string[] }) {
@@ -16,23 +17,29 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const products = useContent("products");
   const offersEnabled = useContent("texts").offers.enabled;
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [selectionError, setSelectionError] = useState("");
   const [added, setAdded] = useState(false);
   const relatedById = useMemo(() => new Map(products.map((item) => [item.id, item])), [products]);
-  const product = productWithoutOffers(source, offersEnabled);
+  const product = source;
   const related = relatedIds.flatMap((id) => {
     const item = relatedById.get(id);
-    return item ? [productWithoutOffers(item, offersEnabled)] : [];
+    return item ? [item] : [];
   });
-  const images = product.images?.length ? product.images : product.image ? [product.image] : [];
+  const images = product.images?.length ? product.images : [product.image ?? ""];
   const sizes = product.sizes ?? [];
   const colors = product.colors ?? [];
   const soldOutColors = new Set(product.soldOutColors ?? []);
   const unavailable = !!product.soldOut || (colors.length > 0 && colors.every((option) => soldOutColors.has(option)));
-  const paymentPrices = visiblePaymentPrices(product.paymentPrices ?? [], offersEnabled);
-  const discounted = hasRealDiscount(product);
+  const tag = automaticProductTag(product, offersEnabled);
+
+  function openLightbox(index: number) {
+    setLightboxImage(index);
+    setLightboxOpen(true);
+  }
 
   function addSelectedProduct() {
     if (unavailable) {
@@ -69,11 +76,18 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
         <div className="mx-auto grid max-w-[1600px] gap-8 px-4 pb-20 md:px-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-16">
           <section aria-label={`Fotos de ${product.name}`} className="min-w-0">
             <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
-              <div className="min-h-0 flex-1 overflow-hidden bg-background">
-                <ProductImage src={images[activeImage] ?? product.image} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
+              <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
+                <button type="button" onClick={() => openLightbox(activeImage)} aria-label={`Ampliar foto ${activeImage + 1} de ${product.name}`} className="h-full w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
+                  <ProductImage src={images[activeImage]} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
+                </button>
+                {(unavailable || tag) && (
+                  <span className={`eyebrow pointer-events-none absolute left-3 top-3 px-3 py-1.5 sm:left-4 sm:top-4 ${unavailable ? "bg-muted text-muted-foreground" : tag === "Oferta" ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
+                    {unavailable ? "Agotada" : tag}
+                  </span>
+                )}
               </div>
               {images.length > 1 && <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
-                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => setActiveImage(index)} aria-label={`Ver foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
+                {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => { setActiveImage(index); openLightbox(index); }} aria-label={`Ampliar foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
                   <ProductImage src={src} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
                 </button>)}
               </div>}
@@ -83,12 +97,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <section className="min-w-0 lg:sticky lg:top-36 lg:self-start">
             <p className="eyebrow text-muted-foreground">Etérea · {product.category}</p>
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
-            {unavailable && <p className="mt-4 inline-block bg-muted px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Agotada</p>}
-            {!unavailable && product.tag && <span className="eyebrow mt-5 inline-block bg-sand px-3 py-1.5 text-foreground">{product.tag}</span>}
-            <div className="mt-6 flex flex-wrap items-baseline gap-3 border-b pb-7">
-              <p className={`text-2xl font-medium tabular-nums ${discounted ? "text-accent" : ""}`}>{formatPrice(product.price)}</p>
-              {discounted && <p className="text-sm text-muted-foreground line-through">{formatPrice(product.oldPrice ?? product.price)}</p>}
-            </div>
+            <ProductDetailPrice product={product} />
             {product.description?.trim() && <p className="whitespace-pre-line border-b py-7 text-sm leading-7 text-muted-foreground">{product.description}</p>}
 
             {sizes.length > 0 && <div className="pt-7">
@@ -108,11 +117,6 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
               </div>
             </div>}
 
-            {paymentPrices.length > 0 && <div className="mt-8 border-y py-5">
-              <h2 className="eyebrow text-muted-foreground">Precios según la forma de pago</h2>
-              <dl className="mt-4 space-y-3">{paymentPrices.map((payment, index) => <div key={`${payment.label}-${index}`} className="flex items-baseline justify-between gap-4 text-sm"><dt>{payment.label}</dt><dd className="shrink-0 font-medium tabular-nums">{formatPrice(payment.price)}</dd></div>)}</dl>
-            </div>}
-
             <p role="alert" className="min-h-6 pt-3 text-sm text-accent">{selectionError}</p>
             <button type="button" disabled={unavailable} onClick={addSelectedProduct} className={`mt-2 flex h-14 w-full items-center justify-center gap-3 px-5 text-sm font-medium transition-colors ${unavailable ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
               {added ? <Check className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}{unavailable ? "Agotada" : added ? "Agregada al carrito" : "Agregar al carrito"}
@@ -126,10 +130,12 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <div className="mx-auto max-w-[1600px] px-4 md:px-8">
             <span className="eyebrow text-muted-foreground">Para seguir explorando</span>
             <div className="mt-3 flex items-end justify-between gap-4"><h2 className="font-display text-3xl md:text-5xl">Otras prendas que te pueden gustar</h2><Link href="/productos" className="hidden shrink-0 items-center gap-1 border-b pb-1 text-sm sm:inline-flex">Ver todas <ArrowRight className="h-4 w-4" /></Link></div>
-            <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-5">{related.map((item) => <CatalogProductCard key={item.id} product={item} onAdd={add} offersEnabled={offersEnabled} />)}</div>
+            <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-5">{related.map((item) => <CatalogProductCard key={item.id} product={item} onAdd={add} />)}</div>
           </div>
         </section>}
       </main>
+
+      {lightboxOpen && <ProductImageLightbox images={images} productName={product.name} initialImage={lightboxImage} onOpenChange={setLightboxOpen} />}
 
       <footer className="border-t px-4 py-8 text-center text-xs text-muted-foreground md:px-8">© 2026 Etérea New Concept · <Link href="/productos" className="underline underline-offset-4">Volver a la tienda</Link></footer>
     </div>

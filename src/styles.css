@@ -7,8 +7,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Bodoni Moda", Georgia, serif;
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: Helvetica, Arial, sans-serif;
+  --font-sans: Helvetica, Arial, sans-serif;
+  --font-mono: Helvetica, Arial, sans-serif;
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: var(--radius);
@@ -173,6 +174,26 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
   color: var(--admin-nav-accent);
 }
 
+.admin-nav-link {
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, color 180ms ease, filter 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-nav-link:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 5px 12px rgb(0 0 0 / 14%);
+  }
+
+  .admin-nav-link:not(.admin-nav-active):hover {
+    background: color-mix(in srgb, var(--secondary) 55%, transparent);
+    color: var(--foreground);
+  }
+
+  .admin-nav-link.admin-nav-active:hover {
+    filter: brightness(1.1);
+  }
+}
+
 @media (max-width: 639px) {
   body:has(.admin-theme) [data-sonner-toaster][data-y-position="bottom"] {
     bottom: calc(6.5rem + env(safe-area-inset-bottom));
@@ -229,6 +250,12 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
   button:not(:disabled) {
     cursor: pointer;
   }
+  button,
+  input,
+  select,
+  textarea {
+    font-family: var(--font-sans);
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
@@ -242,6 +269,17 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
     font-family: var(--font-display);
     letter-spacing: 0;
   }
+}
+
+/* El nombre del Header conserva su familia de marca; el resto usa Helvetica. */
+header a[aria-label="Etérea inicio"] {
+  font-family: "Bodoni Moda", Georgia, serif;
+}
+
+.no-native-drag :is(a, button, img) {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
 @utility eyebrow {
@@ -270,9 +308,6 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
   to {
     transform: translateX(-50%);
   }
-}
-@utility animate-marquee {
-  animation: marquee 32s linear infinite;
 }
 @utility animate-promo-marquee {
   animation: marquee 48s linear infinite;

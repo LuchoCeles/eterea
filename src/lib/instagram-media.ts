@@ -29,7 +29,7 @@ export function instagramMediaAsset(value: unknown): InstagramMediaAsset | null 
     return cover ?? (fallback ? { imageUrl: fallback } : null);
   }
   const url = safeMediaUrl(media.media_url);
-  if (media.media_type === "VIDEO") {
+  if (media.media_type === "VIDEO" || media.media_type === "REELS") {
     const posterUrl = safeMediaUrl(media.thumbnail_url);
     return url || posterUrl ? { ...(url ? { videoUrl: url } : {}), ...(posterUrl ? { posterUrl } : {}) } : null;
   }

@@ -218,7 +218,7 @@ model Product {
   tag           String?               @db.Text
   image         String                @db.Text
   description   String?               @db.Text
-  section       String                @db.VarChar(20)
+  section       String?               @db.VarChar(20)
   hidden        Boolean               @default(false)
   soldOut       Boolean               @default(false)
   createdAt     DateTime?             @db.DateTime(3)
