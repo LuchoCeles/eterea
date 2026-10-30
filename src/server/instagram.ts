@@ -6,7 +6,7 @@ import type { InstagramPost } from "@/lib/content";
 import { instagramMediaAsset, type InstagramMediaAsset } from "@/lib/instagram-media";
 import { instagramPermalink, instagramProfileUrl, recentInstagramPosts } from "@/lib/storefront-rules";
 import { decryptInstagramToken, encryptInstagramToken } from "@/server/instagram-crypto";
-import { getInstagram, instagramAccountPath, instagramGraphApi, InstagramMetaError, validateInstagramAccount } from "@/server/instagram-meta";
+import { getInstagram, getInstagramPictureProfile, instagramAccountPath, instagramGraphApi, InstagramMetaError, validateInstagramAccount } from "@/server/instagram-meta";
 import { deleteStoredConnection, readFeedCache, readMediaCache, readStoredConnection, readStoredInstagramConnectionInfo, replaceStoredConnection, writeFeedCache, writeMediaCache } from "@/server/instagram-storage";
 
 const refreshSeconds = 15 * 60;
@@ -56,16 +56,17 @@ export class InstagramConnectionError extends Error {
   }
 }
 
-type InstagramProfile = { id: string; username: string };
-
-async function readInstagramProfile(connection: InstagramConnection): Promise<InstagramProfile | null> {
+async function readInstagramProfile(connection: InstagramConnection) {
   if (!connection.accountId) return null;
-  const profile = await getInstagram<{ id?: unknown; username?: unknown }>(
-    `${instagramAccountPath(connection.accountId)}?fields=id,username`, connection.token,
-  );
-  if (typeof profile.id !== "string" || !profile.id || typeof profile.username !== "string" || !instagramProfileUrl(profile.username)) return null;
-  if (connection.accountId !== profile.id) return null;
-  return { id: profile.id, username: profile.username };
+  const profile = await getInstagramPictureProfile(connection.token, connection.accountId);
+  return profile && instagramProfileUrl(profile.username) ? profile : null;
+}
+
+export async function loadInstagramProfilePicture() {
+  const connection = await storedConnection().catch(() => null);
+  if (!connection) return null;
+  const profile = await readInstagramProfile(connection).catch(() => null);
+  return profile?.profilePictureUrl ? { username: profile.username, url: profile.profilePictureUrl } : null;
 }
 
 export async function loadInstagramConnectionInfo() {

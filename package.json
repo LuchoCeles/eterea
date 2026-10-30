@@ -12,7 +12,7 @@
     "db:bootstrap-owner": "tsx scripts/bootstrap-owner.ts",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/image-cleanup.test.ts src/test/instagram-crypto.test.ts src/test/instagram-media.test.ts src/test/instagram-meta.test.ts src/test/instagram-section.test.tsx src/test/content-catalog.test.ts src/test/home-category-cards.test.ts src/test/relational-content.test.ts src/test/storefront-projection.test.ts src/test/product-relations.test.ts src/test/payment-prices.test.tsx src/test/product-editor-snapshot.test.ts src/test/cart-checkout.test.ts",
+    "test": "tsx --test src/test/storefront-rules.test.ts src/test/cloudinary-media.test.ts src/test/image-cleanup.test.ts src/test/image-presentation.test.ts src/test/instagram-crypto.test.ts src/test/instagram-media.test.ts src/test/instagram-meta.test.ts src/test/instagram-section.test.tsx src/test/content-catalog.test.ts src/test/home-category-cards.test.ts src/test/relational-content.test.ts src/test/storefront-projection.test.ts src/test/product-relations.test.ts src/test/payment-prices.test.tsx src/test/product-editor-snapshot.test.ts src/test/product-detail-gallery.test.ts src/test/cart-checkout.test.ts",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "db:audit-performance": "tsx scripts/audit-performance.ts",

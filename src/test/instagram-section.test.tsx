@@ -25,21 +25,22 @@ function renderStorefrontSection(children: ReactNode, contact: ContactSettings =
   }));
 }
 
-function renderInstagram(mediaAssets: Record<string, InstagramMediaAsset>, items = posts, contact = defaults.contact) {
-  return renderStorefrontSection(createElement(InstagramSection, { posts: items, mediaAssets }), contact);
+function renderInstagram(mediaAssets: Record<string, InstagramMediaAsset>, items = posts, contact = defaults.contact,
+  profilePicture: { username: string; url: string } | null = null) {
+  return renderStorefrontSection(createElement(InstagramSection, { posts: items, mediaAssets, profilePicture }), contact);
 }
 
 describe("Galería del Home", () => {
-  it("muestra hasta seis portadas configuradas con sus enlaces, sin duplicarlas", () => {
+  it("muestra hasta nueve portadas configuradas con sus enlaces, sin duplicarlas", () => {
     const items = posts.map((post, index) => ({ ...post, image: index ? "/portada-" + index + ".jpg" : "" }));
     const html = renderInstagram({}, items);
     const links = html.match(/href="https:\/\/www\.instagram\.com\/p\/P\d+\/"/g) ?? [];
-    assert.equal(links.length, 6);
-    assert.equal(new Set(links).size, 6);
+    assert.equal(links.length, 7);
+    assert.equal(new Set(links).size, 7);
     assert.ok(html.includes("grid-cols-3"));
     assert.ok(html.includes("/portada-1.jpg"));
     assert.ok(!html.includes('href="https://www.instagram.com/p/P0/"'));
-    assert.ok(!html.includes('href="https://www.instagram.com/p/P7/"'));
+    assert.ok(html.includes('href="https://www.instagram.com/p/P7/"'));
   });
 
   it("conserva el estado vacío cuando la API no aporta portadas", () => {
@@ -96,6 +97,19 @@ describe("Galería del Home", () => {
     assert.ok(html.includes("@logabytedev"));
     assert.ok(!html.includes("ETÉREA NEW CONCEPT"));
   });
+
+  it("muestra la foto de la cuenta conectada y descarta una de otra cuenta", () => {
+    const contact = { ...defaults.contact, instagramUsername: "cuenta.actual" };
+    const picture = { username: "cuenta.actual", url: "https://scontent.cdninstagram.com/current.jpg" };
+    const html = renderInstagram({}, [], contact, picture);
+    assert.ok(html.includes(picture.url));
+    assert.equal((html.match(/current\.jpg/g) ?? []).length >= 2, true);
+    assert.ok(!html.includes("eterea-placeholder.svg"));
+
+    const oldAccount = renderInstagram({}, [], contact, { username: "cuenta.anterior", url: "https://scontent.cdninstagram.com/old.jpg" });
+    assert.ok(!oldAccount.includes("old.jpg"));
+    assert.ok(oldAccount.includes("<svg"));
+  });
 });
 
 describe("Contacto del Home", () => {
@@ -117,19 +131,20 @@ describe("Contacto del Home", () => {
 });
 
 describe("Header del Home", () => {
-  it("mantiene navegación y carrito con la marca centrada en texto y sin imagen", () => {
+  it("mantiene navegación y carrito con el logo oficial centrado", () => {
     const html = renderToStaticMarkup(createElement(Header, {
       cartItems: [], cartAddCount: 0, whatsappNumber: "", onQuantityChange: () => undefined,
       onRemove: () => undefined, homeSections: defaults.texts.homeSections, isAdmin: false,
     }));
-    assert.ok(html.includes("ETÉREA"));
+    assert.ok(html.includes('src="/assets/eterea-header-logo.svg"'));
+    assert.ok(html.includes('aria-label="Etérea inicio"'));
     assert.ok(html.includes("Ver prendas"));
     assert.ok(html.includes("Abrir menú"));
     assert.ok(html.includes("Carrito, 0 prendas"));
     assert.ok(!html.includes("/assets/eterea-placeholder.svg"));
     assert.ok(html.includes("h-16"));
     assert.ok(html.includes("md:h-[72px]"));
-    assert.ok(html.includes("sm:text-2xl"));
+    assert.ok(html.includes("sm:w-[120px]"));
   });
 });
 

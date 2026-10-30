@@ -31,4 +31,9 @@ it("detecta fotos nuevas, recortes y cambios de orden, incluso si el resto del p
   assert.notEqual(productEditorSnapshot(product, ["blob:recorte", "foto-2"]), original);
   assert.notEqual(productEditorSnapshot(product, ["foto-1", "foto-2", "blob:nueva"]), original);
   assert.equal(productEditorSnapshot(product, ["foto-1", "foto-2"]), original);
+  const items = [{ url: "foto-1", settings: null, coverSettings: null }, { url: "foto-2", settings: null, coverSettings: null }];
+  assert.notEqual(productEditorSnapshot(product, [{ ...items[0], settings: { width: 1000, height: 800, format: "4:5", zoom: 1, x: 0, y: 0 } as const }, items[1]]),
+    productEditorSnapshot(product, items));
+  assert.notEqual(productEditorSnapshot(product, [{ ...items[0], coverSettings: { width: 1000, height: 800, zoom: 1.4, x: 0.5, y: 0 } }, items[1]]),
+    productEditorSnapshot(product, items));
 });

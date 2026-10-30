@@ -191,8 +191,8 @@ export function Header({
             </nav>
           </SheetContent>
         </Sheet>
-        <Link href="/" aria-label="Etérea inicio" className="absolute left-1/2 -translate-x-1/2 font-display text-[21px] font-medium tracking-[0.16em] text-foreground transition-colors hover:text-accent sm:text-2xl md:text-[26px]">
-          ETÉREA
+        <Link href="/" aria-label="Etérea inicio" className="absolute left-1/2 flex min-h-11 -translate-x-1/2 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+          <img src="/assets/eterea-header-logo.svg" alt="" width={1280} height={640} className="h-auto w-24 object-contain sm:w-[120px] md:w-[132px]" />
         </Link>
         <div className="ml-auto flex items-center justify-end gap-1">
           <Link href="/productos" className="mr-1 text-[11px] hover:text-accent sm:mr-2 sm:text-sm">Ver prendas</Link>

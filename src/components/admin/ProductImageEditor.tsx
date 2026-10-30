@@ -10,10 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { imageFormats, imageRatio, type CropSettings, type ImageFormat, type ImageSettings } from "@/lib/image-presentation";
+
 const PREVIEW_WIDTH = 600;
-const PREVIEW_HEIGHT = 800;
 type Point = { x: number; y: number };
-export type CropPosition = { zoom: number; x: number; y: number };
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -46,26 +46,30 @@ function drawCrop(
 
 export function ProductImageEditor({
   source,
-  initialPosition,
+  initialSettings,
+  cover = false,
   onClose,
   onApply,
 }: {
   source: string;
-  initialPosition?: CropPosition;
+  initialSettings?: ImageSettings | CropSettings | null;
+  cover?: boolean;
   onClose: () => void;
-  onApply: (file: File, position: CropPosition) => void;
+  onApply: (settings: ImageSettings | CropSettings) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointersRef = useRef(new Map<number, Point>());
   const dragRef = useRef<{ pointerId: number; start: Point; offset: Point } | null>(null);
   const pinchRef = useRef<{ distance: number; zoom: number; focal: Point } | null>(null);
-  const zoomRef = useRef(initialPosition?.zoom ?? 1);
-  const offsetRef = useRef<Point>({ x: initialPosition?.x ?? 0, y: initialPosition?.y ?? 0 });
+  const zoomRef = useRef(initialSettings?.zoom ?? 1);
+  const offsetRef = useRef<Point>({ x: initialSettings?.x ?? 0, y: initialSettings?.y ?? 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [zoom, setZoom] = useState(initialPosition?.zoom ?? 1);
-  const [offset, setOffset] = useState({ x: initialPosition?.x ?? 0, y: initialPosition?.y ?? 0 });
+  const [format, setFormat] = useState<ImageFormat>(cover ? "16:9" : initialSettings && "format" in initialSettings ? initialSettings.format : "original");
+  const [zoom, setZoom] = useState(initialSettings?.zoom ?? 1);
+  const [offset, setOffset] = useState({ x: initialSettings?.x ?? 0, y: initialSettings?.y ?? 0 });
   const [error, setError] = useState("");
-  const [working, setWorking] = useState(false);
+  const ratio = image ? imageRatio(format, image.naturalWidth, image.naturalHeight) : 4 / 3;
+  const previewHeight = Math.round(PREVIEW_WIDTH / ratio);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +89,6 @@ export function ProductImageEditor({
           return;
         }
         const next = new Image();
-        next.crossOrigin = "anonymous";
         next.onload = () => {
           if (!cancelled) setImage(next);
         };
@@ -107,7 +110,7 @@ export function ProductImageEditor({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas && image) drawCrop(canvas, image, zoom, offset.x, offset.y);
-  }, [image, zoom, offset]);
+  }, [image, zoom, offset, format, previewHeight]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -193,21 +196,21 @@ export function ProductImageEditor({
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const scale =
-      Math.max(PREVIEW_WIDTH / image.naturalWidth, PREVIEW_HEIGHT / image.naturalHeight) *
+      Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight) *
       zoomRef.current;
-    const maxX = Math.max(0, (image.naturalWidth * scale - PREVIEW_WIDTH) / 2);
-    const maxY = Math.max(0, (image.naturalHeight * scale - PREVIEW_HEIGHT) / 2);
+    const maxX = Math.max(0, (image.naturalWidth * scale - canvas.width) / 2);
+    const maxY = Math.max(0, (image.naturalHeight * scale - canvas.height) / 2);
     const nextOffset = {
       x: maxX
         ? clamp(
-            drag.offset.x + ((event.clientX - drag.start.x) * PREVIEW_WIDTH) / rect.width / maxX,
+            drag.offset.x + ((event.clientX - drag.start.x) * canvas.width) / rect.width / maxX,
             -1,
             1,
           )
         : 0,
       y: maxY
         ? clamp(
-            drag.offset.y + ((event.clientY - drag.start.y) * PREVIEW_HEIGHT) / rect.height / maxY,
+            drag.offset.y + ((event.clientY - drag.start.y) * canvas.height) / rect.height / maxY,
             -1,
             1,
           )
@@ -227,49 +230,47 @@ export function ProductImageEditor({
     if (pointersRef.current.size >= 2) startPinch(event.currentTarget);
   }
 
-  async function apply() {
+  function apply() {
     if (!image) return;
-    setWorking(true);
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 900;
-      canvas.height = 1200;
-      drawCrop(canvas, image, zoomRef.current, offsetRef.current.x, offsetRef.current.y);
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/webp", 0.9),
-      );
-      if (!blob) throw new Error("No se pudo preparar el recorte.");
-      onApply(new File([blob], `producto-${crypto.randomUUID()}.webp`, { type: "image/webp" }), {
-        zoom: zoomRef.current,
-        x: offsetRef.current.x,
-        y: offsetRef.current.y,
-      });
-    } catch {
-      setError("No se pudo preparar el recorte. Intentá de nuevo.");
-      setWorking(false);
+    if (cover && (image.naturalWidth < 16 || image.naturalHeight < 9)) {
+      setError("La foto de portada debe medir al menos 16 × 9 píxeles.");
+      return;
     }
+    const settings = { zoom: zoomRef.current, x: offsetRef.current.x, y: offsetRef.current.y,
+      width: image.naturalWidth, height: image.naturalHeight };
+    onApply(cover ? settings : { ...settings, format });
   }
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !working) onClose();
+        if (!open) onClose();
       }}
     >
       <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden border-0 p-0 sm:h-auto sm:max-h-[94dvh] sm:w-[min(92vw,780px)] sm:rounded-2xl sm:border">
         <DialogHeader className="border-b px-5 py-5 text-left sm:px-7">
-          <DialogTitle className="text-xl">Ajustar foto</DialogTitle>
+          <DialogTitle className="text-xl">{cover ? "Ajustar portada" : "Ajustar foto"}</DialogTitle>
           <DialogDescription>
-            Arrastrá para mover la foto. En el celular, usá dos dedos para acercar o alejar.
+            {cover ? "Las imágenes utilizadas como portada deben tener una relación de aspecto 16:9. Podés ajustar el encuadre antes de guardar." : "Elegí el formato y arrastrá para mover la foto. En el celular, usá dos dedos para acercar o alejar."}
           </DialogDescription>
         </DialogHeader>
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto bg-secondary/30 p-4 sm:p-7">
-          <div className="relative w-full max-w-[330px] overflow-hidden rounded-xl border bg-background shadow-xl">
+          {image && !cover && <label className="w-full max-w-[420px] text-xs text-muted-foreground">Formato
+            <select value={format} onChange={(event) => {
+              setFormat(event.target.value as ImageFormat);
+              zoomRef.current = 1; offsetRef.current = { x: 0, y: 0 };
+              setZoom(1); setOffset({ x: 0, y: 0 });
+            }} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 text-sm text-foreground">
+              {imageFormats.map((item) => <option key={item} value={item}>{item === "original" ? "Original" : item}</option>)}
+            </select>
+          </label>}
+          {image && <img src={image.src} alt="Imagen original sin recortar" className="max-h-28 max-w-full object-contain" />}
+          <div className="relative w-full max-w-[420px] overflow-hidden rounded-xl border bg-background shadow-xl" style={{ aspectRatio: ratio }}>
             <canvas
               ref={canvasRef}
               width={PREVIEW_WIDTH}
-              height={PREVIEW_HEIGHT}
+              height={previewHeight}
               onPointerDown={(event) => {
                 if (!image) return;
                 event.currentTarget.setPointerCapture(event.pointerId);
@@ -289,7 +290,7 @@ export function ProductImageEditor({
               onPointerMove={move}
               onPointerUp={endPointer}
               onPointerCancel={endPointer}
-              className="block aspect-[3/4] w-full touch-none cursor-grab active:cursor-grabbing"
+              className="block h-full w-full touch-none cursor-grab active:cursor-grabbing"
               aria-label="Vista previa del recorte; arrastrá para mover, pellizcá con dos dedos o usá la rueda del mouse para ampliar"
             />
             {!image && (
@@ -341,18 +342,17 @@ export function ProductImageEditor({
           <button
             type="button"
             onClick={onClose}
-            disabled={working}
             className="min-h-11 flex-1 rounded-xl border px-5 text-sm font-medium hover:bg-secondary sm:flex-none"
           >
             Cancelar
           </button>
           <button
             type="button"
-            onClick={() => void apply()}
-            disabled={!image || working}
+            onClick={apply}
+            disabled={!image}
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:flex-none"
           >
-            {working && <Loader2 className="h-4 w-4 animate-spin" />}Aplicar recorte
+            Confirmar encuadre
           </button>
         </div>
       </DialogContent>
