@@ -1,0 +1,12 @@
+.scene {
+  animation: reveal 1.1s ease-out both;
+}
+
+@keyframes reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene { animation: none; }
+}

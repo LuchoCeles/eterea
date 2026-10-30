@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { catalogCategories, categoriesForProducts, defaults, legacyHomeCategoryCards, mergeTextSection, productsWithCategoryNames, resolveContent, visibleStoreProducts } from "../lib/content";
 import { categoryIdForName, isProductSoldOut, prepareProductsForSave, sortProductsByCreation } from "../lib/products";
-import { sortProductsByAvailability } from "../lib/catalog-products";
+import { catalogProducts, homeProducts, sortProductsByAvailability } from "../lib/catalog-products";
 import { referencedProductIds, resolveImageSource } from "../lib/image-source";
 import { contentSchemas, textSectionSchemas } from "../lib/content-schema";
 import { productHref, productSlug, slugifyProductName } from "../lib/product-slugs";
@@ -26,6 +26,40 @@ describe("URLs de productos", () => {
 });
 
 describe("Catálogo y categorías heredadas", () => {
+  it("guarda productos sin sección y los muestra solo en el catálogo", () => {
+    const categories = [{ id: "vestidos", name: "Vestidos" }];
+    const products = resolveContent("products", [{
+      id: "sin-seccion", name: "Vestido", category: "Vestidos", categoryId: "vestidos",
+      price: 80, image: "", section: null,
+    }]);
+    assert.equal(contentSchemas.products.safeParse(products).success, true);
+    assert.deepEqual(catalogProducts(products, categories).map((product) => product.id), ["sin-seccion"]);
+    assert.deepEqual(homeProducts(products), { newArrivals: [], sale: [] });
+  });
+
+  it("reconoce una oferta por sus precios aunque esté asignada a Lo nuevo", () => {
+    const categories = [{ id: "vestidos", name: "Vestidos" }];
+    const products = resolveContent("products", [
+      { id: "rebajado", name: "Vestido", category: "Vestidos", categoryId: "vestidos", price: 80, oldPrice: 100, image: "", section: "nuevo" },
+      { id: "sin-seccion", name: "Blusa", category: "Vestidos", categoryId: "vestidos", price: 50, oldPrice: 70, image: "", section: null },
+    ]);
+    const featured = homeProducts(products);
+    assert.deepEqual(featured.newArrivals, []);
+    assert.deepEqual(featured.sale.map((product) => product.id), ["rebajado"]);
+    assert.deepEqual(catalogProducts(products, categories).map((product) => product.id), ["rebajado", "sin-seccion"]);
+    assert.equal(catalogProducts(products, categories)[0]?.price, 80);
+  });
+
+  it("mantiene en el catálogo un producto de Ofertas sin descuento", () => {
+    const categories = [{ id: "vestidos", name: "Vestidos" }];
+    const products = resolveContent("products", [{
+      id: "sin-descuento", name: "Vestido", category: "Vestidos", categoryId: "vestidos",
+      price: 100, image: "", section: "sale",
+    }]);
+    assert.deepEqual(catalogProducts(products, categories).map((product) => product.id), ["sin-descuento"]);
+    assert.deepEqual(homeProducts(products).sale, []);
+  });
+
   it("guarda un apartado del inicio sin alterar los demás ni activar ofertas", () => {
     const original = resolveContent("texts", { benefits: [{ t: "Original", d: "" }], offers: { enabled: false } });
     const updated = mergeTextSection(original, "marquee", ["Nuevo texto"]);

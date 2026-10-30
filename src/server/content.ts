@@ -9,6 +9,7 @@ import { instagramPermalink } from "@/lib/storefront-rules";
 import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
 import { deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudinary";
 import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
+import { queueChangedImages } from "@/server/image-cleanup";
 import { prisma } from "@/server/prisma";
 import { loadRelationalContentWithSections, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
 
@@ -74,6 +75,12 @@ function referencedUrls(snapshot: ContentSnapshot) {
   ]);
 }
 
+function changedImageUrls(previous: string[], next: string[], uploaded: string[]) {
+  const before = new Set(previous);
+  const after = new Set(next);
+  return [...previous.filter((url) => !after.has(url)), ...next.filter((url) => !before.has(url)), ...uploaded];
+}
+
 async function queueUnusedImages(db: Db, candidates: string[], snapshot: ContentSnapshot) {
   const referenced = referencedUrls(snapshot);
   const staleUploads = await db.cloudinaryPendingUpload.findMany({
@@ -134,13 +141,6 @@ async function drainStaleReservations() {
   }
 }
 
-function checkProductReferences(value: unknown, products: StoreProduct[]) {
-  const ids = new Set(products.map((product) => product.id));
-  if (referencedProductIds(value).some((id) => !ids.has(id))) {
-    throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
-  }
-}
-
 function checkCards(cards: HomeCategoryCard[], categoryIds: Set<string>) {
   if (new Set(cards.map((card) => card.id)).size !== cards.length
     || new Set(cards.map((card) => card.categoryId)).size !== cards.length) {
@@ -155,8 +155,8 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
   const parsed = contentSchemas[key].safeParse(value);
   if (!parsed.success) throw new ContentValidationError("El formato del contenido no es válido.");
   return prisma.$transaction(async (db) => {
-    const { snapshot: current, catalog: stored } = await readSnapshotData(db);
     let next = resolveContent(key, parsed.data);
+    let previousImageUrls: string[] = [];
     if (key === "categories") {
       const categories = next as ContentSnapshot["categories"];
       const ids = categories.map((category) => category.id);
@@ -164,41 +164,37 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       if (new Set(ids).size !== ids.length || new Set(names).size !== names.length) {
         throw new ContentValidationError("Cada categoría debe tener un nombre y un identificador únicos.");
       }
-      if (current.categories.some((category) => !ids.includes(category.id))) {
+      const [saved, rows] = await Promise.all([
+        db.contentSection.findUnique({ where: { key }, select: { key: true } }),
+        db.category.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, name: true, hidden: true } }),
+      ]);
+      const current = saved ? rows : (await readSnapshotData(db)).snapshot.categories;
+      if (current.some((category) => !ids.includes(category.id))) {
         throw new ContentValidationError("Para quitar una categoría de la tienda, ocultala. No se borran categorías desde este editor.");
       }
+      await saveCategoryRows(db, categories, rows);
+      await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
     }
     if (key === "products") {
       const products = next as StoreProduct[];
       if (new Set(products.map((product) => product.id)).size !== products.length) {
         throw new ContentValidationError("Hay productos con identificadores repetidos.");
       }
-      const categories = new Map(current.categories.map((category) => [category.id, category.name]));
+      const [stored, saved] = await Promise.all([
+        loadRelationalCatalog(db, false),
+        db.contentSection.findMany({ where: { key: { in: ["products", "categories"] } }, select: { key: true } }),
+      ]);
+      const savedKeys = new Set(saved.map((section) => section.key));
+      const fallback = savedKeys.has("products") && savedKeys.has("categories") ? null : await readSnapshotData(db);
+      const currentProducts = savedKeys.has("products") ? stored.products : fallback!.snapshot.products;
+      const currentCategories = savedKeys.has("categories") ? stored.categories : fallback!.snapshot.categories;
+      const categories = new Map(currentCategories.map((category) => [category.id, category.name]));
       if (products.some((product) => !categories.has(product.categoryId ?? ""))) {
         throw new ContentValidationError("Asigná a cada producto una categoría creada en el administrador.");
       }
       next = prepareProductsForSave(products.map((product) => ({
         ...product, category: categories.get(product.categoryId ?? "") ?? product.category,
-      })), current.products, Date.now());
-    }
-    if (key === "texts") {
-      const texts = next as ContentSnapshot["texts"];
-      checkCards(texts.homeCategoryCards, new Set(current.categories.map((category) => category.id)));
-      checkProductReferences([texts.split, texts.editorial, texts.homeCategoryCards], current.products);
-    }
-    if (key === "hero" || key === "instagram") checkProductReferences(next, current.products);
-    if (key === "instagram") {
-      const posts = next as ContentSnapshot["instagram"];
-      if (posts.some((post) => !instagramPermalink(post.url))) {
-        throw new ContentValidationError("Usá enlaces válidos a publicaciones o reels de Instagram.");
-      }
-      if (new Set(posts.map((post) => post.id)).size !== posts.length) {
-        throw new ContentValidationError("Hay publicaciones de Instagram repetidas.");
-      }
-    }
-    if (key === "categories") {
-      await saveCategoryRows(db, next as ContentSnapshot["categories"], stored.categories);
-    } else if (key === "products") {
+      })), currentProducts, Date.now());
       await saveProductRows(db, next as StoreProduct[], stored.products);
       const removedIds = stored.products.filter((product) => !(next as StoreProduct[]).some((item) => item.id === product.id)).map((product) => product.id);
       if (removedIds.length) {
@@ -212,20 +208,48 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
         }
         await db.product.deleteMany({ where: { id: { in: removedIds } } });
       }
+      await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
+      previousImageUrls = contentImageUrls("products", stored.products);
     }
-    else {
+    if (key === "texts") {
+      const texts = next as ContentSnapshot["texts"];
+      const categoryIds = await db.category.findMany({ select: { id: true } });
+      checkCards(texts.homeCategoryCards, new Set(categoryIds.map((category) => category.id)));
+    }
+    if (key === "hero" || key === "instagram" || key === "texts") {
+      const ids = [...new Set(referencedProductIds(next))];
+      if (ids.length) {
+        const products = await db.product.findMany({ where: { id: { in: ids } }, select: { id: true } });
+        if (products.length !== ids.length) throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+      }
+    }
+    if (key === "instagram") {
+      const posts = next as ContentSnapshot["instagram"];
+      if (posts.some((post) => !instagramPermalink(post.url))) {
+        throw new ContentValidationError("Usá enlaces válidos a publicaciones o reels de Instagram.");
+      }
+      if (new Set(posts.map((post) => post.id)).size !== posts.length) {
+        throw new ContentValidationError("Hay publicaciones de Instagram repetidas.");
+      }
+    }
+    if (key !== "categories" && key !== "products") {
       if (key === "texts") {
-        await saveHomeCategoryCardRows(db, (next as ContentSnapshot["texts"]).homeCategoryCards, stored.cardRows);
+        const [split, editorial] = await Promise.all([
+          db.splitBanner.findUnique({ where: { id: 1 }, select: { img: true } }),
+          db.editorialBanner.findUnique({ where: { id: 1 }, select: { img: true } }),
+        ]);
+        previousImageUrls = [split?.img, editorial?.img].filter((url): url is string => !!url);
+        previousImageUrls.push(...await saveHomeCategoryCardRows(db, (next as ContentSnapshot["texts"]).homeCategoryCards));
         await db.contentSection.upsert({ where: { key: "homeCategoryCards" }, create: { key: "homeCategoryCards" }, update: {} });
+      } else if (key === "hero") {
+        previousImageUrls = (await db.heroSlide.findMany({ select: { img: true } })).map((row) => row.img);
+      } else if (key === "instagram") {
+        previousImageUrls = (await db.curatedInstagramPost.findMany({ select: { image: true } })).map((row) => row.image);
       }
       await saveRelationalContent(db, key, next);
     }
-    if (key === "categories" || key === "products") {
-      await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
-    }
-    const updated = { ...current, [key]: next } as ContentSnapshot;
-    const cleanupPending = await queueUnusedImages(db, [...contentImageUrls(key, current[key]), ...uploadedUrls], updated);
-    return { data: updated[key], cleanupPending };
+    const cleanupPending = await queueChangedImages(db, changedImageUrls(previousImageUrls, contentImageUrls(key, next), uploadedUrls));
+    return { data: next, cleanupPending };
   }, { timeout: 120_000 });
 }
 
@@ -259,8 +283,9 @@ export async function saveTextSection(section: TextSectionKey, value: unknown, u
       }
       await saveRelationalTextSection(db, section, nextValue);
     }
-    const updated = await readSnapshot(db);
-    const cleanupPending = await queueUnusedImages(db, [...previousImageUrls, ...uploadedUrls], updated);
+    const nextImageUrls = section === "homeCategoryCards" ? (nextValue as HomeCategoryCard[]).map((card) => card.img)
+      : section === "split" || section === "editorial" ? [(nextValue as { img: string }).img] : [];
+    const cleanupPending = await queueChangedImages(db, changedImageUrls(previousImageUrls, nextImageUrls, uploadedUrls));
     return { section, data: nextValue, cleanupPending };
   }, { timeout: 120_000 });
 }

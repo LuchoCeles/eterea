@@ -33,8 +33,7 @@ export default async function ProductPage({ params }: PageProps) {
   if (!source) notFound();
   if (slug !== productSlug(source, content.products)) redirect(productHref(source, content.products));
 
-  const offersEnabled = content.texts.offers.enabled;
-  const related = catalogProducts(content.products, content.categories, offersEnabled)
+  const related = catalogProducts(content.products, content.categories)
     .filter((item) => item.id !== source.id)
     .sort((a, b) => Number(b.categoryId === source.categoryId) - Number(a.categoryId === source.categoryId))
     .slice(0, 4);

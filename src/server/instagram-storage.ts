@@ -46,6 +46,16 @@ export async function replaceStoredConnection(data: StoredInstagramToken) {
   });
 }
 
+export async function deleteStoredConnection() {
+  await prisma.$transaction(async (db) => {
+    await db.instagramConnection.deleteMany({ where: { id: 1 } });
+    await db.instagramFeedState.deleteMany();
+    await db.instagramFeedPost.deleteMany();
+    await db.instagramMediaState.deleteMany();
+    await db.instagramMediaEntry.deleteMany();
+  });
+}
+
 export async function readFeedCache(connectionId: string) {
   const [state, rows] = await Promise.all([
     prisma.instagramFeedState.findUnique({ where: { id: 1 } }),

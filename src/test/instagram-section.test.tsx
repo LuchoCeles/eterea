@@ -7,6 +7,7 @@ import { ContactSection } from "../components/store/ContactSection";
 import { Header } from "../components/store/Header";
 import { InstagramSection } from "../components/store/InstagramSection";
 import { defaults, type ContactSettings, type InstagramPost } from "../lib/content";
+import { instagramMediaAsset } from "../lib/instagram-media";
 import type { InstagramMediaAsset } from "../lib/instagram-media";
 
 const posts: InstagramPost[] = Array.from({ length: 8 }, (_, index) => ({
@@ -47,13 +48,53 @@ describe("Galería del Home", () => {
     assert.equal((html.match(/href="https:\/\/www\.instagram\.com\/p\/P\d+\/"/g) ?? []).length, 0);
   });
 
+  it("renderiza portadas de IMAGE, CAROUSEL_ALBUM, VIDEO y REELS con sus enlaces originales", () => {
+    const items = posts.slice(0, 4).map((post, index) => index === 3
+      ? { ...post, url: "https://www.instagram.com/reel/R3/", kind: "reel" as const }
+      : post);
+    const assets = [
+      instagramMediaAsset({ media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/image-cover.jpg" }),
+      instagramMediaAsset({ media_type: "CAROUSEL_ALBUM", children: { data: [
+        { media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/v/carousel-cover.jpg" },
+      ] } }),
+      instagramMediaAsset({ media_type: "VIDEO", media_url: "https://scontent.cdninstagram.com/v/video.mp4", thumbnail_url: "https://scontent.cdninstagram.com/v/video-cover.jpg" }),
+      instagramMediaAsset({ media_type: "REELS", media_url: "https://scontent.cdninstagram.com/v/reel.mp4", thumbnail_url: "https://scontent.cdninstagram.com/v/reel-cover.jpg" }),
+    ];
+    const mediaAssets = Object.fromEntries(items.flatMap((post, index) => assets[index] ? [[post.url, assets[index] as InstagramMediaAsset]] : []));
+    const html = renderInstagram(mediaAssets, items);
+    for (const filename of ["image-cover.jpg", "carousel-cover.jpg", "video-cover.jpg", "reel-cover.jpg"]) assert.ok(html.includes(filename));
+    for (const post of items) assert.ok(html.includes(`href="${post.url}"`));
+  });
+
   it("usa el perfil configurado y oculta el enlace cuando falta", () => {
-    const configured = renderInstagram({}, [], { ...defaults.contact, instagramUsername: "cuenta.eterea" });
+    const configured = renderInstagram({}, [], {
+      ...defaults.contact,
+      instagramUsername: "cuenta.eterea",
+      whatsapp: "+54 9 223 555-0188",
+    });
     assert.ok(configured.includes("@cuenta.eterea"));
     assert.ok(configured.includes('href="https://www.instagram.com/cuenta.eterea/"'));
+    assert.ok(configured.includes("Sigamos cerca."));
+    assert.ok(configured.includes("Descubrí nuestras novedades, inspirate con Etérea y escribinos cuando quieras."));
+    assert.ok(!configured.includes("Un poquito más de Etérea"));
+    assert.ok(configured.includes('href="https://wa.me/5492235550188?text='));
+    assert.ok(configured.includes("Escribinos por WhatsApp"));
+
+    const noWhatsApp = renderInstagram({}, [], { ...defaults.contact, whatsapp: "sin número" });
+    assert.ok(!noWhatsApp.includes("wa.me/"));
+
     const empty = renderInstagram({}, []);
     assert.ok(!empty.includes("@eterea.newconcept"));
     assert.ok(!empty.includes("Seguinos en Instagram"));
+  });
+
+  it("mantiene el iPhone proporcionado sin asociar el nombre de Etérea a una cuenta de prueba", () => {
+    const html = renderInstagram({}, [], { ...defaults.contact, instagramUsername: "logabytedev" });
+    assert.ok(html.includes("max-w-[290px]"));
+    assert.ok(html.includes("aspect-[1/2]"));
+    assert.ok(html.includes("w-[24cqw]"));
+    assert.ok(html.includes("@logabytedev"));
+    assert.ok(!html.includes("ETÉREA NEW CONCEPT"));
   });
 });
 

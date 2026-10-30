@@ -6,15 +6,11 @@ import type { HomeSections } from "@/lib/content";
 const sectionLabels: { key: keyof HomeSections; label: string }[] = [
   { key: "promoBar", label: "Barra de promociones" },
   { key: "hero", label: "Banners principales" },
-  { key: "benefits", label: "Franja publicitaria" },
   { key: "categories", label: "Categorías destacadas" },
   { key: "newArrivals", label: "Lo nuevo" },
   { key: "offerBanners", label: "Banners de ofertas" },
-  { key: "marquee", label: "Cinta en movimiento" },
   { key: "sale", label: "Descuentos" },
-  { key: "editorial", label: "Sección de la marca" },
   { key: "instagram", label: "Instagram" },
-  { key: "newsletter", label: "Invitación a seguir a Etérea" },
 ];
 
 export function HomeSectionVisibility({

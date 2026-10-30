@@ -5,9 +5,13 @@ import { Check, Loader2, Package, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { ProductCategorySelect } from "@/components/admin/ProductCategorySelect";
 import { ProductColorsEditor } from "@/components/admin/ProductColorsEditor";
+import { ProductInputField } from "@/components/admin/ProductInputField";
 import { ProductOptionsEditor } from "@/components/admin/ProductOptionsEditor";
 import { ProductPaymentPricesEditor } from "@/components/admin/ProductPaymentPricesEditor";
+import { ProductPricePreview } from "@/components/admin/ProductPricePreview";
 import { ProductStagedGallery, type GalleryItem } from "@/components/admin/ProductStagedGallery";
+import { useProductEditorBaseline } from "@/components/admin/useProductEditorBaseline";
+import { useContent } from "@/components/providers/ContentProvider";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
 import { uploadImages } from "@/lib/media-client";
+import { productEditorSnapshot } from "@/lib/product-editor-snapshot";
 
 type Category = { id: string; name: string; hidden?: boolean };
 
@@ -35,12 +40,21 @@ export function ProductEditorModal({
   onSave: (product: StoreProduct, uploadedUrls: string[]) => Promise<boolean>;
 }) {
   const [product, setProduct] = useState(initial);
+  const offersEnabled = useContent("texts").offers.enabled;
+  const [basePayment] = useState(() => isNew || (
+    initial.paymentPrices?.[0]?.label === "Transferencia" &&
+    initial.paymentPrices[0].price === initial.price
+  ));
+  const [paymentEditorVersion, setPaymentEditorVersion] = useState(0);
   const [items, setItems] = useState<GalleryItem[]>(() =>
     (initial.images?.length ? initial.images : initial.image ? [initial.image] : []).map((url) => ({
       id: crypto.randomUUID(),
       url,
     })),
   );
+  const [initialSnapshot] = useState(() => productEditorSnapshot(initial, items.map((item) => item.url)));
+  const baseline = useProductEditorBaseline(initial.id, initialSnapshot);
+  const hasChanges = productEditorSnapshot(product, items.map((item) => item.url)) !== baseline;
   const [saving, setSaving] = useState(false);
   const [phase, setPhase] = useState("");
   const objectUrls = useRef(new Set<string>());
@@ -65,8 +79,23 @@ export function ProductEditorModal({
     setProduct((current) => ({ ...current, ...next }));
   }
 
+  function swapPrices() {
+    setProduct((current) => {
+      const price = current.oldPrice ?? current.price;
+      return {
+        ...current,
+        price,
+        oldPrice: current.price,
+        paymentPrices: basePayment && current.paymentPrices
+          ? current.paymentPrices.map((payment, index) => index === 0 ? { ...payment, price } : payment)
+          : current.paymentPrices,
+      };
+    });
+    setPaymentEditorVersion((current) => current + 1);
+  }
+
   async function save() {
-    if (saving) return;
+    if (saving || !hasChanges) return;
     const name = product.name.trim();
     if (!name) {
       toast.error("Escribí el nombre del producto.");
@@ -99,8 +128,11 @@ export function ProductEditorModal({
       }
       setPhase("Guardando producto…");
       const images = nextItems.map((item) => item.url);
+      const paymentPrices = basePayment && product.paymentPrices
+        ? product.paymentPrices.map((payment, index) => index === 0 ? { ...payment, price: product.price } : payment)
+        : product.paymentPrices;
       const result = await onSave(
-        { ...product, name, images, image: images[0] ?? "" },
+        { ...product, name, tag: undefined, paymentPrices, images, image: images[0] ?? "" },
         uploadedUrls.current,
       );
       if (result) {
@@ -155,14 +187,11 @@ export function ProductEditorModal({
             disabled={saving}
             className="mx-auto grid min-w-0 max-w-[1100px] items-start gap-5 border-0 p-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-6"
           >
-            <ProductStagedGallery
-              items={items}
-              onChange={setItems}
-              onObjectUrl={(url) => objectUrls.current.add(url)}
-              disabled={saving}
-            />
             <div className="space-y-5">
-              <section className="space-y-5 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+              <section
+                tabIndex={0}
+                className="no-scrollbar space-y-5 rounded-2xl border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 lg:h-[min(70dvh,640px)] lg:overflow-y-auto"
+              >
                 <div>
                   <h3 className="text-base font-semibold">Información del producto</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -184,17 +213,21 @@ export function ProductEditorModal({
                     }
                   />
                   <label className="flex min-w-0 flex-col gap-2 text-xs font-semibold text-muted-foreground">
-                    Sección
+                    Sección del inicio (opcional)
                     <select
-                      value={product.section}
+                      value={product.section ?? ""}
                       onChange={(event) =>
-                        patch({ section: event.target.value as StoreProduct["section"] })
+                        patch({ section: event.target.value ? event.target.value as "nuevo" | "sale" : null })
                       }
                       className="min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
+                      <option value="">Sin sección</option>
                       <option value="nuevo">Lo nuevo</option>
-                      <option value="sale">Sale</option>
+                      <option value="sale">Ofertas</option>
                     </select>
+                    <span className="text-xs font-normal leading-relaxed">
+                      “Nuevo” aparece en Lo nuevo. “Oferta” aparece automáticamente si el precio antes de la oferta supera al precio actual y las ofertas están activas.
+                    </span>
                   </label>
                 </div>
                 <label className="flex items-center justify-between gap-3 rounded-xl border bg-secondary/30 px-4 py-3">
@@ -241,40 +274,48 @@ export function ProductEditorModal({
                   />
                 </div>
               </section>
-              <section className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+              <ProductStagedGallery
+                items={items}
+                onChange={setItems}
+                onObjectUrl={(url) => objectUrls.current.add(url)}
+                disabled={saving}
+              />
+            </div>
+            <div className="space-y-5">
+              <section
+                tabIndex={0}
+                className="no-scrollbar space-y-4 rounded-2xl border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 lg:h-[min(70dvh,640px)] lg:overflow-y-auto"
+              >
                 <div>
-                  <h3 className="text-base font-semibold">Precios y etiquetas</h3>
+                  <h3 className="text-base font-semibold">Precios</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Configurá cómo se muestra el precio.
+                    El precio actual se agrega al carrito. Si cargás un precio más alto en “Precio antes de la oferta”, aparecerá tachado y se mostrará el descuento.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <ProductInputField
-                    label="Precio base ($)"
+                    label="Precio actual ($)"
                     type="number"
                     value={product.price}
                     onChange={(next) => patch({ price: Number(next) || 0 })}
                   />
                   <ProductInputField
-                    label="Precio anterior ($, opcional)"
+                    label="Precio antes de la oferta ($, opcional)"
                     type="number"
                     value={product.oldPrice ?? ""}
                     onChange={(next) => patch({ oldPrice: next ? Number(next) : undefined })}
                   />
                 </div>
-                <ProductInputField
-                  label="Etiqueta"
-                  value={product.tag ?? ""}
-                  onChange={(next) => patch({ tag: next || undefined })}
-                  placeholder="Ej. Nuevo o -30%"
-                />
                 <ProductPaymentPricesEditor
+                  key={paymentEditorVersion}
                   basePrice={product.price}
+                  basePayment={basePayment}
                   prices={product.paymentPrices ?? []}
                   onChange={(paymentPrices) =>
                     patch({ paymentPrices: paymentPrices.length ? paymentPrices : undefined })
                   }
                 />
+                <ProductPricePreview product={product} offersEnabled={offersEnabled} onSwapPrices={swapPrices} />
               </section>
               <section className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
                 <h3 className="text-base font-semibold">Variantes</h3>
@@ -323,7 +364,7 @@ export function ProductEditorModal({
               <button
                 type="button"
                 onClick={() => void save()}
-                disabled={saving}
+                disabled={saving || !hasChanges}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 sm:flex-none"
               >
                 {saving ? (
@@ -338,33 +379,5 @@ export function ProductEditorModal({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ProductInputField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-}: {
-  label: string;
-  value: string | number;
-  onChange: (value: string) => void;
-  type?: "text" | "number";
-  placeholder?: string;
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-2 text-xs font-semibold text-muted-foreground">
-      {label}
-      <input
-        type={type}
-        min={type === "number" ? 0 : undefined}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="min-h-11 w-full rounded-xl border bg-background px-3 py-2 text-sm font-normal text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      />
-    </label>
   );
 }

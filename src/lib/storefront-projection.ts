@@ -10,7 +10,6 @@ export function productForListing(product: StoreProduct): StoreProduct {
     price: product.price,
     ...(product.oldPrice !== undefined ? { oldPrice: product.oldPrice } : {}),
     ...(product.paymentPrices ? { paymentPrices: product.paymentPrices } : {}),
-    ...(product.tag ? { tag: product.tag } : {}),
     image: product.image,
     ...(product.sizes?.length ? { sizes: product.sizes } : {}),
     ...(product.colors?.length ? { colors: product.colors } : {}),

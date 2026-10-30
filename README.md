@@ -52,22 +52,21 @@ Las secciones vacías se distinguen de las que usan valores por defecto mediante
 
 ## Publicaciones de Instagram en el home
 
-La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta seis publicaciones recientes de la cuenta vinculada. La caché se revisa cada 15 minutos; cuando vence, el home entrega temporalmente los datos guardados y los renueva después de responder. Si Meta no responde, se usa la última lista obtenida durante un día. Con la cuenta conectada, el servidor busca las publicaciones propias por su enlace, obtiene el archivo y la portada mediante la API de Meta y los reproduce en el home sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador. Si Meta no entrega el archivo, se intenta la inserción pública; cuando tampoco está permitida, el home muestra la portada cargada (si existe) y un enlace a Instagram.
+La sección «El universo Etérea» muestra primero los enlaces cargados en el administrador. Si la lista está vacía, muestra hasta seis publicaciones recientes de la cuenta vinculada. La lista se revisa cada 15 minutos; si Meta no responde, el Home conserva la última lista recibida durante un día. Con la cuenta conectada, el servidor consulta las publicaciones propias mediante la API de Meta sin pedir inicio de sesión a cada visitante. El token nunca se envía al navegador.
 
-Para activar la galería dinámica del Home:
+La integración actual usa un System User Access Token (SUAT), `instagram_basic` y `graph.facebook.com`; no usa el token del flujo clásico `graph.instagram.com` ni una renovación OAuth automática.
 
-1. Usá la cuenta profesional de Instagram (Business o Creator) que publica los videos. En [Meta for Developers](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login), creá o abrí una app, configurá **Instagram API with Instagram Login** y solicitá el permiso `instagram_business_basic`. Este flujo no exige vincular una página de Facebook. Completá los pasos de autorización de la cuenta en Meta.
-2. Generá un token de acceso **de larga duración** para esa cuenta. Guardalo en un lugar privado: no lo incluyas en código, capturas, mensajes ni variables públicas `NEXT_PUBLIC_*`.
-3. Entrá a `/admin`, abrí la pestaña **Instagram** y pegá el token en **Conexión automática con Instagram**. El servidor comprueba que corresponda a una cuenta válida y que pueda leer sus publicaciones. Después guarda el token cifrado en `InstagramConnection`. El panel muestra el usuario vinculado, pero nunca devuelve el token.
-4. La galería muestra hasta seis publicaciones recientes con una portada disponible. Cada imagen abre su publicación real en Instagram. En la misma pestaña podés cargar publicaciones manuales como alternativa para cuando todavía no hay conexión; con la cuenta vinculada, el feed de Meta tiene prioridad.
+1. Generá un SUAT autorizado para la cuenta profesional correcta, con el permiso `instagram_basic`. Verificá aplicación, tipo, caducidad y permisos con el depurador oficial de Meta.
+2. Obtené el Instagram User ID de ese activo. El ID de Instagram no es el App ID ni el Business ID.
+3. Iniciá sesión en `/auth`, abrí **Redes y contacto** (`/admin/redes-y-contacto`) y buscá **Conexión automática con Instagram**. Ingresá el token y el ID, y presioná **Validar cuenta**.
+4. Confirmá que Meta identifique el usuario esperado y presioná **Confirmar y guardar conexión**. El servidor vuelve a validar el perfil y el feed antes de guardar el token cifrado.
+5. La galería muestra hasta seis publicaciones recientes con portada disponible y conserva los enlaces a las publicaciones originales. Las URLs de portadas de Meta son temporales: se refrescan cada 15 minutos y no se guardan como URLs permanentes.
 
-La vinculación guarda el ID y el usuario que entrega Meta. El Home comprueba que la cuenta conectada conserve el mismo ID; si se reemplaza el token por otra cuenta, también se actualizan el usuario y el feed.
+La base de datos de cada entorno guarda una conexión global para la tienda. El proyecto actual no ofrece conexiones por tenant ni varias cuentas simultáneas en la misma base.
 
-El servidor renueva el token guardado mientras el sitio recibe visitas. Si la cuenta deja de autorizar la app o el token vence después de un período prolongado sin visitas, generá otro token y reemplazalo desde la misma pestaña. El cifrado usa `AUTH_SECRET`: si cambiás ese secreto, tendrás que volver a ingresar el token. El feed se guarda en caché durante 15 minutos. Las portadas de Meta se redimensionan con `next/image` y se cargan al entrar en pantalla; la galería muestra un estado vacío si no recibe imágenes válidas.
+El token no se renueva automáticamente. Si Meta lo revoca o deja de ser válido, generá otro SUAT y reemplazalo desde el administrador. El cifrado usa `AUTH_SECRET` con al menos 32 bytes; si cambiás ese secreto, tendrás que volver a ingresar el token. Las URLs de archivos quedan en memoria durante 15 minutos; la base conserva los IDs estables de las publicaciones y los enlaces, no esas URLs temporales.
 
-Si antes configuraste `INSTAGRAM_ACCESS_TOKEN` en el entorno, ingresá ese token una vez desde el panel y después quitá la variable: el home ahora lee únicamente la conexión guardada en la base de datos.
-
-Referencias de Meta: [API con Instagram Login](https://www.postman.com/meta/instagram/folder/6raa77c/instagram-api-with-instagram-login) y [renovación del token](https://developers.facebook.com/docs/instagram-platform/reference/refresh_access_token).
+Para los pasos completos, errores y referencias oficiales, consultá [docs/INSTAGRAM_META_SETUP.md](docs/INSTAGRAM_META_SETUP.md).
 
 ## Imágenes
 
