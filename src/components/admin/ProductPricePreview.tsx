@@ -13,10 +13,10 @@ export function ProductPricePreview({ product, offersEnabled, onSwapPrices }: { 
       {noDiscount && (
         <div role="status" className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs leading-relaxed">
           <p>
-            Con estos importes no hay descuento: el precio anterior ({formatPrice(product.oldPrice!)}) debe superar al base ({formatPrice(product.price)}).
+            Con estos importes no hay descuento: el precio antes de la oferta ({formatPrice(product.oldPrice!)}) debe superar al precio actual ({formatPrice(product.price)}).
           </p>
           {canSwap && <button type="button" onClick={onSwapPrices} className="mt-2 font-semibold underline underline-offset-2">
-            Intercambiar precio base y anterior
+            Intercambiar precio actual y precio antes de la oferta
           </button>}
           {canSwap && <p className="mt-1 text-muted-foreground">Revisá los demás precios por forma de pago antes de guardar.</p>}
         </div>

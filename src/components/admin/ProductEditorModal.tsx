@@ -10,6 +10,7 @@ import { ProductOptionsEditor } from "@/components/admin/ProductOptionsEditor";
 import { ProductPaymentPricesEditor } from "@/components/admin/ProductPaymentPricesEditor";
 import { ProductPricePreview } from "@/components/admin/ProductPricePreview";
 import { ProductStagedGallery, type GalleryItem } from "@/components/admin/ProductStagedGallery";
+import { useProductEditorBaseline } from "@/components/admin/useProductEditorBaseline";
 import { useContent } from "@/components/providers/ContentProvider";
 import {
   Dialog,
@@ -21,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
 import { uploadImages } from "@/lib/media-client";
+import { productEditorSnapshot } from "@/lib/product-editor-snapshot";
 
 type Category = { id: string; name: string; hidden?: boolean };
 
@@ -50,6 +52,9 @@ export function ProductEditorModal({
       url,
     })),
   );
+  const [initialSnapshot] = useState(() => productEditorSnapshot(initial, items.map((item) => item.url)));
+  const baseline = useProductEditorBaseline(initial.id, initialSnapshot);
+  const hasChanges = productEditorSnapshot(product, items.map((item) => item.url)) !== baseline;
   const [saving, setSaving] = useState(false);
   const [phase, setPhase] = useState("");
   const objectUrls = useRef(new Set<string>());
@@ -90,7 +95,7 @@ export function ProductEditorModal({
   }
 
   async function save() {
-    if (saving) return;
+    if (saving || !hasChanges) return;
     const name = product.name.trim();
     if (!name) {
       toast.error("Escribí el nombre del producto.");
@@ -221,7 +226,7 @@ export function ProductEditorModal({
                       <option value="sale">Ofertas</option>
                     </select>
                     <span className="text-xs font-normal leading-relaxed">
-                      “Nuevo” aparece en Lo nuevo. “Oferta” aparece automáticamente si el precio anterior supera al base y las ofertas están activas.
+                      “Nuevo” aparece en Lo nuevo. “Oferta” aparece automáticamente si el precio antes de la oferta supera al precio actual y las ofertas están activas.
                     </span>
                   </label>
                 </div>
@@ -284,18 +289,18 @@ export function ProductEditorModal({
                 <div>
                   <h3 className="text-base font-semibold">Precios</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    El precio base es el actual y el que pasa al carrito. Si el anterior lo supera, se tacha y se calcula el descuento en esta prenda.
+                    El precio actual se agrega al carrito. Si cargás un precio más alto en “Precio antes de la oferta”, aparecerá tachado y se mostrará el descuento.
                   </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <ProductInputField
-                    label="Precio base ($)"
+                    label="Precio actual ($)"
                     type="number"
                     value={product.price}
                     onChange={(next) => patch({ price: Number(next) || 0 })}
                   />
                   <ProductInputField
-                    label="Precio anterior ($, opcional)"
+                    label="Precio antes de la oferta ($, opcional)"
                     type="number"
                     value={product.oldPrice ?? ""}
                     onChange={(next) => patch({ oldPrice: next ? Number(next) : undefined })}
@@ -359,7 +364,7 @@ export function ProductEditorModal({
               <button
                 type="button"
                 onClick={() => void save()}
-                disabled={saving}
+                disabled={saving || !hasChanges}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 sm:flex-none"
               >
                 {saving ? (

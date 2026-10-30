@@ -18,7 +18,7 @@ it("calcula los descuentos sobre el precio base sin pedir una referencia", () =>
 
   assert.doesNotMatch(html, /Precio de referencia para las formas de pago/);
   assert.doesNotMatch(html, /<option value="previous"/);
-  assert.match(html, /descuento sobre el precio base/);
+  assert.match(html, /descuento sobre el precio actual/);
   assert.equal(calculateDiscountedPrice(60_000, 20), 48_000);
   assert.equal(calculateDiscountedPrice(68_900, 20), 55_120);
 });
@@ -36,7 +36,7 @@ it("crea un producto con Transferencia como medio de pago base", () => {
     onChange: () => {},
   }));
   assert.match(html, /Transferencia/);
-  assert.match(html, /Este importe se carga en el campo «Precio base»/);
+  assert.match(html, /Este importe se carga en el campo «Precio actual»/);
   assert.doesNotMatch(html, /Quitar precio de Transferencia/);
 });
 
@@ -48,7 +48,7 @@ it("usa el precio base cuando no hay precio anterior", () => {
   }));
 
   assert.doesNotMatch(html, /Precio de referencia para las formas de pago/);
-  assert.match(html, /descuento sobre el precio base/);
+  assert.match(html, /descuento sobre el precio actual/);
 });
 
 it("recalcula todos los medios al cambiar la referencia y conserva sus descuentos", () => {

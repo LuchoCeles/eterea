@@ -83,8 +83,8 @@ export function ProductPaymentPricesEditor({
         <div>
           <p className="text-sm font-medium">Precios por forma de pago</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Ingresá el precio directamente o calculalo con un descuento sobre el precio base.
-            Al cambiar el precio base, se ajustan los demás medios conservando su descuento.
+            Ingresá el precio directamente o calculalo con un descuento sobre el precio actual.
+            Al cambiar el precio actual, se ajustan los demás medios conservando su descuento.
           </p>
         </div>
         <button
@@ -139,7 +139,7 @@ export function ProductPaymentPricesEditor({
                 </label>}
                 {!(basePayment && index === 0) && entries[index]?.mode === "discount" && (
                   <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
-                    Descuento sobre el precio base (%)
+                    Descuento sobre el precio actual (%)
                     <input
                       type="number"
                       min="0"
@@ -168,7 +168,7 @@ export function ProductPaymentPricesEditor({
               </div>
               {basePayment && index === 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Este importe se carga en el campo «Precio base».
+                  Este importe se carga en el campo «Precio actual».
                 </p>
               )}
               {entries[index]?.mode === "discount" && (
