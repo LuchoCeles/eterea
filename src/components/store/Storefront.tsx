@@ -20,7 +20,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
   const homeSections = T.homeSections;
-  const { newArrivals, sale } = homeProducts(visibleProducts, T.offers.enabled);
+  const { newArrivals, sale } = homeProducts(visibleProducts);
   const visibleHomeSections = { ...homeSections, newArrivals: homeSections.newArrivals && newArrivals.length > 0 };
   const homeCategoryCards = T.homeCategoryCards.filter((card) => !card.hidden).flatMap((card) => {
     const category = categories.find((item) => item.id === card.categoryId);

@@ -14,7 +14,7 @@ export function StoreFooter() {
   const products = useContent("products");
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
-  const { newArrivals, sale } = homeProducts(visibleProducts, texts.offers.enabled);
+  const { newArrivals, sale } = homeProducts(visibleProducts);
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
   const columns = [
     { title: "Tienda", links: [

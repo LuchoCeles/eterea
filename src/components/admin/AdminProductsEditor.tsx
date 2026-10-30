@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import type { StoreProduct } from "@/lib/content";
+import { createProductDraft } from "@/lib/product-draft";
 import { formatPrice, sortProductsByCreation } from "@/lib/products";
 
 const PRODUCTS_PER_BATCH = 50;
@@ -60,24 +61,7 @@ export function AdminProductsEditor({
   }
 
   function add() {
-    const product: StoreProduct = {
-      id: crypto.randomUUID(),
-      name: "",
-      categoryId: categories[0]?.id ?? "",
-      category: categories[0]?.name ?? "",
-      createdAt: new Date().toISOString(),
-      price: 0,
-      image: "",
-      images: [],
-      description: "",
-      sizes: [],
-      colors: [],
-      soldOutColors: [],
-      soldOut: false,
-      section: null,
-      hidden: false,
-    };
-    setEditingProduct(product);
+    setEditingProduct(createProductDraft(categories[0]));
   }
 
   return (

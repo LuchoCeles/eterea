@@ -8,30 +8,20 @@ import type { Product } from "@/lib/products";
 
 type PaymentPrice = NonNullable<Product["paymentPrices"]>[number];
 type PriceMode = "manual" | "discount";
-type PriceReference = "base" | "previous";
 type PriceEntry = { mode: PriceMode; percent: string };
 
 export function ProductPaymentPricesEditor({
   prices,
   basePrice,
-  oldPrice,
+  basePayment,
   onChange,
 }: {
   prices: PaymentPrice[];
   basePrice: number;
-  oldPrice?: number;
+  basePayment?: boolean;
   onChange: (prices: PaymentPrice[]) => void;
 }) {
-  const hasPreviousPrice =
-    typeof oldPrice === "number" && Number.isFinite(oldPrice) && oldPrice > 0 && basePrice > 0;
-  const [priceReference, setPriceReference] = useState<PriceReference>(() =>
-    hasPreviousPrice && (prices.length === 0 ||
-      (!prices.some((price) => price.price === basePrice) &&
-        prices.some((price) => price.price === oldPrice)))
-      ? "previous" : "base",
-  );
-  const activeReference = priceReference === "previous" && hasPreviousPrice ? "previous" : "base";
-  const referencePrice = activeReference === "previous" && hasPreviousPrice ? oldPrice : basePrice;
+  const referencePrice = basePrice;
   const [entries, setEntries] = useState<PriceEntry[]>(() =>
     prices.map(() => ({ mode: "manual", percent: "" })),
   );
@@ -43,21 +33,10 @@ export function ProductPaymentPricesEditor({
       prices, previousReferencePrice.current, referencePrice,
       entries.map((entry) => entry.mode === "discount" && entry.percent !== "" ? Number(entry.percent) : null),
     );
+    if (basePayment && updated[0]) updated[0] = { ...updated[0], price: basePrice };
     previousReferencePrice.current = referencePrice;
     if (updated.some((price, index) => price.price !== prices[index].price)) onChange(updated);
-  }, [referencePrice, entries, onChange, prices]);
-
-  function changeReference(next: PriceReference) {
-    if (next === activeReference) return;
-    const nextReference = next === "previous" && hasPreviousPrice ? oldPrice : basePrice;
-    const updated = rebasePaymentPrices(
-      prices, referencePrice, nextReference,
-      entries.map((entry) => entry.mode === "discount" && entry.percent !== "" ? Number(entry.percent) : null),
-    );
-    previousReferencePrice.current = nextReference;
-    setPriceReference(next);
-    onChange(updated);
-  }
+  }, [referencePrice, entries, onChange, prices, basePayment, basePrice]);
 
   function update(index: number, patch: Partial<PaymentPrice>) {
     onChange(prices.map((price, current) => (current === index ? { ...price, ...patch } : price)));
@@ -89,10 +68,11 @@ export function ProductPaymentPricesEditor({
 
   function addPrice() {
     setEntries([...entries, { mode: "manual", percent: "" }]);
-    onChange([...prices, { label: "Transferencia", price: referencePrice }]);
+    onChange([...prices, { label: `Medio de pago ${prices.length + 1}`, price: referencePrice }]);
   }
 
   function removePrice(index: number) {
+    if (basePayment && index === 0) return;
     setEntries(entries.filter((_, current) => current !== index));
     onChange(prices.filter((_, current) => current !== index));
   }
@@ -103,26 +83,9 @@ export function ProductPaymentPricesEditor({
         <div>
           <p className="text-sm font-medium">Precios por forma de pago</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Ingresá el precio directamente o calculalo con un descuento sobre el precio elegido.
-            Al cambiar la referencia, se ajustan todos los medios conservando su descuento.
+            Ingresá el precio directamente o calculalo con un descuento sobre el precio base.
+            Al cambiar el precio base, se ajustan los demás medios conservando su descuento.
           </p>
-          {hasPreviousPrice ? (
-            <label className="mt-3 flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Precio de referencia para las formas de pago
-              <select
-                value={activeReference}
-                onChange={(event) => changeReference(event.target.value as PriceReference)}
-                className="min-h-11 w-full border bg-background px-3 py-2 text-sm font-normal text-foreground"
-              >
-                <option value="previous">Precio anterior (${oldPrice.toLocaleString("es-AR")})</option>
-                <option value="base">Precio base (${basePrice.toLocaleString("es-AR")})</option>
-              </select>
-            </label>
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Los descuentos se calculan sobre el precio base.
-            </p>
-          )}
         </div>
         <button
           type="button"
@@ -140,7 +103,7 @@ export function ProductPaymentPricesEditor({
               key={index}
               title={price.label || `Medio de pago ${index + 1}`}
               summary={`$${price.price.toLocaleString("es-AR")}`}
-              right={
+              right={!(basePayment && index === 0) &&
                 <button
                   type="button"
                   onClick={() => removePrice(index)}
@@ -157,12 +120,13 @@ export function ProductPaymentPricesEditor({
                   <input
                     value={price.label}
                     maxLength={80}
+                    readOnly={basePayment && index === 0}
                     onChange={(event) => update(index, { label: event.target.value })}
                     placeholder="Transferencia, efectivo…"
                     className="min-h-11 w-full border bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground"
                   />
                 </label>
-                <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
+                {!(basePayment && index === 0) && <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
                   Cómo definir el precio
                   <select
                     value={entries[index]?.mode ?? "manual"}
@@ -172,10 +136,10 @@ export function ProductPaymentPricesEditor({
                     <option value="manual">Ingresar precio</option>
                     <option value="discount">Calcular descuento (%)</option>
                   </select>
-                </label>
-                {entries[index]?.mode === "discount" && (
+                </label>}
+                {!(basePayment && index === 0) && entries[index]?.mode === "discount" && (
                   <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
-                    Descuento sobre el precio de referencia (%)
+                    Descuento sobre el precio base (%)
                     <input
                       type="number"
                       min="0"
@@ -195,12 +159,18 @@ export function ProductPaymentPricesEditor({
                     min="0"
                     step="0.01"
                     value={price.price}
+                    readOnly={basePayment && index === 0}
                     onChange={(event) => update(index, { price: Number(event.target.value) || 0 })}
                     placeholder="Precio ($)"
                     className="min-h-11 w-full border bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground"
                   />
                 </label>
               </div>
+              {basePayment && index === 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Este importe se carga en el campo «Precio base».
+                </p>
+              )}
               {entries[index]?.mode === "discount" && (
                 <p className="mt-2 text-xs text-muted-foreground">
                   El descuento calcula el precio final. Podés editarlo para redondearlo antes de

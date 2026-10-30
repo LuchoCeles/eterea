@@ -14,10 +14,10 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const { items, addAnimationKey, changeQuantity, remove } = useCart();
   const products = useContent("products");
   const categories = useContent("categories");
-  const { offers, homeSections } = useContent("texts");
+  const { homeSections } = useContent("texts");
   const contact = useContent("contact");
   const visibleProducts = visibleStoreProducts(products, categories);
-  const { newArrivals, sale } = homeProducts(visibleProducts, offers.enabled);
+  const { newArrivals, sale } = homeProducts(visibleProducts);
   const hasNewArrivals = newArrivals.length > 0;
   const hasSale = homeSections.sale && sale.length > 0;
   const productPath = pathname.startsWith("/productos/") && pathname.split("/").length === 3;

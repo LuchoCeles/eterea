@@ -22,6 +22,7 @@ describe("Datos públicos de productos", () => {
     assert.deepEqual(listing.soldOutColors, ["Azul"]);
     assert.equal(listing.hidden, true);
     assert.equal(listing.image, product.image);
+    assert.equal(listing.tag, undefined);
     assert.deepEqual(resolveContent("products", [listing])[0].images, [product.image]);
     assert.deepEqual(product.images, ["/portada.jpg", "/espalda.jpg"]);
   });

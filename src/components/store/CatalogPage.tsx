@@ -22,11 +22,10 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
   const storeCategories = useContent("categories");
-  const { offers } = useContent("texts");
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
-  const visibleProducts = catalogProducts(products, storeCategories, offers.enabled);
+  const visibleProducts = catalogProducts(products, storeCategories);
   const categoryCounts = new Map<string, number>();
   visibleProducts.forEach((product) => {
     const id = product.categoryId ?? "";
@@ -133,7 +132,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
                   onSizeChange={selectSize}
                   discountOnly={discountOnly}
                   onDiscountChange={(value) => { setDiscountOnly(value); setCurrentPage(1); }}
-                  showDiscount={offers.enabled && saleCount > 0}
+                  showDiscount={saleCount > 0}
                   discountCount={saleCount}
                   sort={sort}
                   onSortChange={(value) => { setSort(value); setCurrentPage(1); }}
@@ -146,7 +145,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
                 <>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {pageProducts.map((product) => (
-                      <CatalogProductCard key={`${product.id}-${product.name}`} product={product} offersEnabled={offers.enabled} onAdd={add} />
+                      <CatalogProductCard key={`${product.id}-${product.name}`} product={product} onAdd={add} />
                     ))}
                   </div>
                   <div className="mt-10 flex flex-col items-center gap-4 border-t pt-6 sm:flex-row sm:justify-between">
