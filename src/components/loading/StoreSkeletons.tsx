@@ -32,17 +32,13 @@ function ProductCardSkeleton({ carousel = false }: { carousel?: boolean }) {
 function ProductCarouselSkeleton({ titleWidth = "w-64" }: { titleWidth?: string }) {
   return (
     <section className="mx-auto max-w-[1600px] px-4 py-20 md:px-8" aria-hidden="true">
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="mb-8">
+        <div className="min-w-0">
           <Skeleton className="h-3 w-28 rounded-none" />
           <Skeleton className={`mt-3 h-9 max-w-full rounded-none md:h-12 ${titleWidth}`} />
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Skeleton className="h-10 w-10 rounded-none" />
-          <Skeleton className="h-10 w-10 rounded-none" />
-        </div>
       </div>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-4 overflow-hidden px-4 md:mx-0 md:px-0">
+      <div className="flex gap-4 overflow-hidden">
         {Array.from({ length: 4 }, (_, index) => (
           <ProductCardSkeleton key={index} carousel />
         ))}
