@@ -78,7 +78,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             <div className="mx-auto flex h-[calc(100dvh-212px)] max-h-[760px] w-full max-w-[65dvh] flex-col gap-3">
               <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
                 <button type="button" onClick={() => openLightbox(activeImage)} aria-label={`Ampliar foto ${activeImage + 1} de ${product.name}`} className="h-full w-full cursor-zoom-in focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
-                  <ProductImage src={images[activeImage]} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
+                  <ProductImage src={images[activeImage]} presentation={product.imageSettings?.[activeImage]} alt={`${product.name}, foto ${activeImage + 1}`} loading="eager" sizes="(min-width: 1024px) 55vw, 100vw" className="h-full w-full object-contain" />
                 </button>
                 {(unavailable || tag) && (
                   <span className={`eyebrow pointer-events-none absolute left-3 top-3 px-3 py-1.5 sm:left-4 sm:top-4 ${unavailable ? "bg-muted text-muted-foreground" : tag === "Oferta" ? "bg-accent text-accent-foreground" : "bg-background text-foreground"}`}>
@@ -88,7 +88,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
               </div>
               {images.length > 1 && <div className="grid h-[clamp(48px,10dvh,88px)] shrink-0 grid-cols-5 gap-2 sm:gap-3">
                 {images.map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => { setActiveImage(index); openLightbox(index); }} aria-label={`Ampliar foto ${index + 1} de ${product.name}`} aria-pressed={activeImage === index} className={`h-full min-w-0 overflow-hidden border-2 bg-background transition-colors ${activeImage === index ? "border-primary" : "border-transparent hover:border-border"}`}>
-                  <ProductImage src={src} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
+                  <ProductImage src={src} presentation={product.imageSettings?.[index]} alt="" loading="lazy" sizes="100px" className="h-full w-full object-contain" />
                 </button>)}
               </div>}
             </div>
@@ -135,7 +135,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
         </section>}
       </main>
 
-      {lightboxOpen && <ProductImageLightbox images={images} productName={product.name} initialImage={lightboxImage} onOpenChange={setLightboxOpen} />}
+      {lightboxOpen && <ProductImageLightbox images={images} imageSettings={product.imageSettings} productName={product.name} initialImage={lightboxImage} onOpenChange={setLightboxOpen} />}
 
       <footer className="border-t px-4 py-8 text-center text-xs text-muted-foreground md:px-8">© 2026 Etérea New Concept · <Link href="/productos" className="underline underline-offset-4">Volver a la tienda</Link></footer>
     </div>

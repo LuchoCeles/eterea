@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Storefront } from "@/components/store/Storefront";
 import { InstagramSection } from "@/components/store/InstagramSection";
-import { loadRecentInstagramPosts, loadInstagramMediaAssets } from "@/server/instagram";
+import { loadRecentInstagramPosts, loadInstagramMediaAssets, loadInstagramProfilePicture } from "@/server/instagram";
 import { loadStorefrontData } from "@/server/storefront-content";
 import { visibleInstagramPosts } from "@/lib/storefront-rules";
 import type { ContentSnapshot } from "@/lib/content";
@@ -18,12 +18,14 @@ export default async function HomePage() {
 }
 
 async function InstagramContent({ content, instagramConnected }: { content: ContentSnapshot; instagramConnected: boolean }) {
-  const ownFeed = instagramConnected ? await loadRecentInstagramPosts() : null;
+  const [ownFeed, profilePicture] = instagramConnected
+    ? await Promise.all([loadRecentInstagramPosts(), loadInstagramProfilePicture()])
+    : [null, null];
   const usesOwnFeed = ownFeed !== null;
   const posts = visibleInstagramPosts(ownFeed ?? content.instagram);
   const instagramMediaAssets = usesOwnFeed ? await loadInstagramMediaAssets(posts, true) : {};
   const covers = Object.fromEntries(Object.entries(instagramMediaAssets).map(([url, asset]) => [url, {
     imageUrl: asset.imageUrl, posterUrl: asset.posterUrl,
   }]));
-  return <InstagramSection posts={posts} mediaAssets={covers} />;
+  return <InstagramSection posts={posts} mediaAssets={covers} profilePicture={profilePicture} />;
 }

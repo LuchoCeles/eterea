@@ -1,11 +1,18 @@
 import { z, type ZodType } from "zod";
 import type { ContentKey, TextSectionKey } from "@/lib/content";
 import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-rules";
+import { imageFormats, validCropSettings } from "@/lib/image-presentation";
+import { parseCloudinaryAssetUrl } from "@/lib/cloudinary-media";
 
 const shortText = z.string().max(4000);
 const image = z.string().max(4000);
 const productImages = z.array(image.trim().min(1)).max(5)
   .refine((items) => new Set(items).size === items.length);
+const cropSettings = z.object({
+  zoom: z.number(), x: z.number(), y: z.number(),
+  width: z.number(), height: z.number(),
+}).strict().refine(validCropSettings, "El encuadre de la imagen no es válido.");
+const imageSettings = cropSettings.safeExtend({ format: z.enum(imageFormats) });
 const productOptions = z.array(z.string().trim().min(1).max(80)).max(30)
   .refine((items) => new Set(items.map((item) => item.toLocaleLowerCase("es-AR"))).size === items.length);
 const productId = z.string().min(1).max(191).optional();
@@ -45,6 +52,9 @@ const product = z.object({
   tag: shortText.optional(),
   image,
   images: productImages.optional(),
+  imageSettings: z.array(imageSettings.nullable()).max(5).optional(),
+  coverSettings: cropSettings.refine((value) => value.width >= 16 && value.height >= 9,
+    "La foto de portada debe medir al menos 16 × 9 píxeles.").nullable().optional(),
   description: shortText.optional(),
   sizes: productOptions.optional(),
   colors: productOptions.optional(),
@@ -54,6 +64,20 @@ const product = z.object({
 }).refine((item) => (item.soldOutColors ?? []).every((color) => item.colors?.includes(color)), {
   message: "Los colores agotados deben pertenecer a los colores de la prenda.",
   path: ["soldOutColors"],
+}).refine((item) => !item.imageSettings || item.imageSettings.length === (item.images?.length ?? (item.image ? 1 : 0)), {
+  message: "Cada foto debe conservar su propio formato.", path: ["imageSettings"],
+}).refine((item) => !item.coverSettings || !!(item.images?.[0] ?? item.image), {
+  message: "Elegí una foto para la portada.", path: ["coverSettings"],
+}).refine((item) => !item.coverSettings || !item.imageSettings?.[0]
+  || (item.coverSettings.width === item.imageSettings[0].width
+    && item.coverSettings.height === item.imageSettings[0].height), {
+  message: "El encuadre de portada debe usar la misma foto original.", path: ["coverSettings"],
+}).refine((item) => !(item.coverSettings || item.imageSettings?.some(Boolean))
+  || (item.images ?? (item.image ? [item.image] : [])).every((url, index) => {
+    const configured = (index === 0 && !!item.coverSettings) || !!item.imageSettings?.[index];
+    return !configured || parseCloudinaryAssetUrl(url, "eterea") !== null;
+  }), {
+  message: "Para ajustar una foto anterior, subí su archivo original.", path: ["images"],
 });
 const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), hidden: z.boolean().optional() });
 const homeCategoryCard = z.object({ id: z.string().min(1).max(191), categoryId: z.string().min(1).max(191), img: image, productId, hidden: z.boolean().optional() });

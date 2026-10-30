@@ -6,9 +6,11 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { ProductImage } from "@/components/store/ProductImage";
+import type { ImageSettings } from "@/lib/image-presentation";
 
 type ProductImageLightboxProps = {
   images: string[];
+  imageSettings?: (ImageSettings | null)[];
   productName: string;
   initialImage: number;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +31,7 @@ function clickedOutsidePhoto(image: HTMLImageElement, x: number, y: number) {
 
 export function ProductImageLightbox({
   images,
+  imageSettings,
   productName,
   initialImage,
   onOpenChange,
@@ -115,6 +118,7 @@ export function ProductImageLightbox({
                   >
                     <ProductImage
                       src={src}
+                      presentation={imageSettings?.[index]}
                       alt={`${productName}, foto ${index + 1} de ${imageCount}`}
                       loading="eager"
                       sizes="100vw"

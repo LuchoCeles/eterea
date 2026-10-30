@@ -1,4 +1,5 @@
 import { imageSections } from "@/lib/media";
+import { cropRegion, imageRatio, validCropSettings, type CropSettings, type ImageSettings } from "@/lib/image-presentation";
 
 const CLOUDINARY_HOST = "res.cloudinary.com";
 const UUID_PATTERN = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -30,10 +31,26 @@ export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
 
 const responsiveWidths = [240, 480, 720, 960, 1280, 1920];
 
-export function responsiveCloudinaryImage(url: string) {
+export function responsiveCloudinaryImage(url: string, settings?: ImageSettings | CropSettings | null, cover = false) {
   if (!parseCloudinaryAssetUrl(url, "eterea")) return { src: url, srcSet: undefined };
   const marker = "/image/upload/";
-  const variant = (width: number) => url.replace(marker, `${marker}f_auto,q_auto,c_limit,w_${width}/`);
+  const ratio = cover ? 16 / 9 : settings && "format" in settings
+    ? imageRatio(settings.format, settings.width, settings.height) : 0;
+  const region = settings && ratio && validCropSettings(settings) ? cropRegion(settings, ratio) : null;
+  let cropWidth = region ? Math.max(1, Math.min(settings!.width, Math.round(region.width * settings!.width))) : 0;
+  let cropHeight = region ? Math.max(1, Math.min(settings!.height, Math.round(region.height * settings!.height))) : 0;
+  if (cover && region && settings!.width >= 16 && settings!.height >= 9) {
+    const units = Math.max(1, Math.floor(Math.min(region.width * settings!.width / 16, region.height * settings!.height / 9)));
+    cropWidth = units * 16;
+    cropHeight = units * 9;
+  }
+  const cropX = region ? Math.max(0, Math.min(settings!.width - cropWidth,
+    Math.round((region.left + region.width / 2) * settings!.width - cropWidth / 2))) : 0;
+  const cropY = region ? Math.max(0, Math.min(settings!.height - cropHeight,
+    Math.round((region.top + region.height / 2) * settings!.height - cropHeight / 2))) : 0;
+  const crop = region && (cropWidth !== settings!.width || cropHeight !== settings!.height)
+    ? `c_crop,x_${cropX},y_${cropY},w_${cropWidth},h_${cropHeight}/` : "";
+  const variant = (width: number) => url.replace(marker, `${marker}${crop}f_auto,q_auto,c_limit,w_${width}/`);
   return {
     src: variant(960),
     srcSet: responsiveWidths.map((width) => `${variant(width)} ${width}w`).join(", "),

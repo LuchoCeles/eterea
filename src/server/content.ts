@@ -4,6 +4,7 @@ import { planCloudinaryDeletions, reconcileCloudinaryQueue } from "@/lib/cloudin
 import { catalogCategories, defaults, productsWithCategoryNames, resolveContent, type ContentKey, type ContentSnapshot, type HomeCategoryCard, type StoreProduct, type TextSectionKey } from "@/lib/content";
 import { contentSchemas, textSectionSchemas } from "@/lib/content-schema";
 import { referencedProductIds } from "@/lib/image-source";
+import { needsCoverConfirmation } from "@/lib/image-presentation";
 import { prepareProductsForSave } from "@/lib/products";
 import { instagramPermalink } from "@/lib/storefront-rules";
 import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
@@ -187,6 +188,14 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       const savedKeys = new Set(saved.map((section) => section.key));
       const fallback = savedKeys.has("products") && savedKeys.has("categories") ? null : await readSnapshotData(db);
       const currentProducts = savedKeys.has("products") ? stored.products : fallback!.snapshot.products;
+      const previousById = new Map(currentProducts.map((product) => [product.id, product]));
+      if (products.some((product) => {
+        const first = product.images?.[0] ?? product.image;
+        const previous = previousById.get(product.id);
+        return needsCoverConfirmation(previous?.images?.[0] ?? previous?.image ?? "", first, product.coverSettings);
+      })) {
+        throw new ContentValidationError("Confirmá el encuadre 16:9 de cada portada nueva antes de guardar.");
+      }
       const currentCategories = savedKeys.has("categories") ? stored.categories : fallback!.snapshot.categories;
       const categories = new Map(currentCategories.map((category) => [category.id, category.name]));
       if (products.some((product) => !categories.has(product.categoryId ?? ""))) {
