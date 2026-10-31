@@ -25,7 +25,7 @@ export function WhatsAppSettings() {
     }
     setSaving(true);
     try {
-      const data = { ...contact, whatsapp: phone.trim() };
+      const data = { whatsapp: phone.trim() };
       const result = await saveContent("contact", data);
       updateContent("contact", result.data);
       toast.success(data.whatsapp ? "Número de WhatsApp guardado." : "Número de WhatsApp eliminado.");

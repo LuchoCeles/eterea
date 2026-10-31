@@ -22,7 +22,7 @@ async function InstagramContent({ content, instagramConnected }: { content: Cont
     ? await Promise.all([loadRecentInstagramPosts(), loadInstagramProfilePicture()])
     : [null, null];
   const usesOwnFeed = ownFeed !== null;
-  const posts = visibleInstagramPosts(ownFeed ?? content.instagram);
+  const posts = visibleInstagramPosts(ownFeed ?? []);
   const instagramMediaAssets = usesOwnFeed ? await loadInstagramMediaAssets(posts, true) : {};
   const covers = Object.fromEntries(Object.entries(instagramMediaAssets).map(([url, asset]) => [url, {
     imageUrl: asset.imageUrl, posterUrl: asset.posterUrl,

@@ -8,11 +8,14 @@ import { invalidateStorefrontContent } from "@/server/storefront-content";
 export async function PUT(request: Request, { params }: { params: Promise<{ key: string }> }) {
   if (!(await isAdminRequest(request))) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const { key } = await params;
-  if (!contentKeys.includes(key as ContentKey)) return NextResponse.json({ error: "Sección desconocida." }, { status: 404 });
+  if (key === "instagram" || !contentKeys.includes(key as ContentKey)) return NextResponse.json({ error: "Sección desconocida." }, { status: 404 });
 
   try {
     const body: unknown = await request.json();
     const data = body && typeof body === "object" && "data" in body ? body.data : body;
+    if (key === "contact" && data && typeof data === "object" && "instagramUsername" in data) {
+      return NextResponse.json({ error: "El usuario de Instagram se obtiene de la cuenta conectada con Meta." }, { status: 400 });
+    }
     const uploadedUrls = body && typeof body === "object" && "uploadedUrls" in body && Array.isArray(body.uploadedUrls)
       ? body.uploadedUrls.filter((url): url is string => typeof url === "string")
       : [];
