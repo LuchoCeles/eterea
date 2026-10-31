@@ -6,7 +6,6 @@ import { contentSchemas, textSectionSchemas } from "@/lib/content-schema";
 import { referencedProductIds } from "@/lib/image-source";
 import { needsCoverConfirmation } from "@/lib/image-presentation";
 import { prepareProductsForSave } from "@/lib/products";
-import { instagramPermalink } from "@/lib/storefront-rules";
 import { loadRelationalCatalog, saveCategoryRows, saveProductRows } from "@/server/catalog";
 import { deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudinary";
 import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
@@ -153,11 +152,16 @@ function checkCards(cards: HomeCategoryCard[], categoryIds: Set<string>) {
 }
 
 export async function saveContentAndCleanImages(key: ContentKey, value: unknown, uploadedUrls: string[] = []) {
+  if (key === "instagram") throw new ContentValidationError("Las publicaciones de Instagram se obtienen de Meta.");
   const parsed = contentSchemas[key].safeParse(value);
   if (!parsed.success) throw new ContentValidationError("El formato del contenido no es válido.");
   return prisma.$transaction(async (db) => {
     let next = resolveContent(key, parsed.data);
     let previousImageUrls: string[] = [];
+    if (key === "contact") {
+      const contact = await db.contactSettings.findUnique({ where: { id: 1 }, select: { instagramUsername: true } });
+      next = { whatsapp: (next as ContentSnapshot["contact"]).whatsapp, instagramUsername: contact?.instagramUsername ?? "" };
+    }
     if (key === "categories") {
       const categories = next as ContentSnapshot["categories"];
       const ids = categories.map((category) => category.id);
@@ -210,11 +214,12 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
         const where = { productId: { in: removedIds } };
         const references = await Promise.all([
           db.heroSlide.count({ where }), db.splitBanner.count({ where }), db.editorialBanner.count({ where }),
-          db.curatedInstagramPost.count({ where }), db.homeCategoryCard.count({ where }),
+          db.homeCategoryCard.count({ where }),
         ]);
         if (references.some(Boolean)) {
-          throw new ContentValidationError("Desvinculá el producto de banners, inicio e Instagram antes de eliminarlo.");
+          throw new ContentValidationError("Desvinculá el producto de banners e inicio antes de eliminarlo.");
         }
+        await db.curatedInstagramPost.updateMany({ where, data: { productId: null } });
         await db.product.deleteMany({ where: { id: { in: removedIds } } });
       }
       await db.contentSection.upsert({ where: { key }, create: { key }, update: {} });
@@ -225,20 +230,11 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
       const categoryIds = await db.category.findMany({ select: { id: true } });
       checkCards(texts.homeCategoryCards, new Set(categoryIds.map((category) => category.id)));
     }
-    if (key === "hero" || key === "instagram" || key === "texts") {
+    if (key === "hero" || key === "texts") {
       const ids = [...new Set(referencedProductIds(next))];
       if (ids.length) {
         const products = await db.product.findMany({ where: { id: { in: ids } }, select: { id: true } });
         if (products.length !== ids.length) throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
-      }
-    }
-    if (key === "instagram") {
-      const posts = next as ContentSnapshot["instagram"];
-      if (posts.some((post) => !instagramPermalink(post.url))) {
-        throw new ContentValidationError("Usá enlaces válidos a publicaciones o reels de Instagram.");
-      }
-      if (new Set(posts.map((post) => post.id)).size !== posts.length) {
-        throw new ContentValidationError("Hay publicaciones de Instagram repetidas.");
       }
     }
     if (key !== "categories" && key !== "products") {
@@ -252,8 +248,6 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
         await db.contentSection.upsert({ where: { key: "homeCategoryCards" }, create: { key: "homeCategoryCards" }, update: {} });
       } else if (key === "hero") {
         previousImageUrls = (await db.heroSlide.findMany({ select: { img: true } })).map((row) => row.img);
-      } else if (key === "instagram") {
-        previousImageUrls = (await db.curatedInstagramPost.findMany({ select: { image: true } })).map((row) => row.image);
       }
       await saveRelationalContent(db, key, next);
     }

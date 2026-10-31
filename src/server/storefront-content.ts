@@ -9,7 +9,7 @@ const contentTag = "eterea-storefront-content";
 const loadCachedContent = unstable_cache(async () => {
   const [content, instagram] = await Promise.all([loadContentSnapshot({ strict: true }), loadInstagramConnectionInfo()]);
   return {
-    content: instagram.username ? { ...content, contact: { ...content.contact, instagramUsername: instagram.username } } : content,
+    content: { ...content, contact: { ...content.contact, instagramUsername: instagram.username ?? "" } },
     instagramConnected: instagram.connected,
   };
 }, [contentTag], { tags: [contentTag], revalidate: 300 });
