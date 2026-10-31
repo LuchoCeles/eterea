@@ -153,7 +153,6 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
   const draft = entry?.data ?? value;
   const dirty = hasUnsavedChanges(entry);
   const saving = entry?.saving === true;
-  const postsOnly = k === "instagram";
 
   if (draft === null) return <AdminSectionSkeleton section={k === "contact" ? "instagram" : k} />;
 
@@ -166,7 +165,7 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
           </h2>
           <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-base">{description}</p>
         </div>
-        {k !== "texts" && (dirty || saving) && (
+        {k !== "texts" && k !== "instagram" && (dirty || saving) && (
           <button
             type="button"
             onClick={() => void save(k, value)}
@@ -174,7 +173,7 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
             className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {postsOnly ? "Guardar publicaciones" : "Guardar cambios"}
+            Guardar cambios
           </button>
         )}
       </div>

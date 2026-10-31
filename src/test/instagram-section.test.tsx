@@ -31,14 +31,16 @@ function renderInstagram(mediaAssets: Record<string, InstagramMediaAsset>, items
 }
 
 describe("Galería del Home", () => {
-  it("muestra hasta nueve portadas configuradas con sus enlaces, sin duplicarlas", () => {
-    const items = posts.map((post, index) => ({ ...post, image: index ? "/portada-" + index + ".jpg" : "" }));
-    const html = renderInstagram({}, items);
+  it("muestra las portadas de Meta y omite las imágenes manuales heredadas", () => {
+    const items = posts.map((post, index) => ({ ...post, image: "/portada-manual-" + index + ".jpg" }));
+    const assets = Object.fromEntries(items.slice(1).map((post, index) => [post.url, { imageUrl: "https://scontent.cdninstagram.com/portada-" + (index + 1) + ".jpg" }]));
+    const html = renderInstagram(assets, items);
     const links = html.match(/href="https:\/\/www\.instagram\.com\/p\/P\d+\/"/g) ?? [];
     assert.equal(links.length, 7);
     assert.equal(new Set(links).size, 7);
     assert.ok(html.includes("grid-cols-3"));
-    assert.ok(html.includes("/portada-1.jpg"));
+    assert.ok(html.includes("scontent.cdninstagram.com/portada-1.jpg"));
+    assert.ok(!html.includes("portada-manual"));
     assert.ok(!html.includes('href="https://www.instagram.com/p/P0/"'));
     assert.ok(html.includes('href="https://www.instagram.com/p/P7/"'));
   });

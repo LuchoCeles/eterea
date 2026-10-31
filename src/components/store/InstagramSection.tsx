@@ -3,14 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { CirclePlus, Clapperboard, Grid3X3, Heart, House, Instagram, Menu, Play, Search, UserRound, Wifi } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
-import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
-import { resolveImageSource } from "@/lib/image-source";
 import type { InstagramPost } from "@/lib/content";
 import type { InstagramMediaAsset } from "@/lib/instagram-media";
 import { instagramProfileUrl, visibleInstagramPosts } from "@/lib/storefront-rules";
 
 type InstagramCover = Pick<InstagramMediaAsset, "imageUrl" | "posterUrl">;
-type InstagramThumbnailData = { post: InstagramPost; image: string; fromMeta: boolean };
+type InstagramThumbnailData = { post: InstagramPost; image: string };
 type InstagramProfilePicture = { username: string; url: string } | null;
 
 function InstagramAvatar({ picture, small = false }: { picture: InstagramProfilePicture; small?: boolean }) {
@@ -21,12 +19,11 @@ function InstagramAvatar({ picture, small = false }: { picture: InstagramProfile
   return <UserRound className={small ? "h-full w-full text-black/60" : "h-[9cqw] w-[9cqw] text-[#9c9489]"} strokeWidth={1.5} aria-hidden="true" />;
 }
 
-function InstagramThumbnail({ image, fromMeta, alt }: { image: string; fromMeta: boolean; alt: string }) {
+function InstagramThumbnail({ image, alt }: { image: string; alt: string }) {
   const [failed, setFailed] = useState(false);
-  const optimized = fromMeta ? null : responsiveCloudinaryImage(image);
   const className = "h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none";
   if (failed) return <span className="flex h-full w-full items-center justify-center bg-pearl text-accent" aria-label="Imagen no disponible"><Instagram className="h-6 w-6" aria-hidden="true" /></span>;
-  return <img src={optimized?.src ?? image} srcSet={optimized?.srcSet} sizes={optimized?.srcSet ? "128px" : undefined} alt={alt} loading="lazy" width={128} height={128} className={className} onError={() => setFailed(true)} />;
+  return <img src={image} alt={alt} loading="lazy" width={128} height={128} className={className} onError={() => setFailed(true)} />;
 }
 
 function InstagramPhone({ username, thumbnails, picture }: { username: string; thumbnails: InstagramThumbnailData[]; picture: InstagramProfilePicture }) {
@@ -74,9 +71,9 @@ function InstagramPhone({ username, thumbnails, picture }: { username: string; t
 
             {thumbnails.length ? (
               <div className="grid max-h-[106cqw] shrink-0 grid-cols-3 gap-[0.7cqw] overflow-hidden bg-white" aria-label="Publicaciones de Instagram de Etérea">
-                {thumbnails.map(({ post, image, fromMeta }) => (
+                {thumbnails.map(({ post, image }) => (
                   <a key={post.id} href={post.url} target="_blank" rel="noopener noreferrer" aria-label={"Abrir " + (post.kind === "reel" ? "reel" : "publicación") + " de Etérea" + (post.title ? ": " + post.title : "") + " en Instagram"} className="group relative block aspect-[3/4] overflow-hidden bg-[#f0efed] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-                    <InstagramThumbnail image={image} fromMeta={fromMeta} alt={post.title || "Publicación de Etérea"} />
+                    <InstagramThumbnail image={image} alt={post.title || "Publicación de Etérea"} />
                     {post.kind === "reel" && <Play className="absolute right-[2cqw] top-[2cqw] h-[5cqw] w-[5cqw] fill-white text-white drop-shadow" aria-hidden="true" />}
                   </a>
                 ))}
@@ -104,7 +101,6 @@ function InstagramPhone({ username, thumbnails, picture }: { username: string; t
 }
 
 export function InstagramSection({ posts, mediaAssets, profilePicture = null }: { posts: InstagramPost[]; mediaAssets: Record<string, InstagramCover>; profilePicture?: InstagramProfilePicture }) {
-  const products = useContent("products");
   const contact = useContent("contact");
   const instagramUsername = contact.instagramUsername.trim().replace(/^@/, "");
   const picture = profilePicture?.username.toLowerCase() === instagramUsername.toLowerCase() ? profilePicture : null;
@@ -115,8 +111,8 @@ export function InstagramSection({ posts, mediaAssets, profilePicture = null }: 
   const [visible, setVisible] = useState(false);
   const thumbnails: InstagramThumbnailData[] = visibleInstagramPosts(posts).flatMap((post) => {
     const asset = mediaAssets[post.url];
-    const image = asset?.imageUrl || asset?.posterUrl || (post.image || post.productId ? resolveImageSource(post, products) : "");
-    return image ? [{ post, image, fromMeta: Boolean(asset?.imageUrl || asset?.posterUrl) }] : [];
+    const image = asset?.imageUrl || asset?.posterUrl || "";
+    return image ? [{ post, image }] : [];
   }).slice(0, 9);
 
   useEffect(() => {

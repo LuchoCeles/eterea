@@ -20,7 +20,7 @@ import { CollapsibleCard } from "@/components/admin/AdminEditorFields";
 type ConnectionStatus = "loading" | "saved" | "missing" | "error";
 type VerifiedAccount = { username: string; accountId: string; sampleCount: number };
 
-export function InstagramConnection({ onConnectionChange }: { onConnectionChange: (connected: boolean | null) => void }) {
+export function InstagramConnection() {
   const [status, setStatus] = useState<ConnectionStatus>("loading");
   const [token, setToken] = useState("");
   const [accountId, setAccountId] = useState("");
@@ -39,16 +39,14 @@ export function InstagramConnection({ onConnectionChange }: { onConnectionChange
       .then((result) => {
         setUsername(result.username);
         setStatus(result.saved ? "saved" : "missing");
-        onConnectionChange(result.saved);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setStatus("error");
-          onConnectionChange(null);
         }
       });
     return () => controller.abort();
-  }, [onConnectionChange, retry]);
+  }, [retry]);
 
   async function validate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,7 +86,6 @@ export function InstagramConnection({ onConnectionChange }: { onConnectionChange
       setStatus("saved");
       setUsername(result.username ?? null);
       setAccountId("");
-      onConnectionChange(true);
       toast.success("Conexión guardada. El Home podrá mostrar las últimas publicaciones de la cuenta.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar la conexión.");
@@ -108,7 +105,6 @@ export function InstagramConnection({ onConnectionChange }: { onConnectionChange
       setVerifiedAccount(null);
       setUsername(null);
       setStatus("missing");
-      onConnectionChange(false);
       toast.success("Cuenta desvinculada. Ya podés configurar otro Instagram.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo desvincular la cuenta.");
@@ -131,7 +127,6 @@ export function InstagramConnection({ onConnectionChange }: { onConnectionChange
         </p>
         {status === "error" && <Button type="button" variant="outline" onClick={() => {
           setStatus("loading");
-          onConnectionChange(null);
           setRetry((current) => current + 1);
         }}>
           Reintentar consulta
@@ -146,7 +141,7 @@ export function InstagramConnection({ onConnectionChange }: { onConnectionChange
             <AlertDialogHeader>
               <AlertDialogTitle>¿Desvincular {username ? `@${username}` : "la cuenta de Instagram"}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se quitará el token guardado y dejarán de mostrarse automáticamente las publicaciones de esta cuenta. El usuario y las publicaciones que cargaste manualmente se conservarán. Después podrás conectar otra cuenta.
+                Se quitará el token guardado y dejarán de mostrarse el usuario y las publicaciones de esta cuenta. Después podrás conectar otra cuenta.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
