@@ -1,20 +1,27 @@
+export type ShippingDeliveryType = "D" | "S";
+
 export type ShippingQuote = {
   postalCode: string;
   quantity: number;
   price: number;
-  service: string;
+  deliveryType: ShippingDeliveryType;
   expiresAt: string;
 };
+
+export function shippingDeliveryLabel(deliveryType: ShippingDeliveryType): string {
+  return deliveryType === "S" ? "Retiro por sucursal" : "Envío Clásico";
+}
 
 export function validPostalCode(value: string): boolean {
   return /^\d{4}$/.test(value);
 }
 
-export async function requestShippingQuote(postalCode: string, quantity: number, signal?: AbortSignal): Promise<ShippingQuote> {
+export async function requestShippingQuote(postalCode: string, quantity: number,
+  deliveryType: ShippingDeliveryType, signal?: AbortSignal): Promise<ShippingQuote> {
   const response = await fetch("/api/shipping/quote", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ postalCode, quantity }),
+    body: JSON.stringify({ postalCode, quantity, deliveryType }),
     signal,
   });
   const data = await response.json().catch(() => null);

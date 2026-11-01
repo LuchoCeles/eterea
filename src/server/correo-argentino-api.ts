@@ -1,4 +1,4 @@
-import type { ShippingQuote } from "@/lib/shipping";
+import type { ShippingDeliveryType, ShippingQuote } from "@/lib/shipping";
 
 export class CorreoArgentinoError extends Error {}
 
@@ -41,12 +41,13 @@ async function getToken(settings: CorreoArgentinoConfig): Promise<string> {
   return body.token;
 }
 
-export async function quoteCorreoArgentinoApi(settings: CorreoArgentinoConfig, postalCode: string, quantity: number): Promise<ShippingQuote> {
+export async function quoteCorreoArgentinoApi(settings: CorreoArgentinoConfig, postalCode: string, quantity: number,
+  deliveryType: ShippingDeliveryType): Promise<ShippingQuote> {
   const weight = settings.packageWeight + settings.itemWeight * quantity;
   const height = settings.packageHeight + settings.itemHeight * quantity;
   if (weight > 25_000 || height > 150 || settings.width > 150 || settings.length > 150)
     throw new CorreoArgentinoError("El pedido supera las medidas admitidas para cotizar el envío. Escribinos para coordinarlo.");
-  const key = `${settings.base}:${settings.customerId}:${settings.revision}:${settings.origin}:${postalCode}:${weight}:${height}:${settings.width}:${settings.length}`;
+  const key = `${settings.base}:${settings.customerId}:${settings.revision}:${settings.origin}:${postalCode}:${deliveryType}:${weight}:${height}:${settings.width}:${settings.length}`;
   const cached = cachedQuotes.get(key);
   if (cached && Date.parse(cached.expiresAt) > Date.now()) return cached;
 
@@ -58,7 +59,7 @@ export async function quoteCorreoArgentinoApi(settings: CorreoArgentinoConfig, p
         customerId: settings.customerId,
         postalCodeOrigin: settings.origin,
         postalCodeDestination: postalCode,
-        deliveredType: "D",
+        deliveredType: deliveryType,
         dimensions: { weight, height, width: settings.width, length: settings.length },
       }),
       signal: AbortSignal.timeout(8000),
@@ -75,14 +76,15 @@ export async function quoteCorreoArgentinoApi(settings: CorreoArgentinoConfig, p
   const body = await response.json() as { validTo?: unknown; rates?: unknown };
   const rates = Array.isArray(body.rates) ? body.rates : [];
   const rate = rates
-    .filter((item) => item?.deliveredType === "D" && typeof item.price === "number" &&
+    .filter((item) => item?.deliveredType === deliveryType && item.productType === "CP" && typeof item.price === "number" &&
       Number.isFinite(item.price) && item.price >= 0)
     .sort((a, b) => a.price - b.price)[0];
-  if (!rate) throw new CorreoArgentinoError("Correo Argentino no ofrece envío a domicilio para ese código postal.");
+  if (!rate) throw new CorreoArgentinoError(deliveryType === "S"
+    ? "Correo Argentino no ofrece entrega en sucursal para ese código postal."
+    : "Correo Argentino no ofrece envío Clásico a domicilio para ese código postal.");
   const validTo = typeof body.validTo === "string" ? Date.parse(body.validTo) : NaN;
   const expiresAt = new Date(Math.min(Date.now() + 5 * 60_000, Number.isFinite(validTo) ? validTo : Infinity)).toISOString();
-  const quote = { postalCode, quantity, price: rate.price as number,
-    service: typeof rate.productName === "string" ? rate.productName : "Correo Argentino Clásico", expiresAt };
+  const quote: ShippingQuote = { postalCode, quantity, price: rate.price as number, deliveryType, expiresAt };
   if (cachedQuotes.size >= 200) cachedQuotes.clear();
   cachedQuotes.set(key, quote);
   return quote;

@@ -30,9 +30,10 @@ it("cotiza el peso y las medidas del carrito con MiCorreo sin exponer credencial
     ] });
   }) as typeof fetch;
   try {
-    const quote = await quoteCorreoArgentinoApi(settings, "1414", 2);
+    const quote = await quoteCorreoArgentinoApi(settings, "1414", 2, "D");
     assert.equal(quote.price, 5123.45);
     assert.equal(quote.quantity, 2);
+    assert.equal(quote.deliveryType, "D");
     assert.equal(calls.length, 2);
     assert.ok(calls[0].url.includes("apitest.correoargentino.com.ar"));
     assert.equal(calls[0].init?.headers && (calls[0].init.headers as Record<string, string>).Authorization,
@@ -43,6 +44,12 @@ it("cotiza el peso y las medidas del carrito con MiCorreo sin exponer credencial
       deliveredType: "D", dimensions: { weight: 900, height: 11, width: 30, length: 40 },
     });
     assert.equal(JSON.stringify(quote).includes("clave"), false);
+
+    const branchQuote = await quoteCorreoArgentinoApi(settings, "1414", 2, "S");
+    assert.equal(branchQuote.price, 1000);
+    assert.equal(branchQuote.deliveryType, "S");
+    assert.equal(calls.length, 3);
+    assert.equal(JSON.parse(String(calls[2].init?.body)).deliveredType, "S");
   } finally {
     globalThis.fetch = previousFetch;
   }

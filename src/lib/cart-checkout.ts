@@ -1,5 +1,5 @@
 import { formatPrice, type CartItem } from "./products";
-import type { ShippingQuote } from "./shipping";
+import { shippingDeliveryLabel, type ShippingDeliveryType, type ShippingQuote } from "./shipping";
 
 export type CartPaymentOption = { key: string; label: string };
 
@@ -24,9 +24,11 @@ export function availableCartPayments(items: CartItem[]): CartPaymentOption[] {
 }
 
 export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shipping?: ShippingQuote,
-  freeShippingThreshold: number | null = null) {
+  freeShippingThreshold: number | null = null, shippingConfigured = false,
+  deliveryType: ShippingDeliveryType = "D") {
   const quantity = items.reduce((amount, item) => amount + item.quantity, 0);
-  const validShipping = shipping && shipping.quantity === quantity && Date.parse(shipping.expiresAt) > Date.now()
+  const validShipping = shippingConfigured && shipping && shipping.deliveryType === deliveryType &&
+    shipping.quantity === quantity && Date.parse(shipping.expiresAt) > Date.now()
     ? shipping : undefined;
   const lines = items.map((item) => {
     const selectedPrice = payment && item.paymentPrices?.find((candidate) => paymentKey(candidate.label) === payment.key);
@@ -36,7 +38,7 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shi
   const baseTotal = items.reduce((amount, item) => amount + item.price * item.quantity, 0);
   const productsTotal = lines.reduce((amount, line) => amount + line.total, 0);
   const discount = Math.max(0, baseTotal - productsTotal);
-  const amountUntilFreeShipping = freeShippingThreshold === null ? null
+  const amountUntilFreeShipping = !shippingConfigured || freeShippingThreshold === null ? null
     : Math.max(0, (Math.round(freeShippingThreshold * 100) - Math.round(productsTotal * 100)) / 100);
   const freeShipping = !!validShipping && amountUntilFreeShipping === 0;
   const shippingPrice = validShipping ? (freeShipping ? 0 : validShipping.price) : null;
@@ -52,11 +54,9 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shi
     ...(discount ? [`Subtotal: ${formatPrice(baseTotal)}`, `Descuento: -${formatPrice(discount)}`] : []),
     ...(validShipping ? [`Prendas: ${formatPrice(productsTotal)}`] : []),
     ...(validShipping
-      ? [freeShipping
-        ? `Envío gratis por ${validShipping.service} a domicilio (CP ${validShipping.postalCode}): ${formatPrice(0)}`
-        : `Envío por ${validShipping.service} a domicilio (CP ${validShipping.postalCode}): ${formatPrice(validShipping.price)} estimados`]
-      : ["Envío por Correo Argentino: a cotizar (no incluido en el total)"]),
-    `${validShipping ? "Total estimado a pagar" : "Total de prendas"}: ${formatPrice(total)}`,
+      ? [`${shippingDeliveryLabel(validShipping.deliveryType)}: ${freeShipping ? "Gratis" : formatPrice(validShipping.price)}`]
+      : shippingConfigured ? [`${shippingDeliveryLabel(deliveryType)}: a cotizar (no incluido en el total)`] : []),
+    `${validShipping ? "Total a pagar" : "Total de prendas"}: ${formatPrice(total)}`,
   ].join("\n");
 
   return { lines, baseTotal, productsTotal, total, discount, shippingPrice, freeShipping,

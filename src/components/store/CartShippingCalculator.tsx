@@ -2,11 +2,15 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { validPostalCode } from "@/lib/shipping";
+import { ShippingDeliveryOptions } from "@/components/store/ShippingDeliveryOptions";
+import { validPostalCode, type ShippingDeliveryType } from "@/lib/shipping";
 
-export function CartShippingCalculator({ postalCode, onPostalCodeChange, onEditing, loading, error, retry }: {
+export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliveryType, onDeliveryTypeChange,
+  onEditing, loading, error, retry }: {
   postalCode: string;
   onPostalCodeChange: (value: string) => void;
+  deliveryType: ShippingDeliveryType;
+  onDeliveryTypeChange: (deliveryType: ShippingDeliveryType) => void;
   onEditing: (editing: boolean) => void;
   loading: boolean;
   error?: string;
@@ -32,6 +36,8 @@ export function CartShippingCalculator({ postalCode, onPostalCodeChange, onEditi
   const showResult = draft === postalCode;
   return <div>
     <p className="text-sm font-medium">Medios de envío</p>
+    <div className="mt-2"><ShippingDeliveryOptions value={deliveryType} onChange={onDeliveryTypeChange} /></div>
+    {deliveryType === "S" && <p className="mt-2 text-xs text-muted-foreground">La sucursal se coordina al confirmar el pedido por WhatsApp.</p>}
     <form onSubmit={calculate} className="mt-2 flex">
       <input aria-label="Código postal del envío" inputMode="numeric" autoComplete="off" maxLength={4}
         value={draft} onChange={(event) => { setDraft(event.target.value.replace(/\D/g, "")); setValidationError(""); onEditing(true); }}

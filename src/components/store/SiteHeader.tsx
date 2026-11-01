@@ -11,7 +11,8 @@ import { productSlug } from "@/lib/product-slugs";
 
 export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname().replace(/\/+$/, "") || "/";
-  const { items, addAnimationKey, changeQuantity, remove, shippingPostalCode, setShippingPostalCode } = useCart();
+  const { items, addAnimationKey, changeQuantity, remove, shippingPostalCode, setShippingPostalCode,
+    shippingDeliveryType, setShippingDeliveryType } = useCart();
   const products = useContent("products");
   const categories = useContent("categories");
   const { homeSections } = useContent("texts");
@@ -40,6 +41,8 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
         whatsappNumber={contact.whatsapp}
         shippingPostalCode={shippingPostalCode}
         onShippingPostalCodeChange={setShippingPostalCode}
+        shippingDeliveryType={shippingDeliveryType}
+        onShippingDeliveryTypeChange={setShippingDeliveryType}
         onQuantityChange={changeQuantity}
         onRemove={remove}
         homeSections={{ ...homeSections, newArrivals: homeSections.newArrivals && hasNewArrivals }}

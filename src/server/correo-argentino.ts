@@ -1,11 +1,12 @@
 import "server-only";
-import type { ShippingQuote } from "@/lib/shipping";
+import type { ShippingDeliveryType, ShippingQuote } from "@/lib/shipping";
 import { CorreoArgentinoError, quoteCorreoArgentinoApi } from "@/server/correo-argentino-api";
 import { loadShippingQuoteSettings, ShippingSettingsError } from "@/server/shipping-settings";
 
 export { CorreoArgentinoError } from "@/server/correo-argentino-api";
 
-export async function quoteCorreoArgentino(postalCode: string, quantity: number): Promise<ShippingQuote> {
+export async function quoteCorreoArgentino(postalCode: string, quantity: number,
+  deliveryType: ShippingDeliveryType): Promise<ShippingQuote> {
   let settings;
   try {
     settings = await loadShippingQuoteSettings();
@@ -14,5 +15,5 @@ export async function quoteCorreoArgentino(postalCode: string, quantity: number)
     throw error;
   }
   if (!settings) throw new CorreoArgentinoError("La cotización de Correo Argentino todavía no está configurada.");
-  return quoteCorreoArgentinoApi(settings, postalCode, quantity);
+  return quoteCorreoArgentinoApi(settings, postalCode, quantity, deliveryType);
 }

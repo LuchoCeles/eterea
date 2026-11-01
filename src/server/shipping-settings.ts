@@ -95,14 +95,21 @@ export async function loadShippingQuoteSettings(): Promise<CorreoArgentinoConfig
   };
 }
 
-export async function loadFreeShippingThreshold(): Promise<number | null> {
+export async function loadStorefrontShippingPolicy(): Promise<{ configured: boolean; freeShippingThreshold: number | null }> {
   try {
     const row = await prisma.shippingSettings.findUnique({
-      where: { id: 1 }, select: { freeShippingThreshold: true },
+      where: { id: 1 },
+      select: { encryptedPassword: true, passwordIv: true, passwordTag: true, freeShippingThreshold: true },
     });
-    return row?.freeShippingThreshold?.toNumber() ?? null;
+    const authSecret = process.env.AUTH_SECRET;
+    const configured = !!row && !!authSecret && Buffer.byteLength(authSecret) >= 32 &&
+      !!decryptShippingPassword(row, authSecret);
+    return {
+      configured,
+      freeShippingThreshold: configured ? row.freeShippingThreshold?.toNumber() ?? null : null,
+    };
   } catch (error) {
-    if (missingTable(error)) return null;
+    if (missingTable(error)) return { configured: false, freeShippingThreshold: null };
     throw error;
   }
 }

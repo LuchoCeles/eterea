@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { requestShippingQuote, validPostalCode, type ShippingQuote } from "@/lib/shipping";
+import { requestShippingQuote, validPostalCode, type ShippingDeliveryType, type ShippingQuote } from "@/lib/shipping";
 
 type QuoteState = { key: string; loading: boolean; quote?: ShippingQuote; error?: string };
 
-export function useShippingQuote(postalCode: string, quantity: number) {
+export function useShippingQuote(postalCode: string, quantity: number, deliveryType: ShippingDeliveryType) {
   const [state, setState] = useState<QuoteState>({ key: "", loading: false });
   const [attempt, setAttempt] = useState(0);
-  const key = `${postalCode}:${quantity}`;
+  const key = `${postalCode}:${quantity}:${deliveryType}`;
 
   useEffect(() => {
     if (!validPostalCode(postalCode) || quantity < 1) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     setState({ key, loading: true });
-    requestShippingQuote(postalCode, quantity, controller.signal)
+    requestShippingQuote(postalCode, quantity, deliveryType, controller.signal)
       .then((quote) => {
         if (controller.signal.aborted) return;
         setState({ key, loading: false, quote });
@@ -27,7 +27,7 @@ export function useShippingQuote(postalCode: string, quantity: number) {
         setState({ key, loading: false, error: error instanceof Error ? error.message : "No pudimos calcular el envío." });
       });
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [key, postalCode, quantity, attempt]);
+  }, [key, postalCode, quantity, deliveryType, attempt]);
 
   return {
     loading: state.key === key && state.loading,

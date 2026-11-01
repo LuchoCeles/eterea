@@ -60,53 +60,73 @@ it("usa automáticamente el único medio disponible sin inventar descuentos", ()
 
 it("suma la cotización al carrito y al mensaje sin aplicar descuentos al envío", () => {
   const shipping = { postalCode: "1414", quantity: 3, price: 5240.5,
-    service: "Correo Argentino Clásico", expiresAt: new Date(Date.now() + 60_000).toISOString() };
-  const checkout = cartCheckout([first, second], availableCartPayments([first, second])[1], shipping);
+    deliveryType: "D" as const, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  const checkout = cartCheckout([first, second], availableCartPayments([first, second])[1], shipping, null, true);
   assert.equal(checkout.productsTotal, 134_240);
   assert.equal(checkout.discount, 33_560);
   assert.equal(checkout.total, 139_480.5);
   assert.equal(checkout.amountUntilFreeShipping, null);
   assert.equal(checkout.freeShipping, false);
-  assert.ok(checkout.message.includes(`CP 1414): ${formatPrice(5240.5)}`));
-  assert.ok(checkout.message.includes(`Total estimado a pagar: ${formatPrice(139_480.5)}`));
+  assert.ok(checkout.message.includes(`Envío Clásico: ${formatPrice(5240.5)}`));
+  assert.ok(!checkout.message.includes("1414"));
+  assert.ok(checkout.message.includes(`Total a pagar: ${formatPrice(139_480.5)}`));
   assert.ok(!checkout.message.includes("a cotizar"));
+  assert.ok(!checkout.message.includes("estimado"));
 });
 
 it("explicita en el mensaje cuando el envío todavía no fue cotizado", () => {
-  const checkout = cartCheckout([first]);
-  assert.ok(checkout.message.includes("Envío por Correo Argentino: a cotizar (no incluido en el total)"));
+  const checkout = cartCheckout([first], undefined, undefined, null, true);
+  assert.ok(checkout.message.includes("Envío Clásico: a cotizar (no incluido en el total)"));
   assert.equal(checkout.total, checkout.productsTotal);
+});
+
+it("omite por completo el envío cuando la configuración está pendiente", () => {
+  const checkout = cartCheckout([first], undefined, undefined, 100_000, false);
+  assert.ok(!checkout.message.includes("Envío"));
+  assert.equal(checkout.amountUntilFreeShipping, null);
+  assert.ok(checkout.message.includes(`Total de prendas: ${formatPrice(137_800)}`));
+});
+
+it("usa la opción de sucursal elegida en el precio y el mensaje", () => {
+  const quote = { postalCode: "1414", quantity: 2, price: 4000,
+    deliveryType: "S" as const, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  const checkout = cartCheckout([first], undefined, quote, null, true, "S");
+  assert.equal(checkout.total, 141_800);
+  assert.ok(checkout.message.includes(`Retiro por sucursal: ${formatPrice(4000)}`));
+  assert.ok(!checkout.message.includes("1414"));
+  assert.ok(!checkout.message.includes("Correo Argentino"));
+  assert.equal(cartCheckout([first], undefined, quote, null, true, "D").shippingPrice, null);
 });
 
 it("descarta una cotización vencida o de otra cantidad de prendas", () => {
   const quote = { postalCode: "1414", quantity: 1, price: 5000,
-    service: "Correo Argentino Clásico", expiresAt: new Date(Date.now() + 60_000).toISOString() };
-  assert.equal(cartCheckout([first], undefined, quote).total, 137_800);
+    deliveryType: "D" as const, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  assert.equal(cartCheckout([first], undefined, quote, null, true).total, 137_800);
   assert.equal(cartCheckout([{ ...first, quantity: 1 }], undefined,
-    { ...quote, expiresAt: new Date(Date.now() - 1).toISOString() }).total, 68_900);
+    { ...quote, expiresAt: new Date(Date.now() - 1).toISOString() }, null, true).total, 68_900);
 });
 
 it("ofrece envío gratis desde el total de prendas con el medio de pago elegido", () => {
   const shipping = { postalCode: "1414", quantity: 3, price: 5240.5,
-    service: "Correo Argentino Clásico", expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    deliveryType: "D" as const, expiresAt: new Date(Date.now() + 60_000).toISOString() };
   const payment = availableCartPayments([first, second])[1];
-  const below = cartCheckout([first, second], payment, shipping, 140_000);
+  const below = cartCheckout([first, second], payment, shipping, 140_000, true);
   assert.equal(below.productsTotal, 134_240);
   assert.equal(below.amountUntilFreeShipping, 5760);
   assert.equal(below.shippingPrice, 5240.5);
   assert.equal(below.freeShipping, false);
 
-  const free = cartCheckout([first, second], payment, shipping, 134_240);
+  const free = cartCheckout([first, second], payment, shipping, 134_240, true);
   assert.equal(free.amountUntilFreeShipping, 0);
   assert.equal(free.shippingPrice, 0);
   assert.equal(free.total, 134_240);
   assert.equal(free.freeShipping, true);
-  assert.match(free.message, /Envío gratis por Correo Argentino Clásico a domicilio \(CP 1414\)/);
-  assert.ok(free.message.includes(`Total estimado a pagar: ${formatPrice(134_240)}`));
+  assert.match(free.message, /Envío Clásico: Gratis/);
+  assert.ok(free.message.includes(`Total a pagar: ${formatPrice(134_240)}`));
 });
 
 it("sin cotización vigente no confirma envío gratis aunque se alcance el mínimo", () => {
-  const checkout = cartCheckout([first], undefined, undefined, 100_000);
+  const checkout = cartCheckout([first], undefined, undefined, 100_000, true);
   assert.equal(checkout.amountUntilFreeShipping, 0);
   assert.equal(checkout.freeShipping, false);
   assert.equal(checkout.shippingPrice, null);

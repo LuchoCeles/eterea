@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useContent } from "@/components/providers/ContentProvider";
-import { useFreeShippingThreshold } from "@/components/providers/ShippingPolicyProvider";
+import { useFreeShippingThreshold, useShippingConfigured } from "@/components/providers/ShippingPolicyProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
 import { FooterCredit } from "@/components/store/FooterCredit";
 import { ProductDetailPrice } from "@/components/store/ProductDetailPrice";
@@ -20,6 +20,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const products = useContent("products");
   const offersEnabled = useContent("texts").offers.enabled;
   const freeShippingThreshold = useFreeShippingThreshold();
+  const shippingConfigured = useShippingConfigured();
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxImage, setLightboxImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -125,7 +126,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             <button type="button" disabled={unavailable} onClick={addSelectedProduct} className={`mt-2 flex h-14 w-full items-center justify-center gap-3 px-5 text-sm font-medium transition-colors ${unavailable ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
               {added ? <Check className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}{unavailable ? "Agotada" : added ? "Agregada al carrito" : "Agregar al carrito"}
             </button>
-            <ProductShippingCalculator product={product} />
+            {shippingConfigured && <ProductShippingCalculator product={product} />}
             <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Podés revisar las prendas elegidas en el carrito y hacer tu pedido por WhatsApp.</p>
             <Link href="/productos" className="mt-8 inline-flex items-center gap-2 border-b border-foreground pb-1 text-sm hover:text-accent"><ArrowLeft className="h-4 w-4" /> Seguir descubriendo</Link>
           </section>
