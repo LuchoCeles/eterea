@@ -5,11 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
 import { useContent } from "@/components/providers/ContentProvider";
+import { useFreeShippingThreshold } from "@/components/providers/ShippingPolicyProvider";
 import { CatalogProductCard } from "@/components/store/CatalogProductCard";
 import { FooterCredit } from "@/components/store/FooterCredit";
 import { ProductDetailPrice } from "@/components/store/ProductDetailPrice";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ProductImageLightbox } from "@/components/store/ProductImageLightbox";
+import { ProductShippingCalculator } from "@/components/store/ProductShippingCalculator";
 import { automaticProductTag } from "@/lib/storefront-rules";
 import type { StoreProduct } from "@/lib/content";
 
@@ -17,6 +19,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
   const { add } = useCart();
   const products = useContent("products");
   const offersEnabled = useContent("texts").offers.enabled;
+  const freeShippingThreshold = useFreeShippingThreshold();
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxImage, setLightboxImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -98,7 +101,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <section className="min-w-0 lg:sticky lg:top-36 lg:self-start">
             <p className="eyebrow text-muted-foreground">Etérea · {product.category}</p>
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
-            <ProductDetailPrice product={product} />
+            <ProductDetailPrice product={product} freeShippingThreshold={freeShippingThreshold} />
             {product.description?.trim() && <p className="whitespace-pre-line border-b py-7 text-sm leading-7 text-muted-foreground">{product.description}</p>}
 
             {sizes.length > 0 && <div className="pt-7">
@@ -122,6 +125,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
             <button type="button" disabled={unavailable} onClick={addSelectedProduct} className={`mt-2 flex h-14 w-full items-center justify-center gap-3 px-5 text-sm font-medium transition-colors ${unavailable ? "cursor-not-allowed bg-muted text-muted-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
               {added ? <Check className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}{unavailable ? "Agotada" : added ? "Agregada al carrito" : "Agregar al carrito"}
             </button>
+            <ProductShippingCalculator product={product} />
             <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Podés revisar las prendas elegidas en el carrito y hacer tu pedido por WhatsApp.</p>
             <Link href="/productos" className="mt-8 inline-flex items-center gap-2 border-b border-foreground pb-1 text-sm hover:text-accent"><ArrowLeft className="h-4 w-4" /> Seguir descubriendo</Link>
           </section>

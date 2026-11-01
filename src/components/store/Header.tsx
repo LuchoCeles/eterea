@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { ShoppingBag, Menu, ArrowUpRight, MessageCircle, Minus, Plus, Trash2, LayoutDashboard } from "lucide-react";
+import { ShoppingBag, Menu, ArrowUpRight, MessageCircle, Minus, Plus, Trash2, LayoutDashboard, Truck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
 import { formatPrice, type CartItem } from "@/lib/products";
 import { ProductImage } from "@/components/store/ProductImage";
+import { CartShippingCalculator } from "@/components/store/CartShippingCalculator";
+import { useShippingQuote } from "@/components/store/useShippingQuote";
+import { useFreeShippingThreshold } from "@/components/providers/ShippingPolicyProvider";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import { availableCartPayments, cartCheckout } from "@/lib/cart-checkout";
 import type { HomeSections } from "@/lib/content";
@@ -65,6 +68,8 @@ export function Header({
   cartItems,
   cartAddCount,
   whatsappNumber,
+  shippingPostalCode = "",
+  onShippingPostalCodeChange = () => {},
   onQuantityChange,
   onRemove,
   homeSections,
@@ -74,6 +79,8 @@ export function Header({
   cartItems: CartItem[];
   cartAddCount: number;
   whatsappNumber: string;
+  shippingPostalCode?: string;
+  onShippingPostalCodeChange?: (postalCode: string) => void;
   onQuantityChange: (lineKey: string, quantity: number) => void;
   onRemove: (lineKey: string) => void;
   homeSections: HomeSections;
@@ -85,10 +92,14 @@ export function Header({
   const [cartAnimationKey, setCartAnimationKey] = useState(0);
   const [sectionRequest, setSectionRequest] = useState(0);
   const [selectedPaymentKey, setSelectedPaymentKey] = useState("");
+  const [shippingInputDirty, setShippingInputDirty] = useState(false);
+  const freeShippingThreshold = useFreeShippingThreshold();
   const previousCartAddCount = useRef(cartAddCount);
   const menuTitleRef = useRef<HTMLHeadingElement>(null);
   const isCartAnimating = useRef(false);
   const hasPendingCartAnimation = useRef(false);
+
+  useEffect(() => setShippingInputDirty(false), [shippingPostalCode]);
 
   useEffect(() => {
     if (cartAddCount === previousCartAddCount.current) return;
@@ -159,11 +170,18 @@ export function Header({
   }
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
+  const shippingEstimate = useShippingQuote(shippingPostalCode, cartCount);
+  const shippingQuote = !shippingInputDirty && shippingEstimate.quote && shippingEstimate.quote.quantity === cartCount &&
+    Date.parse(shippingEstimate.quote.expiresAt) > Date.now()
+    ? shippingEstimate.quote : undefined;
   const paymentOptions = availableCartPayments(cartItems);
   const selectedPayment = paymentOptions.find((option) => option.key === selectedPaymentKey) ?? paymentOptions[0];
   const hasPaymentPrices = cartItems.some((item) => item.paymentPrices?.length);
   const noCommonPayment = hasPaymentPrices && paymentOptions.length === 0;
-  const checkout = cartCheckout(cartItems, selectedPayment);
+  const checkout = cartCheckout(cartItems, selectedPayment, shippingQuote, freeShippingThreshold);
+  const freeShippingProgress = freeShippingThreshold
+    ? Math.min(100, (checkout.productsTotal / freeShippingThreshold) * 100)
+    : 0;
   const phone = normalizeWhatsAppNumber(whatsappNumber);
   const checkoutUrl = phone && cartItems.length && !noCommonPayment
     ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(checkout.message)
@@ -210,6 +228,40 @@ export function Header({
                 {cartCount ? cartCount + " " + (cartCount === 1 ? "prenda seleccionada." : "prendas seleccionadas.") : "Todavía no agregaste prendas."}
                 {cartItems.length > 0 && !phone ? " El checkout por WhatsApp todavía no está configurado." : ""}
               </SheetDescription>
+              {cartItems.length > 0 && checkout.amountUntilFreeShipping !== null && (
+                <div className="mx-6 mt-5 bg-sand/35 px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm" aria-live="polite">
+                      {checkout.freeShipping
+                        ? "¡Genial! Tenés envío gratis."
+                        : checkout.amountUntilFreeShipping === 0
+                          ? "¡Genial! Alcanzaste el mínimo para el envío gratis."
+                          : `Te faltan ${formatPrice(checkout.amountUntilFreeShipping)} en prendas para tener envío gratis.`}
+                    </p>
+                    <Truck aria-hidden="true" className="h-4 w-4 shrink-0 text-accent" />
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label="Progreso hacia el envío gratis"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(freeShippingProgress)}
+                    className="relative mx-1 mt-3 h-2"
+                  >
+                    <span className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-border" />
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 bg-accent transition-[width] duration-300"
+                      style={{ width: `${freeShippingProgress}%` }}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent transition-[left] duration-300"
+                      style={{ left: `${freeShippingProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               {cartItems.length > 0 && (
                 <div className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                   {checkout.lines.map(({ item, unitPrice, discounted, total: lineTotal }) => (
@@ -237,7 +289,7 @@ export function Header({
                 </div>
               )}
               <div className="mt-auto shrink-0 border-t bg-background pt-5">
-                <div className="mb-4 h-44 max-h-[30dvh] overflow-y-auto pr-1">
+                <div className="mb-4 max-h-[48dvh] overflow-y-auto px-1">
                   {cartItems.length > 0 && <div className="space-y-3">
                   {paymentOptions.length > 1 && <div>
                     <p id="cart-payment-label" className="text-sm font-medium">Medio de pago</p>
@@ -251,11 +303,18 @@ export function Header({
                     </Select>
                   </div>}
                   {paymentOptions.length === 1 && <p className="text-sm">Medio de pago: <span className="font-medium">{selectedPayment.label}</span></p>}
-                  {checkout.discount > 0 && <>
-                    <p className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(checkout.baseTotal)}</span></p>
-                    <p className="flex justify-between text-sm text-accent"><span>Descuento</span><span>−{formatPrice(checkout.discount)}</span></p>
-                  </>}
-                  <p className="flex justify-between font-medium"><span>Total a pagar</span><span>{formatPrice(checkout.total)}</span></p>
+                  <CartShippingCalculator postalCode={shippingPostalCode} onPostalCodeChange={onShippingPostalCodeChange}
+                    onEditing={setShippingInputDirty}
+                    loading={shippingEstimate.loading} error={shippingEstimate.error} retry={shippingEstimate.retry} />
+                  {checkout.amountUntilFreeShipping === 0 && !shippingQuote && <p className="text-xs text-muted-foreground">
+                    Ingresá tu código postal para confirmar la entrega sin cargo.
+                  </p>}
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="flex justify-between text-sm"><span>Subtotal (sin envío)</span><span>{formatPrice(checkout.baseTotal)}</span></p>
+                    {checkout.discount > 0 && <p className="flex justify-between text-sm text-accent"><span>Descuento</span><span>−{formatPrice(checkout.discount)}</span></p>}
+                    <p className="flex justify-between text-sm"><span>Envío</span><span className="text-right text-muted-foreground">{checkout.freeShipping ? "Gratis" : checkout.shippingPrice !== null ? formatPrice(checkout.shippingPrice) : shippingEstimate.loading && !shippingInputDirty ? "Calculando…" : "Calculalo para verlo"}</span></p>
+                    <p className="flex justify-between border-t pt-2 font-medium"><span>{checkout.shippingPrice !== null ? "Total estimado" : "Total de prendas"}</span><span>{formatPrice(checkout.total)}</span></p>
+                  </div>
                   {noCommonPayment && <p className="text-xs text-accent">No hay un medio de pago disponible para todas las prendas. Revisá el carrito para continuar.</p>}
                   </div>}
                 </div>

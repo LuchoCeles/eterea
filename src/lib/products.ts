@@ -53,4 +53,4 @@ export type CartItem = Product & { quantity: number; lineKey: string; size?: str
 export const PRODUCT_IMAGE_FALLBACK = "/assets/eterea-placeholder.svg";
 
 export const formatPrice = (amount: number) =>
-  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(amount);
+  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);

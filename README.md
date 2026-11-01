@@ -29,6 +29,16 @@ Las categorías, los productos, sus precios por medio de pago y las tarjetas des
 
 Para una base existente, seguí la secuencia de **Migración relacional** más abajo. Los importadores no modifican usuarios ni roles.
 
+## Envíos por Correo Argentino
+
+La ficha de cada prenda y el carrito permiten cotizar un envío a domicilio mediante la API oficial de MiCorreo. El carrito vuelve a cotizar cuando cambia el código postal o la cantidad de prendas; el total estimado y el mensaje de WhatsApp incluyen el costo obtenido. Sin una cotización vigente, el mensaje indica que el envío queda a cotizar y no lo suma al total de prendas.
+
+Para activar el cotizador, solicitá a Correo Argentino las credenciales de API y el ID de cliente de MiCorreo. En **Administración → Envíos** (`/admin/envios`) cargá esos datos, el CP desde el que despachás y las medidas estimadas de un paquete. La contraseña se guarda cifrada con `AUTH_SECRET` y no se devuelve al navegador después de guardarla; si cambiás ese secreto, volvé a cargar la contraseña. Mientras las prendas no tengan medidas individuales, configurá un peso y una altura estimados por prenda, más el peso, alto, ancho y largo del embalaje; la cotización usa un solo paquete y suma esos valores según las unidades del carrito. Revisá las medidas reales antes de cobrar el envío. La app no crea ni paga etiquetas de Correo Argentino.
+
+En la misma página podés definir un monto mínimo de prendas para ofrecer envío gratis. El mínimo se compara con el total según el medio de pago elegido, después de sus descuentos y antes del envío. Se confirma como gratis cuando Correo Argentino cotiza la entrega a ese código postal. Si dejás el monto vacío, la promoción queda desactivada. Como las demás promociones, solo se aplica cuando el interruptor de ofertas está activado.
+
+`prisma/migrations/20261031000000_shipping_settings/migration.sql` crea la tabla tipada `ShippingSettings` sin cambiar productos ni pedidos. Revisá y autorizá esa migración antes de aplicarla en TiDB compartido. La página de Envíos muestra los requisitos, pero no permite guardar hasta que exista la tabla.
+
 ## Migración relacional
 
 `prisma/migrations/20261025010000_content_relacional/migration.sql` crea las tablas de promociones, banners, textos, contacto, Instagram y limpieza de imágenes. No retira `SiteContent` durante la creación: esa tabla se necesita para copiar los datos heredados. El esquema Prisma y la aplicación nueva ya usan exclusivamente las tablas relacionales.

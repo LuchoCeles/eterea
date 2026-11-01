@@ -6,6 +6,8 @@ import type { CartItem, Product } from "@/lib/products";
 type CartContextValue = {
   items: CartItem[];
   addAnimationKey: number;
+  shippingPostalCode: string;
+  setShippingPostalCode: (postalCode: string) => void;
   add: (product: Product, selection?: { size?: string; color?: string }) => void;
   changeQuantity: (lineKey: string, quantity: number) => void;
   remove: (lineKey: string) => void;
@@ -16,9 +18,12 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [addAnimationKey, setAddAnimationKey] = useState(0);
+  const [shippingPostalCode, setShippingPostalCode] = useState("");
   const value: CartContextValue = {
     items,
     addAnimationKey,
+    shippingPostalCode,
+    setShippingPostalCode,
     add: (product, selection) => {
       const colors = product.colors ?? [];
       const sizes = product.sizes ?? [];

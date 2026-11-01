@@ -1,4 +1,5 @@
 import { formatPrice, type CartItem } from "./products";
+import type { ShippingQuote } from "./shipping";
 
 export type CartPaymentOption = { key: string; label: string };
 
@@ -22,15 +23,24 @@ export function availableCartPayments(items: CartItem[]): CartPaymentOption[] {
   });
 }
 
-export function cartCheckout(items: CartItem[], payment?: CartPaymentOption) {
+export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shipping?: ShippingQuote,
+  freeShippingThreshold: number | null = null) {
+  const quantity = items.reduce((amount, item) => amount + item.quantity, 0);
+  const validShipping = shipping && shipping.quantity === quantity && Date.parse(shipping.expiresAt) > Date.now()
+    ? shipping : undefined;
   const lines = items.map((item) => {
     const selectedPrice = payment && item.paymentPrices?.find((candidate) => paymentKey(candidate.label) === payment.key);
     const unitPrice = selectedPrice?.price ?? item.price;
     return { item, unitPrice, discounted: unitPrice < item.price, total: unitPrice * item.quantity };
   });
   const baseTotal = items.reduce((amount, item) => amount + item.price * item.quantity, 0);
-  const total = lines.reduce((amount, line) => amount + line.total, 0);
-  const discount = Math.max(0, baseTotal - total);
+  const productsTotal = lines.reduce((amount, line) => amount + line.total, 0);
+  const discount = Math.max(0, baseTotal - productsTotal);
+  const amountUntilFreeShipping = freeShippingThreshold === null ? null
+    : Math.max(0, (Math.round(freeShippingThreshold * 100) - Math.round(productsTotal * 100)) / 100);
+  const freeShipping = !!validShipping && amountUntilFreeShipping === 0;
+  const shippingPrice = validShipping ? (freeShipping ? 0 : validShipping.price) : null;
+  const total = productsTotal + (shippingPrice ?? 0);
   const message = [
     "Hola, quiero comprar estas prendas de Etérea:",
     "",
@@ -40,8 +50,15 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption) {
     "",
     ...(payment ? [`Medio de pago: ${payment.label}`] : []),
     ...(discount ? [`Subtotal: ${formatPrice(baseTotal)}`, `Descuento: -${formatPrice(discount)}`] : []),
-    `${payment ? "Total a pagar" : "Total"}: ${formatPrice(total)}`,
+    ...(validShipping ? [`Prendas: ${formatPrice(productsTotal)}`] : []),
+    ...(validShipping
+      ? [freeShipping
+        ? `Envío gratis por ${validShipping.service} a domicilio (CP ${validShipping.postalCode}): ${formatPrice(0)}`
+        : `Envío por ${validShipping.service} a domicilio (CP ${validShipping.postalCode}): ${formatPrice(validShipping.price)} estimados`]
+      : ["Envío por Correo Argentino: a cotizar (no incluido en el total)"]),
+    `${validShipping ? "Total estimado a pagar" : "Total de prendas"}: ${formatPrice(total)}`,
   ].join("\n");
 
-  return { lines, baseTotal, total, discount, message };
+  return { lines, baseTotal, productsTotal, total, discount, shippingPrice, freeShipping,
+    amountUntilFreeShipping, message };
 }

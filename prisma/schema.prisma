@@ -44,6 +44,25 @@ model ContactSettings {
   instagramUsername String @default("") @db.VarChar(31)
 }
 
+model ShippingSettings {
+  id                 Int      @id @default(1)
+  environment        String   @default("production") @db.VarChar(12)
+  apiUser            String   @db.VarChar(191)
+  encryptedPassword  String   @db.Text
+  passwordIv         String   @db.VarChar(64)
+  passwordTag        String   @db.VarChar(64)
+  customerId         String   @db.VarChar(32)
+  postalCodeOrigin   String   @db.VarChar(4)
+  itemWeightGrams    Int
+  packageWeightGrams Int
+  itemHeightCm       Int
+  packageHeightCm    Int
+  packageWidthCm     Int
+  packageLengthCm    Int
+  freeShippingThreshold Decimal? @db.Decimal(14, 2)
+  updatedAt          DateTime @updatedAt @db.DateTime(3)
+}
+
 model OfferSettings {
   id        Int     @id @default(1)
   enabled   Boolean @default(false)
