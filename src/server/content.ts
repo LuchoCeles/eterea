@@ -48,6 +48,7 @@ export function defaultContentSnapshot(): ContentSnapshot {
     promo: resolveContent("promo", undefined), hero: resolveContent("hero", undefined),
     products: resolveContent("products", undefined), categories: resolveContent("categories", undefined),
     instagram: resolveContent("instagram", undefined), contact: resolveContent("contact", undefined),
+    howToBuy: resolveContent("howToBuy", undefined),
     texts: resolveContent("texts", undefined),
   };
 }

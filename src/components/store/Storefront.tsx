@@ -17,6 +17,7 @@ import { visibleStoreProducts } from "@/lib/content";
 export function Storefront({ instagramSection }: { instagramSection: ReactNode }) {
   const { add } = useCart();
   const T = useContent("texts");
+  const howToBuy = useContent("howToBuy");
   const products = useContent("products");
   const categories = useContent("categories");
   const visibleProducts = visibleStoreProducts(products, categories);
@@ -85,7 +86,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
 
         {/* Instagram y contacto */}
         {instagramSection}
-        <HowToBuySection />
+        <HowToBuySection content={howToBuy} />
         <ContactSection />
       </main>
 

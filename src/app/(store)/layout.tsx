@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ContentProvider } from "@/components/providers/ContentProvider";
 import { ShippingPolicyProvider } from "@/components/providers/ShippingPolicyProvider";
 import { SiteHeader } from "@/components/store/SiteHeader";
+import { StorefrontTabTitle } from "@/components/store/StorefrontTabTitle";
 import { StorageNotice } from "@/components/store/StorageNotice";
 import { isCurrentUserAdmin } from "@/server/auth";
 import { loadStorefrontContent } from "@/server/storefront-content";
@@ -20,6 +21,7 @@ export default async function StoreLayout({ children }: { children: ReactNode })
   return (
     <ShippingPolicyProvider configured={shippingPolicy.configured} threshold={activeThreshold}>
       <ContentProvider initialContent={storefrontContent}>
+        <StorefrontTabTitle />
         <div className="flex min-h-svh flex-col">
           <SiteHeader isAdmin={isAdmin} />
           {children}

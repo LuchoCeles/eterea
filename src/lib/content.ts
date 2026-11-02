@@ -14,6 +14,16 @@ export type StoreCategory = { id: string; name: string; hidden?: boolean };
 export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string; instagramUsername: string };
+export type HowToBuyContent = {
+  eyebrow: string;
+  title: string;
+  firstStepTitle: string;
+  firstStepDescription: string;
+  secondStepTitle: string;
+  secondStepDescription: string;
+  noticeTitle: string;
+  noticeText: string;
+};
 export type HomeSections = {
   promoBar: boolean;
   hero: boolean;
@@ -57,6 +67,16 @@ export const defaults = {
   categories: [] as StoreCategory[],
   instagram: [] as InstagramPost[],
   contact: { whatsapp: "", instagramUsername: "" } as ContactSettings,
+  howToBuy: {
+    eyebrow: "Tu compra, paso a paso",
+    title: "¿Cómo comprar?",
+    firstStepTitle: "Elegí tus favoritas",
+    firstStepDescription: "Elegí tus prendas favoritas y agregalas al carrito.",
+    secondStepTitle: "Coordinamos por WhatsApp",
+    secondStepDescription: "Una vez que finalices tu compra, serás redirigida a nuestro WhatsApp, donde coordinaremos la forma de pago y la entrega de tu pedido.",
+    noticeTitle: "Importante:",
+    noticeText: "La compra no quedará confirmada hasta que el pedido haya sido abonado en su totalidad.",
+  } as HowToBuyContent,
   texts: {
     offers: { enabled: false, showSplit: false, showClub: false },
     homeSections: {
@@ -103,6 +123,9 @@ export function resolveContent<K extends ContentKey>(key: K, data: unknown): Con
   }
   if (key === "contact") {
     return { ...defaults.contact, ...(data as Partial<ContactSettings>) } as ContentOf<K>;
+  }
+  if (key === "howToBuy") {
+    return { ...defaults.howToBuy, ...(data as Partial<HowToBuyContent>) } as ContentOf<K>;
   }
   if (key === "texts") {
     const saved = data as Partial<Texts>;

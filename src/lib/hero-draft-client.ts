@@ -9,14 +9,35 @@ export function loadHeroDraft(saved: Slide[]): SavedDraft | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    if (navigation?.type === "reload") {
+      discardHeroDraft(raw);
+      return null;
+    }
     const parsed = JSON.parse(raw) as SavedDraft;
     if (parsed.base !== JSON.stringify(saved) || !Array.isArray(parsed.data) || parsed.data.length > 30) {
-      localStorage.removeItem(DRAFT_KEY);
+      discardHeroDraft(raw);
       return null;
     }
     return parsed;
   } catch {
     return null;
+  }
+}
+
+function discardHeroDraft(raw: string) {
+  localStorage.removeItem(DRAFT_KEY);
+  try {
+    const parsed = JSON.parse(raw) as Partial<SavedDraft>;
+    if (!Array.isArray(parsed.data)) return;
+    const markers = parsed.data.flatMap((slide) => {
+      if (!slide || typeof slide !== "object") return [];
+      const image = (slide as Slide).img;
+      return typeof image === "string" && isStagedHeroImage(image) ? [image] : [];
+    });
+    void clearStagedHeroImages(markers);
+  } catch {
+    // El borrador se descarta aunque su contenido ya no se pueda interpretar.
   }
 }
 

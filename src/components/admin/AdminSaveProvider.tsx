@@ -202,7 +202,17 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
       const savedAfter = await saveHeroSlide(index, prepared.data[0], uploads);
       updateContent("hero", savedAfter);
       setEntry("hero", initial, (current) => {
-        const data = mergeHeroDraft(savedBefore, current.data as Slide[], savedAfter, prepared.uploadedByMarker);
+        const currentData = current.data as Slide[];
+        const data = mergeHeroDraft(savedBefore, currentData, savedAfter, prepared.uploadedByMarker);
+        const currentSlide = currentData[index];
+        const savedSlide = savedAfter[index];
+        if (currentSlide && savedSlide && JSON.stringify({
+          ...currentSlide,
+          img: prepared.uploadedByMarker.get(currentSlide.img) ?? currentSlide.img,
+        }) === JSON.stringify(prepared.data[0])) {
+          // El servidor puede omitir ajustes nulos; la respuesta guardada pasa a ser la referencia.
+          data[index] = savedSlide;
+        }
         persistHeroDraft(savedAfter, data, current.structureDirty === true);
         return { ...current, data, savedData: savedAfter, saving: false, error: null };
       });

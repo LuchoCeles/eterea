@@ -7,6 +7,7 @@ import { InstagramConnection } from "@/components/admin/InstagramConnection";
 import { WhatsAppSettings } from "@/components/admin/WhatsAppSettings";
 import { AdminProductsEditor } from "@/components/admin/AdminProductsEditor";
 import { AdminCategoriesEditor } from "@/components/admin/AdminCategoriesEditor";
+import { AdminHowToBuyEditor } from "@/components/admin/AdminHowToBuyEditor";
 import { HeroImageField } from "@/components/admin/HeroImageField";
 import { useContent } from "@/components/providers/ContentProvider";
 import { resolveImageSource } from "@/lib/image-source";
@@ -20,6 +21,7 @@ import {
 } from "@/components/admin/AdminEditorFields";
 import type {
   ContentKey,
+  HowToBuyContent,
   Slide,
   StoreCategory,
   StoreProduct,
@@ -72,6 +74,7 @@ export function AdminContentEditor({
     );
   if (k === "categories")
     return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
+  if (k === "howToBuy") return <AdminHowToBuyEditor value={draft as HowToBuyContent} onChange={onChange} />;
   if (k === "texts") return <TextsEditor value={draft as Texts} />;
   return <SocialSettings />;
 }

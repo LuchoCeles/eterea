@@ -10,6 +10,7 @@ const sectionDetails: Record<AdminSection, { title: string; description: string 
   categories: { title: "Categorías", description: "Agrupá productos y definí los filtros del catálogo." },
   products: { title: "Productos", description: "Prendas, precios y categorías." },
   texts: { title: "Diseño del inicio", description: "Secciones, tarjetas destacadas, textos y fotos del home." },
+  howToBuy: { title: "Cómo comprar", description: "Pasos y condiciones para realizar una compra en la tienda." },
   instagram: { title: "Redes y contacto", description: "Instagram y datos de contacto." },
 };
 
@@ -53,6 +54,17 @@ function SectionBody({ section }: { section: AdminSection }) {
       <Card><CardHeading /></Card>
       <Card><CardHeading /></Card>
       <Card><CardHeading image /></Card>
+      <Card><CardHeading /></Card>
+    </div>
+  );
+
+  if (section === "howToBuy") return (
+    <div className="space-y-4" aria-hidden="true">
+      <Card><CardHeading /></Card>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card><CardHeading /></Card>
+        <Card><CardHeading /></Card>
+      </div>
       <Card><CardHeading /></Card>
     </div>
   );

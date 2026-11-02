@@ -50,7 +50,7 @@ export default function AboutPage() {
               <p className="mt-8">
                 Seleccionamos prendas que nos representan, combinando lo simple con lo diferente.
               </p>
-              <p className="mt-8 font-serif text-[clamp(1.6rem,3vw,2.25rem)] italic leading-snug text-primary">
+              <p className="mt-8 font-sans text-[clamp(1.6rem,3vw,2.25rem)] font-medium italic leading-snug tracking-[-0.035em] text-primary">
                 Porque creemos que todo cambia, todo se transforma y todo fluye.
               </p>
               <p className="mt-10 font-medium text-foreground">Bienvenidas a nuestro nuevo concepto.</p>
