@@ -38,7 +38,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <span className="eyebrow text-muted-foreground">Explorá la tienda</span>
-              <h2 className="mt-2 font-display text-3xl md:text-4xl">Prendas por categoría</h2>
+              <h2 className="mt-2 font-display text-3xl md:text-4xl">Descubrí nuestras categorías</h2>
             </div>
             <a href="/productos" className="hidden items-center gap-2 text-sm hover:text-accent sm:inline-flex">Ver todas <ArrowUpRight className="h-4 w-4" /></a>
           </div>
