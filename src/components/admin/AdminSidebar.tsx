@@ -9,7 +9,6 @@ import {
   Megaphone,
   Package,
   PanelsTopLeft,
-  ShoppingBag,
   Tags,
   Truck,
   Users,
@@ -24,7 +23,7 @@ export const adminSections: {
   label: string;
   shortLabel: string;
   description: string;
-  group: "Inicio" | "Catálogo" | "Tienda" | "Contacto";
+  group: "Inicio" | "Catálogo" | "Contacto";
   icon: LucideIcon;
 }[] = [
   {
@@ -71,15 +70,6 @@ export const adminSections: {
     description: "Agrupá productos y definí los filtros del catálogo.",
     group: "Catálogo",
     icon: Tags,
-  },
-  {
-    id: "howToBuy",
-    slug: "como-comprar",
-    label: "Cómo comprar",
-    shortLabel: "Comprar",
-    description: "Pasos y condiciones para realizar una compra en la tienda.",
-    group: "Tienda",
-    icon: ShoppingBag,
   },
   {
     id: "instagram",

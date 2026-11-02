@@ -112,16 +112,6 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
   categories: z.array(category).max(100),
   instagram: z.array(instagramPost).max(100),
   contact: z.object({ whatsapp, instagramUsername }).partial().strict(),
-  howToBuy: z.object({
-    eyebrow: shortText,
-    title: shortText,
-    firstStepTitle: shortText,
-    firstStepDescription: shortText,
-    secondStepTitle: shortText,
-    secondStepDescription: shortText,
-    noticeTitle: shortText,
-    noticeText: shortText,
-  }).partial().strict(),
   texts: textSectionsSchema.extend({
     offers,
     categories: z.array(category).max(100).optional(),

@@ -50,18 +50,6 @@ model ContactSettings {
   instagramUsername String @default("") @db.VarChar(31)
 }
 
-model HowToBuySettings {
-  id                    Int    @id @default(1)
-  eyebrow               String @db.Text
-  title                 String @db.Text
-  firstStepTitle        String @db.Text
-  firstStepDescription  String @db.Text
-  secondStepTitle       String @db.Text
-  secondStepDescription String @db.Text
-  noticeTitle           String @db.Text
-  noticeText            String @db.Text
-}
-
 model ShippingSettings {
   id                 Int      @id @default(1)
   environment        String   @default("production") @db.VarChar(12)

@@ -12,7 +12,6 @@ import { productsWithCategoryNames, visibleStoreProducts, type ContentSnapshot }
 
 export function Storefront({ content, instagramSection }: { content: ContentSnapshot; instagramSection: ReactNode }) {
   const T = content.texts;
-  const howToBuy = content.howToBuy;
   const products = productsWithCategoryNames(content.products, content.categories);
   const categories = content.categories;
   const visibleProducts = visibleStoreProducts(products, categories);
@@ -81,7 +80,7 @@ export function Storefront({ content, instagramSection }: { content: ContentSnap
 
         {/* Instagram y contacto */}
         {instagramSection}
-        <HowToBuySection content={howToBuy} />
+        <HowToBuySection />
         <ContactSection />
       </main>
 

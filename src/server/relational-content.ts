@@ -3,7 +3,7 @@ import { resolveContent, type ContentKey, type ContentSnapshot, type Slide, type
 import type { CropSettings } from "@/lib/image-presentation";
 
 type ContentDb = Pick<Prisma.TransactionClient,
-  "contentSection" | "contactSettings" | "howToBuySettings" | "offerSettings" | "homeSectionSetting" |
+  "contentSection" | "contactSettings" | "offerSettings" | "homeSectionSetting" |
   "splitBanner" | "clubBanner" | "editorialBanner" | "promoLine" | "heroSlide" |
   "benefit" | "marqueeLine" | "curatedInstagramPost">;
 
@@ -43,9 +43,8 @@ export async function updateRelationalHeroSlide(db: Pick<ContentDb, "heroSlide">
 export async function loadRelationalContentWithSections(db: ContentDb) {
   const sections = await db.contentSection.findMany({ select: { key: true } });
   const saved = new Set(sections.map((section) => section.key));
-  const [contact, howToBuy, offers, home, split, club, editorial, promo, hero, benefits, marquee, instagram] = await Promise.all([
+  const [contact, offers, home, split, club, editorial, promo, hero, benefits, marquee, instagram] = await Promise.all([
     saved.has("contact") ? db.contactSettings.findUnique({ where: { id: 1 } }) : null,
-    saved.has("howToBuy") ? db.howToBuySettings.findUnique({ where: { id: 1 } }) : null,
     saved.has("texts") ? db.offerSettings.findUnique({ where: { id: 1 } }) : null,
     saved.has("homeSections") ? db.homeSectionSetting.findMany() : [],
     saved.has("split") ? db.splitBanner.findUnique({ where: { id: 1 } }) : null,
@@ -89,12 +88,6 @@ export async function loadRelationalContentWithSections(db: ContentDb) {
       kind: item.kind as "post" | "reel",
     })) : undefined),
     contact: resolveContent("contact", contact ? { whatsapp: contact.whatsapp, instagramUsername: contact.instagramUsername } : undefined),
-    howToBuy: resolveContent("howToBuy", howToBuy ? {
-      eyebrow: howToBuy.eyebrow, title: howToBuy.title,
-      firstStepTitle: howToBuy.firstStepTitle, firstStepDescription: howToBuy.firstStepDescription,
-      secondStepTitle: howToBuy.secondStepTitle, secondStepDescription: howToBuy.secondStepDescription,
-      noticeTitle: howToBuy.noticeTitle, noticeText: howToBuy.noticeText,
-    } : undefined),
     texts,
   } };
 }
@@ -126,9 +119,6 @@ export async function saveRelationalContent(db: ContentDb, key: ContentKey, valu
     const contact = value as ContentSnapshot["contact"];
     const data = { whatsapp: contact.whatsapp, instagramUsername: contact.instagramUsername };
     await db.contactSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
-  } else if (key === "howToBuy") {
-    const data = value as ContentSnapshot["howToBuy"];
-    await db.howToBuySettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
   } else if (key === "texts") {
     const texts = value as Texts;
     await saveRelationalTextSection(db, "homeSections", texts.homeSections);
