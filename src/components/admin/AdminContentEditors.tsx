@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2, Save } from "lucide-react";
 import { TextsEditor } from "@/components/admin/AdminTextsEditor";
 import { InstagramConnection } from "@/components/admin/InstagramConnection";
 import { WhatsAppSettings } from "@/components/admin/WhatsAppSettings";
 import { AdminProductsEditor } from "@/components/admin/AdminProductsEditor";
 import { AdminCategoriesEditor } from "@/components/admin/AdminCategoriesEditor";
-import { SharedImageField } from "@/components/admin/SharedImageField";
+import { HeroImageField } from "@/components/admin/HeroImageField";
 import { useContent } from "@/components/providers/ContentProvider";
 import { resolveImageSource } from "@/lib/image-source";
+import { isStagedHeroImage, removeStagedHeroImage, stagedHeroPreview } from "@/lib/hero-image-staging";
 import {
   AddButton,
   CollapsibleCard,
@@ -27,14 +30,24 @@ export function AdminContentEditor({
   k,
   draft,
   onChange,
+  onStructureChange,
   onUploaded,
   onSaveProduct,
+  savedHeroValue,
+  heroStructureDirty,
+  heroSaving,
+  onSaveHeroBanner,
 }: {
   k: ContentKey;
   draft: unknown;
   onChange: (value: unknown) => void;
+  onStructureChange?: (value: unknown) => void;
   onUploaded: (urls: string[]) => void;
   onSaveProduct?: (products: StoreProduct[], uploadedUrls: string[]) => Promise<boolean>;
+  savedHeroValue?: Slide[];
+  heroStructureDirty?: boolean;
+  heroSaving?: boolean;
+  onSaveHeroBanner?: (index: number) => Promise<boolean>;
 }) {
   if (k === "promo") return <PromoEditor value={draft as string[]} onChange={onChange} />;
   if (k === "hero")
@@ -42,7 +55,11 @@ export function AdminContentEditor({
       <HeroEditor
         value={draft as Slide[]}
         onChange={onChange}
-        onUploaded={(url) => onUploaded([url])}
+        onStructureChange={onStructureChange!}
+        savedValue={savedHeroValue!}
+        structureDirty={heroStructureDirty === true}
+        saving={heroSaving === true}
+        onSaveBanner={onSaveHeroBanner!}
       />
     );
   if (k === "products")
@@ -109,63 +126,88 @@ function PromoEditor({
 function HeroEditor({
   value,
   onChange,
-  onUploaded,
+  onStructureChange,
+  savedValue,
+  structureDirty,
+  saving,
+  onSaveBanner,
 }: {
   value: Slide[];
   onChange: (value: Slide[]) => void;
-  onUploaded: (url: string) => void;
+  onStructureChange: (value: Slide[]) => void;
+  savedValue: Slide[];
+  structureDirty: boolean;
+  saving: boolean;
+  onSaveBanner: (index: number) => Promise<boolean>;
 }) {
-  const list = useList(value, onChange);
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const list = useList(value, onStructureChange);
   const products = useContent("products");
+  const setSlide = (index: number, patch: Partial<Slide>) => onChange(value.map((slide, current) =>
+    current === index ? { ...slide, ...patch } : slide));
   return (
     <div className="space-y-3 sm:space-y-4">
-      {value.map((slide, index) => (
+      {value.map((slide, index) => {
+        const changed = savedValue[index] && JSON.stringify(slide) !== JSON.stringify(savedValue[index]);
+        return (
         <CollapsibleCard
-          key={index}
+          key={slide.id ?? index}
           title={`Banner ${index + 1}`}
           summary={slide.title || slide.promo || "Sin título"}
-          preview={resolveImageSource(slide, products)}
+          preview={isStagedHeroImage(slide.img) ? stagedHeroPreview(slide.img) : resolveImageSource(slide, products)}
           badge="Imagen + texto"
-          right={
-            <ListControls i={index} len={value.length} move={list.move} remove={list.remove} />
-          }
+          right={<>
+            {changed && !structureDirty && <button type="button" disabled={savingIndex !== null}
+              onClick={async () => {
+                setSavingIndex(index);
+                try { await onSaveBanner(index); } finally { setSavingIndex(null); }
+              }}
+              className="admin-save-button inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50">
+              {savingIndex === index ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Guardar banner
+            </button>}
+            <ListControls i={index} len={value.length} disabled={saving} move={list.move} remove={(position) => {
+              if (isStagedHeroImage(value[position].img)) void removeStagedHeroImage(value[position].img).catch(() => undefined);
+              list.remove(position);
+            }} />
+          </>}
         >
-          <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-            <SharedImageField
-              label="Foto"
-              image={slide.img}
-              productId={slide.productId}
-              section="banners"
-              onUploaded={onUploaded}
-              onChange={({ image, productId }) => list.set(index, { img: image, productId })}
+          <div className="grid gap-6">
+            <HeroImageField
+              slide={slide}
+              onSourceChange={({ image, productId }) => setSlide(index, {
+                img: image, productId, desktopSettings: null, mobileSettings: null,
+              })}
+              onSettingsChange={(screen, settings) => setSlide(index,
+                screen === "desktop" ? { desktopSettings: settings } : { mobileSettings: settings })}
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field
                 label="Texto chico"
                 value={slide.kicker}
-                onChange={(next) => list.set(index, { kicker: next })}
+                onChange={(next) => setSlide(index, { kicker: next })}
               />
               <Field
                 label="Título"
                 value={slide.title}
-                onChange={(next) => list.set(index, { title: next })}
+                onChange={(next) => setSlide(index, { title: next })}
               />
               <Field
                 label="Botón"
                 value={slide.cta}
-                onChange={(next) => list.set(index, { cta: next })}
+                onChange={(next) => setSlide(index, { cta: next })}
               />
               <Field
                 label="Promoción"
                 value={slide.promo}
-                onChange={(next) => list.set(index, { promo: next })}
+                onChange={(next) => setSlide(index, { promo: next })}
               />
               <label className="text-xs text-muted-foreground">
                 Ubicación del texto
                 <select
                   value={slide.align}
                   onChange={(event) =>
-                    list.set(index, { align: event.target.value as Slide["align"] })
+                    setSlide(index, { align: event.target.value as Slide["align"] })
                   }
                   className="mt-1 min-h-11 w-full border bg-background px-3 py-2 text-sm"
                 >
@@ -176,8 +218,9 @@ function HeroEditor({
             </div>
           </div>
         </CollapsibleCard>
-      ))}
+      );})}
       <AddButton
+        disabled={saving}
         onClick={() =>
           list.add({
             img: "",

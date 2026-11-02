@@ -1,6 +1,6 @@
 import type { ImageSection } from "@/lib/media";
 
-async function removeUncommittedImages(urls: string[]) {
+export async function removeUncommittedImages(urls: string[]) {
   if (!urls.length) return;
   await fetch("/api/media", {
     method: "DELETE",

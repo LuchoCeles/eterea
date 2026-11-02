@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { PRODUCT_IMAGE_FALLBACK } from "@/lib/products";
 import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
 import type { CropSettings, ImageSettings } from "@/lib/image-presentation";
@@ -8,6 +9,7 @@ export function ProductImage({
   src,
   alt,
   className,
+  style,
   loading,
   sizes = "100vw",
   width,
@@ -19,6 +21,7 @@ export function ProductImage({
   src?: string | null;
   alt: string;
   className: string;
+  style?: CSSProperties;
   loading?: "eager" | "lazy";
   sizes?: string;
   width?: number;
@@ -43,6 +46,7 @@ export function ProductImage({
       height={height}
       fetchPriority={fetchPriority}
       className={className}
+      style={style}
       data-fallback-applied={imageSrc === PRODUCT_IMAGE_FALLBACK ? "true" : undefined}
       onError={(event) => {
         const image = event.currentTarget;

@@ -7,7 +7,7 @@ import { instagramProfileUrl, normalizeWhatsAppNumber } from "@/lib/storefront-r
 import { homeProducts } from "@/lib/catalog-products";
 import { visibleStoreProducts } from "@/lib/content";
 
-const logo = "/assets/eterea-placeholder.svg";
+const logo = "/assets/eterea-header-logo.svg";
 
 export function StoreFooter() {
   const texts = useContent("texts");
@@ -38,7 +38,7 @@ export function StoreFooter() {
   return (
     <footer className="bg-background">
       <div className="mx-auto grid max-w-[1600px] gap-10 px-4 py-14 md:grid-cols-4 md:px-8">
-        <img src={logo} alt="Etérea New Concept" className="h-24 w-48 object-contain" />
+        <img src={logo} alt="Etérea New Concept" className="h-20 w-40 object-contain" />
         {columns.map((column) => (
           <div key={column.title}>
             <p className="eyebrow text-muted-foreground">{column.title}</p>

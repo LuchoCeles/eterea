@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { isAdminRequest } from "@/server/auth";
 import { imageSections } from "@/lib/media";
+import { isEditableCloudinaryImage } from "@/lib/cloudinary-media";
 import {
   CloudinaryUploadCollisionError,
   cloudinaryPublicId,
@@ -21,14 +22,8 @@ export async function GET(request: Request) {
   if (!(await isAdminRequest(request)))
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   const url = new URL(request.url).searchParams.get("url");
-  const asset = url && cloudinaryPublicId(url);
-  if (
-    !url ||
-    !asset ||
-    asset.cloudName !== process.env.CLOUDINARY_CLOUD_NAME ||
-    !asset.publicId.startsWith("eterea/productos/imagenes/")
-  ) {
-    return NextResponse.json({ error: "La imagen del producto no es válida." }, { status: 400 });
+  if (!url || !isEditableCloudinaryImage(url, process.env.CLOUDINARY_CLOUD_NAME)) {
+    return NextResponse.json({ error: "La imagen para editar no es válida." }, { status: 400 });
   }
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(15_000), redirect: "error" });

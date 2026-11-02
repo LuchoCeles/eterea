@@ -13,7 +13,7 @@ import {
 } from "@/components/admin/AdminSaveProvider";
 import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
 import { useContent } from "@/components/providers/ContentProvider";
-import type { ContentKey, StoreProduct } from "@/lib/content";
+import type { ContentKey, Slide, StoreProduct } from "@/lib/content";
 
 type AdminTheme = "light" | "dark";
 const ADMIN_THEME_STORAGE_KEY = "eterea-admin-theme";
@@ -115,12 +115,12 @@ function AdminEditorShell({ name, owner, children }: { name: string; owner: bool
     >
       <div className="admin-shell relative flex h-full w-full flex-col overflow-hidden">
         <AdminHeader name={name} owner={owner} onSignOut={signOut} theme={theme} onToggleTheme={toggleTheme} />
-        <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col admin-desktop:flex-row">
           <main
             ref={contentRef}
             id="admin-content"
             tabIndex={-1}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-7 sm:pb-10 lg:px-10 xl:px-12"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-7 lg:px-10 xl:px-12 admin-desktop:pb-10"
           >
             {children}
           </main>
@@ -148,11 +148,15 @@ export function AdminSectionEditor({ section }: { section: ContentKey }) {
 
 function Editor({ k, label, description }: { k: ContentKey; label: string; description: string }) {
   const value = useContent(k);
-  const { drafts, change, uploaded, save, saveData } = useAdminSave();
+  const { drafts, change, uploaded, save, saveData, restoreHeroDraft, saveHeroBanner } = useAdminSave();
   const entry = drafts[k];
   const draft = entry?.data ?? value;
   const dirty = hasUnsavedChanges(entry);
   const saving = entry?.saving === true;
+
+  useEffect(() => {
+    if (k === "hero") restoreHeroDraft(value as Slide[]);
+  }, [k, value, restoreHeroDraft]);
 
   if (draft === null) return <AdminSectionSkeleton section={k === "contact" ? "instagram" : k} />;
 
@@ -165,7 +169,7 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
           </h2>
           <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-base">{description}</p>
         </div>
-        {k !== "texts" && k !== "instagram" && (dirty || saving) && (
+        {k !== "texts" && k !== "instagram" && (k !== "hero" || entry?.structureDirty) && (dirty || saving) && (
           <button
             type="button"
             onClick={() => void save(k, value)}
@@ -181,7 +185,12 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
         k={k}
         draft={draft}
         onChange={(next) => change(k, value, next)}
+        onStructureChange={k === "hero" ? (next) => change(k, value, next, true) : undefined}
         onUploaded={(urls) => uploaded(k, value, urls)}
+        savedHeroValue={k === "hero" ? ((entry?.savedData as Slide[] | undefined) ?? value as Slide[]) : undefined}
+        heroStructureDirty={entry?.structureDirty === true}
+        heroSaving={saving}
+        onSaveHeroBanner={k === "hero" ? (index) => saveHeroBanner(index, value as Slide[]) : undefined}
         onSaveProduct={
           k === "products"
             ? (products: StoreProduct[], urls: string[]) => saveData(k, value, products, urls)

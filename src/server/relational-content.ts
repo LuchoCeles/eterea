@@ -1,10 +1,44 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { resolveContent, type ContentKey, type ContentSnapshot, type TextSectionKey, type Texts } from "@/lib/content";
+import { resolveContent, type ContentKey, type ContentSnapshot, type Slide, type TextSectionKey, type Texts } from "@/lib/content";
+import type { CropSettings } from "@/lib/image-presentation";
 
 type ContentDb = Pick<Prisma.TransactionClient,
   "contentSection" | "contactSettings" | "offerSettings" | "homeSectionSetting" |
   "splitBanner" | "clubBanner" | "editorialBanner" | "promoLine" | "heroSlide" |
   "benefit" | "marqueeLine" | "curatedInstagramPost">;
+
+function savedHeroSettings(zoom: number | null, x: number | null, y: number | null,
+  width: number | null, height: number | null): CropSettings | undefined {
+  return zoom !== null && x !== null && y !== null && width !== null && height !== null
+    ? { zoom, x, y, width, height } : undefined;
+}
+
+export function heroSlideColumns(slide: Slide) {
+  return {
+    img: slide.img, productId: slide.productId ?? null, kicker: slide.kicker,
+    title: slide.title, cta: slide.cta, promo: slide.promo, align: slide.align,
+    desktopZoom: slide.desktopSettings?.zoom ?? null,
+    desktopX: slide.desktopSettings?.x ?? null,
+    desktopY: slide.desktopSettings?.y ?? null,
+    desktopWidth: slide.desktopSettings?.width ?? null,
+    desktopHeight: slide.desktopSettings?.height ?? null,
+    mobileZoom: slide.mobileSettings?.zoom ?? null,
+    mobileX: slide.mobileSettings?.x ?? null,
+    mobileY: slide.mobileSettings?.y ?? null,
+    mobileWidth: slide.mobileSettings?.width ?? null,
+    mobileHeight: slide.mobileSettings?.height ?? null,
+  };
+}
+
+export async function updateRelationalHeroSlide(db: Pick<ContentDb, "heroSlide">, index: number, slide: Slide) {
+  const rows = await db.heroSlide.findMany({
+    orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, img: true },
+  });
+  const row = rows[index];
+  if (!row || slide.id !== row.id) return null;
+  await db.heroSlide.update({ where: { id: row.id }, data: heroSlideColumns(slide) });
+  return row.img;
+}
 
 export async function loadRelationalContentWithSections(db: ContentDb) {
   const sections = await db.contentSection.findMany({ select: { key: true } });
@@ -35,11 +69,19 @@ export async function loadRelationalContentWithSections(db: ContentDb) {
   });
   return { savedSections: saved, content: {
     promo: resolveContent("promo", saved.has("promo") ? promo.map((item) => item.text) : undefined),
-    hero: resolveContent("hero", saved.has("hero") ? hero.map((item) => ({
-      img: item.img, ...(item.productId ? { productId: item.productId } : {}),
-      kicker: item.kicker, title: item.title, cta: item.cta, promo: item.promo,
-      align: item.align as "left" | "right",
-    })) : undefined),
+    hero: resolveContent("hero", saved.has("hero") ? hero.map((item) => {
+      const desktopSettings = savedHeroSettings(item.desktopZoom, item.desktopX, item.desktopY,
+        item.desktopWidth, item.desktopHeight);
+      const mobileSettings = savedHeroSettings(item.mobileZoom, item.mobileX, item.mobileY,
+        item.mobileWidth, item.mobileHeight);
+      return {
+        id: item.id, img: item.img, ...(item.productId ? { productId: item.productId } : {}),
+        kicker: item.kicker, title: item.title, cta: item.cta, promo: item.promo,
+        align: item.align as "left" | "right",
+        ...(desktopSettings ? { desktopSettings } : {}),
+        ...(mobileSettings ? { mobileSettings } : {}),
+      };
+    }) : undefined),
     instagram: resolveContent("instagram", saved.has("instagram") ? instagram.map((item) => ({
       id: item.id, url: item.url, image: item.image,
       ...(item.productId ? { productId: item.productId } : {}), title: item.title,
@@ -65,8 +107,7 @@ export async function saveRelationalContent(db: ContentDb, key: ContentKey, valu
   } else if (key === "hero") {
     await db.heroSlide.deleteMany();
     await db.heroSlide.createMany({ data: (value as ContentSnapshot["hero"]).map((slide, position) => ({
-      position, img: slide.img, productId: slide.productId ?? null, kicker: slide.kicker,
-      title: slide.title, cta: slide.cta, promo: slide.promo, align: slide.align,
+      id: slide.id, position, ...heroSlideColumns(slide),
     })) });
   } else if (key === "instagram") {
     await db.curatedInstagramPost.deleteMany();

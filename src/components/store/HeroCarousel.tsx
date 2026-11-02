@@ -6,6 +6,7 @@ import { resolveImageSource } from "@/lib/image-source";
 import { ProductImage } from "@/components/store/ProductImage";
 import { Button } from "@/components/ui/button";
 import { visibleAnnouncements } from "@/lib/storefront-rules";
+import { heroImageStyle, legacyMobileImageX } from "@/lib/hero-image";
 import { ArrowRight } from "lucide-react";
 
 const DUR = 6000;
@@ -37,11 +38,27 @@ export function HeroCarousel() {
             height={1088}
             loading={idx === 0 ? "eager" : "lazy"}
             fetchPriority={idx === 0 ? "high" : "auto"}
-            className={`h-full w-full object-cover transition-transform duration-[7000ms] ${s.align === "right" ? "object-[28%_center]" : "object-[67%_center]"} md:object-center ${idx === current ? "scale-105" : "scale-100"}`}
+            className="absolute max-w-none object-cover md:hidden"
+            style={heroImageStyle(s.mobileSettings, legacyMobileImageX(s.align))}
+          />
+          <ProductImage
+            src={resolveImageSource(s, products)}
+            alt=""
+            width={1920}
+            height={1088}
+            loading={idx === 0 ? "eager" : "lazy"}
+            fetchPriority={idx === 0 ? "high" : "auto"}
+            className="absolute hidden max-w-none object-cover md:block"
+            style={heroImageStyle(s.desktopSettings)}
+          />
+          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent md:hidden" />
+          <div
+            aria-hidden="true"
+            className={`absolute inset-0 hidden md:block ${s.align === "right" ? "bg-gradient-to-l" : "bg-gradient-to-r"} from-black/70 via-black/30 to-transparent`}
           />
           {idx === current && (
             <div
-              className={`absolute bottom-16 flex w-full max-w-2xl flex-col gap-4 px-6 text-photo-paper md:bottom-24 md:w-[48%] md:px-16 md:text-photo-ink ${
+              className={`absolute bottom-16 flex w-full max-w-2xl flex-col gap-4 px-6 text-white md:bottom-24 md:w-[48%] md:px-16 ${
                 s.align === "right" ? "right-0 items-end text-right" : "left-0"
               }`}
             >

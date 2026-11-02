@@ -1,8 +1,14 @@
 import { categoryIdForName, sortProductsByCreation, type Product } from "@/lib/products";
 import type { Offers } from "@/lib/storefront-rules";
+import type { CropSettings } from "@/lib/image-presentation";
 
 export type ImageSource = { img: string; productId?: string };
-export type Slide = ImageSource & { kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
+export type Slide = ImageSource & {
+  id?: number;
+  kicker: string; title: string; cta: string; promo: string; align: "left" | "right";
+  desktopSettings?: CropSettings | null;
+  mobileSettings?: CropSettings | null;
+};
 export type StoreProduct = Product & { section: "nuevo" | "sale" | null; hidden?: boolean };
 export type StoreCategory = { id: string; name: string; hidden?: boolean };
 export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };

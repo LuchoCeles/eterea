@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { destroyCloudinaryAsset } from "../lib/cloudinary-api";
-import { managedCloudinarySection, parseCloudinaryAssetUrl, planCloudinaryDeletions, reconcileCloudinaryQueue, responsiveCloudinaryImage } from "../lib/cloudinary-media";
+import { isEditableCloudinaryImage, managedCloudinarySection, parseCloudinaryAssetUrl, planCloudinaryDeletions, reconcileCloudinaryQueue, responsiveCloudinaryImage } from "../lib/cloudinary-media";
 
 const image = "https://res.cloudinary.com/eterea-demo/image/upload/v1761000000/eterea/productos/imagenes/123e4567-e89b-12d3-a456-426614174000.jpg";
 
@@ -20,6 +20,13 @@ describe("Gestión de imágenes de Cloudinary", () => {
     assert.equal(managedCloudinarySection(publicId, "eterea"), "productos");
     assert.equal(managedCloudinarySection(publicId.replace("/productos/", "/externos/"), "eterea"), null);
     assert.equal(managedCloudinarySection(`${publicId}/extra`, "eterea"), null);
+  });
+
+  it("permite editar imágenes propias de productos y banners", () => {
+    assert.equal(isEditableCloudinaryImage(image, "eterea-demo"), true);
+    assert.equal(isEditableCloudinaryImage(image.replace("/productos/", "/banners/"), "eterea-demo"), true);
+    assert.equal(isEditableCloudinaryImage(image.replace("/productos/", "/inicio/"), "eterea-demo"), false);
+    assert.equal(isEditableCloudinaryImage(image, "otra-nube"), false);
   });
 
   it("rechaza URLs externas, parámetros y rutas fuera de la carpeta del proyecto", () => {

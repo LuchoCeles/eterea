@@ -29,6 +29,13 @@ export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
   return { cloudName, publicId };
 }
 
+export function isEditableCloudinaryImage(url: string, cloudName: string | undefined) {
+  const asset = parseCloudinaryAssetUrl(url, "eterea");
+  if (!asset || asset.cloudName !== cloudName) return false;
+  const section = managedCloudinarySection(asset.publicId, "eterea");
+  return section === "productos" || section === "banners";
+}
+
 const responsiveWidths = [240, 480, 720, 960, 1280, 1920];
 
 export function responsiveCloudinaryImage(url: string, settings?: ImageSettings | CropSettings | null, cover = false) {

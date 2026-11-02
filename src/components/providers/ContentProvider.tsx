@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ContentKey, ContentSnapshot, defaults, mergeTextSection, productsWithCategoryNames, resolveContent, type TextSectionKey, type Texts } from "@/lib/content";
+import { ContentKey, ContentSnapshot, defaults, mergeTextSection, productsWithCategoryNames, resolveContent, type Slide, type TextSectionKey, type Texts } from "@/lib/content";
 
 type ContentContextValue = {
   content: Partial<ContentSnapshot>;
@@ -94,6 +94,17 @@ export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: 
     throw new Error("El servidor no confirmó el guardado. Intentá de nuevo.");
   }
   return result as { data: unknown; cleanupPending?: number };
+}
+
+export async function saveHeroSlide(index: number, slide: Slide, uploadedUrls: string[] = []) {
+  const response = await fetch(`/api/content/hero/${index}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slide, uploadedUrls }),
+  });
+  const result = await response.json().catch(() => null) as { data?: Slide[]; error?: string } | null;
+  if (!response.ok || !result?.data) throw new Error(result?.error ?? "No se pudo guardar el banner.");
+  return result.data;
 }
 
 export async function saveTextSection<K extends TextSectionKey>(section: K, data: Texts[K], uploadedUrls: string[] = []) {

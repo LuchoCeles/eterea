@@ -9,6 +9,7 @@ import { useContent } from "@/components/providers/ContentProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ContactSection } from "@/components/store/ContactSection";
+import { HowToBuySection } from "@/components/store/HowToBuySection";
 import { homeProducts } from "@/lib/catalog-products";
 import { resolveImageSource } from "@/lib/image-source";
 import { visibleStoreProducts } from "@/lib/content";
@@ -84,6 +85,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
 
         {/* Instagram y contacto */}
         {instagramSection}
+        <HowToBuySection />
         <ContactSection />
       </main>
 

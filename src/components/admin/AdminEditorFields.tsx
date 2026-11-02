@@ -116,11 +116,13 @@ export function ListControls({
   len,
   move,
   remove,
+  disabled = false,
 }: {
   i: number;
   len: number;
   move: (from: number, to: number) => void;
   remove?: (index: number) => void;
+  disabled?: boolean;
 }) {
   const buttonClass =
     "grid h-10 w-10 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-30 sm:h-11 sm:w-11";
@@ -129,7 +131,7 @@ export function ListControls({
       <button
         type="button"
         aria-label="Subir"
-        disabled={i === 0}
+        disabled={disabled || i === 0}
         onClick={() => move(i, i - 1)}
         className={`${buttonClass} bg-secondary text-foreground hover:bg-primary/20`}
       >
@@ -138,7 +140,7 @@ export function ListControls({
       <button
         type="button"
         aria-label="Bajar"
-        disabled={i === len - 1}
+        disabled={disabled || i === len - 1}
         onClick={() => move(i, i + 1)}
         className={`${buttonClass} bg-secondary text-foreground hover:bg-primary/20`}
       >
@@ -147,6 +149,7 @@ export function ListControls({
       {remove && <button
         type="button"
         aria-label="Borrar"
+        disabled={disabled}
         onClick={() => remove(i)}
         className={`${buttonClass} bg-red-500/15 text-red-300 hover:bg-red-500/25`}
       >
@@ -253,12 +256,13 @@ export function CollapsibleCard({
   );
 }
 
-export function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function AddButton({ onClick, children, disabled = false }: { onClick: () => void; children: ReactNode; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="mt-5 flex min-h-[72px] items-center gap-3 rounded-[20px] border border-dashed border-primary/30 bg-primary/5 px-5 py-3 text-sm font-medium transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[82px] sm:px-7 sm:text-base"
+      disabled={disabled}
+      className="mt-5 flex min-h-[72px] items-center gap-3 rounded-[20px] border border-dashed border-primary/30 bg-primary/5 px-5 py-3 text-sm font-medium transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[82px] sm:px-7 sm:text-base"
     >
       <span className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary sm:h-11 sm:w-11">
         <Plus className="h-5 w-5" />

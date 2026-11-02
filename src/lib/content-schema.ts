@@ -31,8 +31,11 @@ const homeSections = z.object({
   newsletter: z.boolean(),
 }).partial().strict();
 const slide = z.object({
-  img: image,
+  id: z.number().int().positive().optional(),
+  img: image.refine((value) => !value.startsWith("local-banner:")),
   productId,
+  desktopSettings: cropSettings.nullable().optional(),
+  mobileSettings: cropSettings.nullable().optional(),
   kicker: shortText,
   title: shortText,
   cta: shortText,
