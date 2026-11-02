@@ -27,7 +27,7 @@ export function StoreFooter() {
     { title: "Tienda", links: [
       ...(texts.homeSections.newArrivals && newArrivals.length ? [{ name: "Lo nuevo", href: "/#nuevo" }] : []),
       { name: "Prendas", href: "/productos" },
-      ...(texts.homeSections.sale && sale.length ? [{ name: "Descuentos", href: "/#descuentos" }] : []),
+      ...(texts.offers.enabled && texts.homeSections.sale && sale.length ? [{ name: "Descuentos", href: "/#descuentos" }] : []),
     ] },
     { title: "Etérea", links: [
       { name: "Quiénes somos", href: "/quienes-somos" },

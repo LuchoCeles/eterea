@@ -114,6 +114,16 @@ it("muestra el descuento y solo el menor de varios precios por forma de pago", (
   assert.ok(!html.includes("con Tarjeta"));
 });
 
+it("oculta las referencias a descuentos cuando las ofertas están apagadas", () => {
+  const card = renderToStaticMarkup(createElement(ProductCardPrice, { product: cardProduct, offersEnabled: false }));
+  const detail = renderToStaticMarkup(createElement(ProductDetailPrice, { product: cardProduct, offersEnabled: false }));
+
+  assert.ok(card.includes(formatPrice(cardProduct.price)));
+  assert.doesNotMatch(card, /OFF|line-through/);
+  assert.ok(detail.includes(formatPrice(cardProduct.price)));
+  assert.doesNotMatch(detail, /line-through/);
+});
+
 it("no agrega un segundo precio si hay una sola forma de pago", () => {
   const html = renderToStaticMarkup(createElement(ProductCardPrice, {
     product: { ...cardProduct, oldPrice: undefined, paymentPrices: [{ label: "Transferencia", price: 5_520 }] },

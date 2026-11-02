@@ -33,6 +33,12 @@ model UserRole {
   @@index([role])
 }
 
+model RateLimitBucket {
+  bucketKey    String   @id @db.VarChar(191)
+  attemptCount Int
+  resetAt      DateTime @db.DateTime(3)
+}
+
 model ContentSection {
   key       String   @id @db.VarChar(64)
   updatedAt DateTime @updatedAt @db.DateTime(3)

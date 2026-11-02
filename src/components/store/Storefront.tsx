@@ -77,7 +77,7 @@ export function Storefront({ content, instagramSection }: { content: ContentSnap
           </div>}
         </section>}
 
-        {homeSections.sale && sale.length > 0 && <ProductCarousel id="descuentos" kicker="Descuentos" title="Prendas con descuento" products={sale} />}
+        {homeSections.sale && T.offers.enabled && sale.length > 0 && <ProductCarousel id="descuentos" kicker="Descuentos" title="Prendas con descuento" products={sale} />}
 
         {/* Instagram y contacto */}
         {instagramSection}

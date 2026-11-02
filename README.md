@@ -25,6 +25,8 @@ Las páginas y los layouts del App Router leen el contenido desde `src/server/` 
 
 Las escrituras del panel, el inicio de sesión y los cambios de cuenta usan Server Actions en `src/app/actions/`. Cada acción valida la entrada y vuelve a comprobar el rol en el servidor. Las reglas y valores por defecto viven en `src/lib/`, y el acceso a Prisma y a secretos permanece en `src/server/`. Los Route Handlers de `src/app/api/` se reservan para la subida y entrega de imágenes binarias y la cotización de Correo Argentino, que requiere una solicitud cancelable desde el navegador. El contenido público mantiene su caché de cinco minutos y se invalida después de cada guardado.
 
+El inicio de sesión y la cotización pública comparten límites de solicitudes persistidos en `RateLimitBucket`. La migración `prisma/migrations/20261102020000_rate_limit_buckets/migration.sql` crea esa tabla sin modificar usuarios ni contenido. Aplicala antes de ejecutar esta versión: sin la tabla, el acceso y el cotizador responden con un error. Revisá el SQL y obtené autorización explícita antes de aplicarlo en TiDB compartido.
+
 En una base vacía, después de aplicar las migraciones configurá temporalmente `BOOTSTRAP_OWNER_USERNAME` y `BOOTSTRAP_OWNER_PASSWORD` (12 caracteres como mínimo) en tu entorno privado. También podés definir `BOOTSTRAP_OWNER_NAME`, que se muestra en la barra superior; si lo omitís, se usa el usuario como nombre inicial. Ejecutá `npm run db:bootstrap-owner` una sola vez. El comando crea la primera cuenta con los roles `admin` y `owner`; rechaza bases que ya tengan usuarios. Retirá esas variables al terminar.
 
 ## Categorías y productos
@@ -88,7 +90,7 @@ Para los pasos completos, errores y referencias oficiales, consultá [docs/INSTA
 
 ## Imágenes
 
-Las imágenes nuevas se suben a Cloudinary dentro de `eterea/<sección>/imagenes` y el contenido guarda su URL segura. La carga conserva el archivo original, sin transformaciones ni compresión agregada por la aplicación. Se admiten fotos de hasta 50 MB cada una y tandas de hasta 20 fotos. Next.js también queda configurado para aceptar respuestas de origen de hasta 50.000.000 bytes al optimizar imágenes.
+Las imágenes nuevas se suben a Cloudinary dentro de `eterea/<sección>/imagenes` y el contenido guarda su URL segura. La carga conserva el archivo original, sin transformaciones ni compresión agregada por la aplicación. El servidor comprueba el tamaño y la firma binaria del formato. Se admiten fotos de hasta 50 MB cada una y tandas de hasta 20 fotos.
 
 Cada carga usa un UUID propio, con sobrescritura desactivada, y reserva su identificador en `CloudinaryPendingUpload` antes de enviarse. Al guardar cambios o eliminar un producto, las fotos que ya no estén referenciadas quedan en `CloudinaryCleanup` dentro de la misma transacción; los borrados fallidos se reintentan en la siguiente actividad. Las cargas abandonadas se revisan después de siete días, al ocurrir una nueva carga o guardado. Para eliminar un producto vinculado a banners o destacados, primero hay que desvincularlo; las referencias de publicaciones de Instagram heredadas se sueltan automáticamente. La tabla `Media` se conserva para poder mostrar imágenes antiguas; las subidas nuevas ya no guardan bytes en la base.
 

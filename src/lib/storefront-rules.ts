@@ -11,10 +11,8 @@ export function normalizeWhatsAppNumber(value: string): string | null {
   return digits.length >= 8 && digits.length <= 15 ? digits : null;
 }
 
-const promotionalText = /\d\s*x\s*\d|\d\s*%|\boff\b|descuento|env[ií]o gratis|cuotas|c[oó]digo|sale|oferta/i;
-
 export function visibleAnnouncements(messages: string[], offersEnabled: boolean) {
-  return messages.filter((message) => message.trim() && (offersEnabled || !promotionalText.test(message)));
+  return offersEnabled ? messages.filter((message) => message.trim()) : [];
 }
 
 export function hasRealDiscount(product: Pick<Product, "price" | "oldPrice">) {

@@ -4,9 +4,10 @@ import { hasRealDiscount } from "@/lib/storefront-rules";
 
 type PriceProduct = Pick<Product, "price" | "oldPrice" | "paymentPrices">;
 
-export function ProductDetailPrice({ product, freeShippingThreshold = null }: {
+export function ProductDetailPrice({ product, freeShippingThreshold = null, offersEnabled = true }: {
   product: PriceProduct;
   freeShippingThreshold?: number | null;
+  offersEnabled?: boolean;
 }) {
   const paymentPrices = product.paymentPrices ?? [];
   const basePaymentIndex = paymentPrices.findIndex((payment) => payment.price === product.price);
@@ -24,7 +25,7 @@ export function ProductDetailPrice({ product, freeShippingThreshold = null }: {
 
   return (
     <div className="mt-6 border-b pb-7 tabular-nums">
-      {hasRealDiscount(product) && (
+      {offersEnabled && hasRealDiscount(product) && (
         <p className="text-sm text-muted-foreground line-through">
           {formatPrice(product.oldPrice ?? product.price)}
         </p>

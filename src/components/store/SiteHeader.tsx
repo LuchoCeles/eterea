@@ -15,12 +15,12 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
     shippingDeliveryType, setShippingDeliveryType } = useCart();
   const products = useContent("products");
   const categories = useContent("categories");
-  const { homeSections } = useContent("texts");
+  const { homeSections, offers } = useContent("texts");
   const contact = useContent("contact");
   const visibleProducts = visibleStoreProducts(products, categories);
   const { newArrivals, sale } = homeProducts(visibleProducts);
   const hasNewArrivals = newArrivals.length > 0;
-  const hasSale = homeSections.sale && sale.length > 0;
+  const hasSale = offers.enabled && homeSections.sale && sale.length > 0;
   const productPath = pathname.startsWith("/productos/") && pathname.split("/").length === 3;
   const isKnownProduct = productPath && visibleProducts.some((product) => (
     pathname === `/productos/${productSlug(product, products)}` || pathname === `/productos/${product.id}`

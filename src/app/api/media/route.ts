@@ -18,6 +18,51 @@ import {
 } from "@/server/content";
 import { validateImageFile } from "@/server/media";
 
+const MAX_UPLOAD_REQUEST_BYTES = 51_000_000;
+const MAX_DELETE_REQUEST_BYTES = 16_000;
+
+class RequestTooLargeError extends Error { }
+
+function checkContentLength(request: Request, maxBytes: number) {
+  const announced = request.headers.get("content-length");
+  if (announced !== null && !/^\d+$/.test(announced)) throw new Error("La longitud de la solicitud no es válida.");
+  if (announced !== null && Number(announced) > maxBytes) throw new RequestTooLargeError();
+}
+
+function limitedStream(request: Request, maxBytes: number) {
+  checkContentLength(request, maxBytes);
+  let size = 0;
+  return request.body?.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      size += chunk.byteLength;
+      if (size > maxBytes) controller.error(new RequestTooLargeError());
+      else controller.enqueue(chunk);
+    },
+  })) ?? null;
+}
+
+async function limitedBody(request: Request, maxBytes: number): Promise<Uint8Array> {
+  checkContentLength(request, maxBytes);
+  const reader = request.body?.getReader();
+  if (!reader) return new Uint8Array();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new RequestTooLargeError();
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
+
 export async function GET(request: Request) {
   if (!(await isAdminRequest(request)))
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
@@ -48,7 +93,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!(await isAdminRequest(request)))
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const formData = await request.formData().catch(() => null);
+  let formData: FormData | null;
+  try {
+    formData = await new Response(limitedStream(request, MAX_UPLOAD_REQUEST_BYTES), {
+      headers: { "Content-Type": request.headers.get("content-type") ?? "" },
+    }).formData();
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof RequestTooLargeError
+      ? "La imagen supera el tamaño permitido." : "No se pudo leer la imagen." },
+    { status: error instanceof RequestTooLargeError ? 413 : 400 });
+  }
   const file = formData?.get("file");
   const section = formData?.get("section");
   if (!(file instanceof File))
@@ -60,7 +114,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "La sección de destino no es válida." }, { status: 400 });
   }
   try {
-    validateImageFile(file);
+    await validateImageFile(file);
     const imageSection = section as (typeof imageSections)[number];
     const publicId = newCloudinaryPublicId(imageSection);
     try {
@@ -98,7 +152,15 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   if (!(await isAdminRequest(request)))
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const body = (await request.json().catch(() => null)) as { urls?: unknown } | null;
+  let bytes: Uint8Array;
+  try {
+    bytes = await limitedBody(request, MAX_DELETE_REQUEST_BYTES);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof RequestTooLargeError
+      ? "La solicitud es demasiado grande." : "No se pudo leer la solicitud." },
+    { status: error instanceof RequestTooLargeError ? 413 : 400 });
+  }
+  const body = (await new Response(bytes.buffer as ArrayBuffer).json().catch(() => null)) as { urls?: unknown } | null;
   if (
     !Array.isArray(body?.urls) ||
     body.urls.length > 20 ||

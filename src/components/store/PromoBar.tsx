@@ -9,7 +9,7 @@ export function PromoBar() {
   const saved = useContent("promo");
   const { offers } = useContent("texts");
   const filtered = visibleAnnouncements(saved, offers.enabled);
-  const messages = filtered.length ? filtered : visibleAnnouncements(defaults.promo, offers.enabled);
+  const messages = filtered.length ? filtered : defaults.promo;
   const copies = messages.length ? Math.max(2, Math.ceil(12 / messages.length)) : 0;
   const tickerMessages = Array.from({ length: copies }, () => messages).flat();
   const duration = Math.ceil(Math.max(60, tickerMessages.length * 7) * (4 / 3));

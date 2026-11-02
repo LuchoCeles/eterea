@@ -102,7 +102,7 @@ export function ProductDetail({ source, relatedIds }: { source: StoreProduct; re
           <section className="min-w-0 lg:sticky lg:top-36 lg:self-start">
             <p className="eyebrow text-muted-foreground">Etérea · {product.category}</p>
             <h1 className="mt-4 font-display text-4xl font-normal leading-[1.05] sm:text-5xl xl:text-6xl">{product.name}</h1>
-            <ProductDetailPrice product={product} freeShippingThreshold={freeShippingThreshold} />
+            <ProductDetailPrice product={product} freeShippingThreshold={freeShippingThreshold} offersEnabled={offersEnabled} />
             {product.description?.trim() && <p className="whitespace-pre-line border-b py-7 text-sm leading-7 text-muted-foreground">{product.description}</p>}
 
             {sizes.length > 0 && <div className="pt-7">

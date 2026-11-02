@@ -30,12 +30,12 @@
 
 ## Reglas de negocio y seguridad
 
-- Todo contenido editable del storefront (promos, banners, productos, textos e Instagram) se guarda en tablas relacionales con columnas tipadas. `ContentSection` registra qué secciones fueron guardadas para distinguirlas de los valores por defecto de `src/lib/content.ts`. No agregues columnas JSON ni restaures `SiteContent`.
+- Todo contenido editable del storefront (promos, banners, productos y textos) se guarda en tablas relacionales con columnas tipadas. `ContentSection` registra qué secciones fueron guardadas para distinguirlas de los valores por defecto de `src/lib/content.ts`. No agregues columnas JSON ni restaures `SiteContent`. Las publicaciones visibles de Instagram se obtienen de Meta; las publicaciones curadas heredadas se conservan en su tabla, pero no alimentan el storefront.
 - Resolvé siempre el contenido guardado con `resolveContent`, tanto en el storefront como en el borrador del administrador. Al combinar textos anidados, completá los valores por defecto sin activar secciones nuevas por accidente.
 - Las promociones persistidas, incluso las heredadas, obedecen el mismo interruptor de ofertas que los valores por defecto. No permitas que mensajes promocionales aparezcan con ofertas desactivadas.
-- Mantené la validación segura de enlaces y la visibilidad de Instagram en `src/lib/storefront-rules.ts`. Instagram es curado manualmente, tiene una lista vacía por defecto y solo acepta enlaces válidos a publicaciones o reels reales.
+- Mantené la validación segura de enlaces y la visibilidad de Instagram en `src/lib/storefront-rules.ts`. Instagram muestra publicaciones de la cuenta de Meta conectada, tiene una lista vacía por defecto y solo acepta enlaces válidos a publicaciones o reels reales.
 - La primera cuenta creada recibe el rol `admin`; todas las operaciones administrativas deben verificar ese rol en el servidor.
-- Las imágenes cargadas se guardan en el almacén privado definido por el proyecto y se referencian mediante enlaces firmados por diez años. Validá el tipo y tamaño en el servidor.
+- Las imágenes nuevas se cargan en Cloudinary dentro de `eterea/<sección>/imagenes` y se referencian mediante sus URLs seguras. La tabla `Media` y su ruta con firma conservan imágenes heredadas. Validá el tipo real y el tamaño en el servidor antes de subir cada archivo.
 - Nunca envíes credenciales de base de datos, secretos de sesión ni acceso privilegiado al cliente.
 
 ## Uso de subagentes

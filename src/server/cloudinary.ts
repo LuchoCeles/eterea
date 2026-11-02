@@ -38,14 +38,14 @@ export function newCloudinaryPublicId(section: ImageSection) {
 }
 
 export async function uploadCloudinaryImage(file: File, section: ImageSection, publicId: string) {
-  validateImageFile(file);
+  await validateImageFile(file);
   const settings = config();
   const folder = `${settings.projectFolder}/${section}/imagenes`;
   if (managedCloudinarySection(publicId, settings.projectFolder) !== section) {
     throw new Error("El identificador de la imagen no es válido.");
   }
   const body = new FormData();
-  body.set("file", new Blob([await file.arrayBuffer()], { type: file.type }), file.name || "imagen");
+  body.set("file", file, file.name || "imagen");
   body.set("folder", folder);
   body.set("public_id", publicId.slice(folder.length + 1));
   body.set("overwrite", "false");
