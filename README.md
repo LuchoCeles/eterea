@@ -19,6 +19,12 @@ npm run dev
 
 Abrí `http://localhost:3000`. Ingresá a `/auth` con usuario y contraseña para administrar promociones, banners, productos, textos e Instagram. El panel no ofrece registro público.
 
+## Arquitectura de datos
+
+Las páginas y los layouts del App Router leen el contenido desde `src/server/` y lo entregan con Server Components. La portada renderiza sus secciones estáticas en el servidor; los carruseles, el carrito, los filtros y los formularios conservan componentes cliente porque necesitan interacción.
+
+Las escrituras del panel, el inicio de sesión y los cambios de cuenta usan Server Actions en `src/app/actions/`. Cada acción valida la entrada y vuelve a comprobar el rol en el servidor. Las reglas y valores por defecto viven en `src/lib/`, y el acceso a Prisma y a secretos permanece en `src/server/`. Los Route Handlers de `src/app/api/` se reservan para la subida y entrega de imágenes binarias y la cotización de Correo Argentino, que requiere una solicitud cancelable desde el navegador. El contenido público mantiene su caché de cinco minutos y se invalida después de cada guardado.
+
 En una base vacía, después de aplicar las migraciones configurá temporalmente `BOOTSTRAP_OWNER_USERNAME` y `BOOTSTRAP_OWNER_PASSWORD` (12 caracteres como mínimo) en tu entorno privado. También podés definir `BOOTSTRAP_OWNER_NAME`, que se muestra en la barra superior; si lo omitís, se usa el usuario como nombre inicial. Ejecutá `npm run db:bootstrap-owner` una sola vez. El comando crea la primera cuenta con los roles `admin` y `owner`; rechaza bases que ya tengan usuarios. Retirá esas variables al terminar.
 
 ## Categorías y productos

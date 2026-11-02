@@ -1,25 +1,20 @@
-"use client";
-
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { HeroCarousel } from "@/components/store/HeroCarousel";
 import { ProductCarousel } from "@/components/store/ProductCarousel";
 import { StoreFooter } from "@/components/store/StoreFooter";
-import { useContent } from "@/components/providers/ContentProvider";
-import { useCart } from "@/components/providers/CartProvider";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ContactSection } from "@/components/store/ContactSection";
 import { HowToBuySection } from "@/components/store/HowToBuySection";
 import { homeProducts } from "@/lib/catalog-products";
 import { resolveImageSource } from "@/lib/image-source";
-import { visibleStoreProducts } from "@/lib/content";
+import { productsWithCategoryNames, visibleStoreProducts, type ContentSnapshot } from "@/lib/content";
 
-export function Storefront({ instagramSection }: { instagramSection: ReactNode }) {
-  const { add } = useCart();
-  const T = useContent("texts");
-  const howToBuy = useContent("howToBuy");
-  const products = useContent("products");
-  const categories = useContent("categories");
+export function Storefront({ content, instagramSection }: { content: ContentSnapshot; instagramSection: ReactNode }) {
+  const T = content.texts;
+  const howToBuy = content.howToBuy;
+  const products = productsWithCategoryNames(content.products, content.categories);
+  const categories = content.categories;
   const visibleProducts = visibleStoreProducts(products, categories);
   const homeSections = T.homeSections;
   const { newArrivals, sale } = homeProducts(visibleProducts);
@@ -29,7 +24,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
     return category && !category.hidden && visibleProducts.some((product) => product.categoryId === category.id) ? [{ ...card, category }] : [];
   });
   return (
-    <div className="no-native-drag min-h-screen" onDragStart={(event) => event.preventDefault()}>
+    <div className="no-native-drag min-h-screen">
       <main>
         <HeroCarousel />
 
@@ -56,7 +51,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
           </div>
         </section>}
 
-        {visibleHomeSections.newArrivals && <ProductCarousel id="nuevo" kicker="Nuestra selección" title="Lo nuevo de esta semana" products={newArrivals} onAdd={add} />}
+        {visibleHomeSections.newArrivals && <ProductCarousel id="nuevo" kicker="Nuestra selección" title="Lo nuevo de esta semana" products={newArrivals} />}
 
         {/* Banner promo partido */}
         {homeSections.offerBanners && T.offers.enabled && (T.offers.showSplit || T.offers.showClub) && <section className="mx-auto grid max-w-[1600px] gap-4 px-4 md:grid-cols-2 md:px-8">
@@ -82,7 +77,7 @@ export function Storefront({ instagramSection }: { instagramSection: ReactNode }
           </div>}
         </section>}
 
-        {homeSections.sale && sale.length > 0 && <ProductCarousel id="descuentos" kicker="Descuentos" title="Prendas con descuento" products={sale} onAdd={add} />}
+        {homeSections.sale && sale.length > 0 && <ProductCarousel id="descuentos" kicker="Descuentos" title="Prendas con descuento" products={sale} />}
 
         {/* Instagram y contacto */}
         {instagramSection}

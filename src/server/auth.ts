@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/server/prisma";
 
@@ -65,43 +66,30 @@ export function readSessionToken(token: string | undefined): SessionPayload | nu
   }
 }
 
-export function sessionCookie(token: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_SECONDS}${secure}`;
-}
-
-export function expiredSessionCookie() {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
-}
-
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const cookieStore = await cookies();
   const session = readSessionToken(cookieStore.get(COOKIE_NAME)?.value);
   if (!session) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId }, select: { id: true, name: true, username: true, passwordHash: true },
-  });
+  const rows = await prisma.$queryRaw<{ id: string; name: string; username: string; passwordHash: string; role: string | null }[]>`
+    SELECT u.id, u.name, u.username, u.passwordHash, r.role
+    FROM User u
+    LEFT JOIN UserRole r ON r.userId = u.id AND r.role IN ('admin', 'owner')
+    WHERE u.id = ${session.userId}
+  `;
+  const user = rows[0];
+  const roles = new Set(rows.map(({ role }) => role));
   return user && session.credentialVersion === credentialVersion(user.passwordHash)
-    ? { id: user.id, name: user.name, username: user.username }
+    ? {
+      id: user.id, name: user.name, username: user.username,
+      isAdmin: roles.has("admin"),
+      isOwner: roles.has("admin") && roles.has("owner"),
+    }
     : null;
-}
-
-export async function isAdmin(userId: string) {
-  const role = await prisma.userRole.findFirst({ where: { userId, role: "admin" }, select: { id: true } });
-  return role !== null;
-}
-
-export async function isOwner(userId: string) {
-  const roles = await prisma.userRole.findMany({
-    where: { userId, role: { in: ["admin", "owner"] } }, select: { role: true },
-  });
-  return roles.some(({ role }) => role === "admin") && roles.some(({ role }) => role === "owner");
-}
+});
 
 export async function isCurrentUserAdmin() {
   const user = await getCurrentUser();
-  return user ? isAdmin(user.id) : false;
+  return user?.isAdmin ?? false;
 }
 
 export async function isAdminRequest(request: Request) {
@@ -113,19 +101,6 @@ export async function isAdminRequest(request: Request) {
     select: { id: true, passwordHash: true, roles: { where: { role: "admin" }, select: { id: true } } },
   });
   return user && session.credentialVersion === credentialVersion(user.passwordHash) && user.roles.length
-    ? { id: user.id } : null;
-}
-
-export async function isOwnerRequest(request: Request) {
-  const cookie = request.headers.get("cookie")?.match(/(?:^|; *)eterea_session=([^;]+)/)?.[1];
-  const session = readSessionToken(cookie);
-  if (!session) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, passwordHash: true, roles: { where: { role: { in: ["admin", "owner"] } }, select: { role: true } } },
-  });
-  return user && session.credentialVersion === credentialVersion(user.passwordHash)
-    && user.roles.some(({ role }) => role === "admin") && user.roles.some(({ role }) => role === "owner")
     ? { id: user.id } : null;
 }
 

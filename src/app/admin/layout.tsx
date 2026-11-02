@@ -4,7 +4,7 @@ import { AdminEditor } from "@/components/admin/AdminEditor";
 import { AdminContentSkeleton } from "@/components/loading/AdminSkeleton";
 import { ContentProvider, ContentSnapshotHydrator } from "@/components/providers/ContentProvider";
 import { defaults } from "@/lib/content";
-import { getCurrentUser, isAdmin, isOwner } from "@/server/auth";
+import { getCurrentUser } from "@/server/auth";
 import { loadContentSnapshot } from "@/server/content";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,8 @@ export const metadata = { title: "Panel de administración — Etérea", robots:
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await getCurrentUser();
   if (!user) redirect("/auth");
-  if (!(await isAdmin(user.id))) redirect("/");
-  const owner = await isOwner(user.id);
+  if (!user.isAdmin) redirect("/");
+  const owner = user.isOwner;
 
   return (
     <ContentProvider initialContent={defaults}>

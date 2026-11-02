@@ -3,7 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { saveContent, useContent, useContentUpdater } from "@/components/providers/ContentProvider";
+import { saveContent } from "@/components/admin/content-actions";
+import { useContent, useContentUpdater } from "@/components/providers/ContentProvider";
 import { Button } from "@/components/ui/button";
 import { CollapsibleCard } from "@/components/admin/AdminEditorFields";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";

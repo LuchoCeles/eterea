@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Loader2, Save, Truck } from "lucide-react";
 import { toast } from "sonner";
+import { saveShippingSettingsAction } from "@/app/actions/shipping";
 import type { AdminShippingSettings, ShippingSettingsInput } from "@/lib/shipping-settings";
 
 const inputClass = "mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary";
@@ -44,14 +45,10 @@ export function AdminShippingSettingsEditor({ initial }: { initial: AdminShippin
     if (!changed || saving) return;
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/shipping", {
-        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft),
-      });
-      const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(typeof data?.error === "string" ? data.error : "No se pudo guardar la configuración.");
-      if (!data || typeof data !== "object") throw new Error("No se pudo confirmar el guardado de la configuración.");
-      setSaved(data as AdminShippingSettings);
-      setDraft(formFromSettings(data as AdminShippingSettings));
+      const result = await saveShippingSettingsAction(draft);
+      if ("error" in result) throw new Error(result.error);
+      setSaved(result.data);
+      setDraft(formFromSettings(result.data));
       toast.success("Configuración de envíos guardada.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar la configuración de envíos.");

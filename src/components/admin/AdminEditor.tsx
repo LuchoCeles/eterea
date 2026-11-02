@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { logoutAction } from "@/app/actions/auth";
 import { Loader2, Save } from "lucide-react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminSidebar, adminSections } from "@/components/admin/AdminSidebar";
@@ -103,7 +104,7 @@ function AdminEditorShell({ name, owner, children }: { name: string; owner: bool
 
   async function signOut() {
     if (!confirmLeaving()) return;
-    await fetch("/api/auth/logout", { method: "POST" });
+    await logoutAction();
     router.replace("/auth");
     router.refresh();
   }
@@ -131,7 +132,7 @@ function AdminEditorShell({ name, owner, children }: { name: string; owner: bool
   );
 }
 
-export function AdminSectionEditor({ section }: { section: ContentKey }) {
+export function AdminSectionEditor({ section, instagramStatus }: { section: ContentKey; instagramStatus?: { saved: boolean; username: string | null; error?: boolean } }) {
   const currentSection = adminSections.find((item) => item.id === section);
   const fillsPanel = section === "categories" || section === "products";
 
@@ -141,12 +142,13 @@ export function AdminSectionEditor({ section }: { section: ContentKey }) {
         k={section}
         label={currentSection?.label ?? ""}
         description={currentSection?.description ?? ""}
+        instagramStatus={instagramStatus}
       />
     </div>
   );
 }
 
-function Editor({ k, label, description }: { k: ContentKey; label: string; description: string }) {
+function Editor({ k, label, description, instagramStatus }: { k: ContentKey; label: string; description: string; instagramStatus?: { saved: boolean; username: string | null; error?: boolean } }) {
   const value = useContent(k);
   const { drafts, change, uploaded, save, saveData, restoreHeroDraft, saveHeroBanner } = useAdminSave();
   const entry = drafts[k];
@@ -183,6 +185,7 @@ function Editor({ k, label, description }: { k: ContentKey; label: string; descr
       </div>
       <AdminContentEditor
         k={k}
+        instagramStatus={instagramStatus}
         draft={draft}
         onChange={(next) => change(k, value, next)}
         onStructureChange={k === "hero" ? (next) => change(k, value, next, true) : undefined}

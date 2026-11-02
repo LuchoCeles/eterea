@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import type { Product } from "@/lib/products";
 import type { StoreProduct } from "@/lib/content";
+import { useCart } from "@/components/providers/CartProvider";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ProductCardPrice } from "@/components/store/ProductCardPrice";
@@ -18,14 +18,13 @@ export function ProductCarousel({
   kicker,
   title,
   products,
-  onAdd,
 }: {
   id?: string;
   kicker: string;
   title: string;
   products: StoreProduct[];
-  onAdd: (product: Product) => void;
 }) {
+  const { add } = useCart();
   const [carouselRef, carouselApi] = useEmblaCarousel({
     loop: products.length > 1,
     align: "start",
@@ -134,7 +133,7 @@ export function ProductCarousel({
                     ) : (
                       <AddToCartButton
                         product={p}
-                        onAdd={onAdd}
+                        onAdd={add}
                         className="absolute inset-x-3 bottom-3 h-11 rounded-none bg-primary py-3 text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100"
                       />
                     )}

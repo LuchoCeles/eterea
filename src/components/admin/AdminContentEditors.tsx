@@ -30,6 +30,7 @@ import type {
 
 export function AdminContentEditor({
   k,
+  instagramStatus,
   draft,
   onChange,
   onStructureChange,
@@ -41,6 +42,7 @@ export function AdminContentEditor({
   onSaveHeroBanner,
 }: {
   k: ContentKey;
+  instagramStatus?: { saved: boolean; username: string | null; error?: boolean };
   draft: unknown;
   onChange: (value: unknown) => void;
   onStructureChange?: (value: unknown) => void;
@@ -76,14 +78,14 @@ export function AdminContentEditor({
     return <AdminCategoriesEditor value={draft as StoreCategory[]} onChange={onChange} />;
   if (k === "howToBuy") return <AdminHowToBuyEditor value={draft as HowToBuyContent} onChange={onChange} />;
   if (k === "texts") return <TextsEditor value={draft as Texts} />;
-  return <SocialSettings />;
+  return <SocialSettings instagramStatus={instagramStatus ?? { saved: false, username: null }} />;
 }
 
-function SocialSettings() {
+function SocialSettings({ instagramStatus }: { instagramStatus: { saved: boolean; username: string | null; error?: boolean } }) {
   return (
     <div className="space-y-3 sm:space-y-5">
       <WhatsAppSettings />
-      <InstagramConnection />
+      <InstagramConnection initial={instagramStatus} />
     </div>
   );
 }
@@ -154,7 +156,7 @@ function HeroEditor({
         const changed = savedValue[index] && JSON.stringify(slide) !== JSON.stringify(savedValue[index]);
         return (
         <CollapsibleCard
-          key={slide.id ?? index}
+          key={slide.id != null ? `saved-${slide.id}` : `draft-${index}`}
           title={`Banner ${index + 1}`}
           summary={slide.title || slide.promo || "Sin título"}
           preview={isStagedHeroImage(slide.img) ? stagedHeroPreview(slide.img) : resolveImageSource(slide, products)}

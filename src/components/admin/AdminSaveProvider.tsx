@@ -2,13 +2,8 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import {
-  saveContent,
-  saveHeroSlide,
-  saveTextSection,
-  useContentUpdater,
-  useTextSectionUpdater,
-} from "@/components/providers/ContentProvider";
+import { saveContent, saveHeroSlide, saveTextSection } from "@/components/admin/content-actions";
+import { useContentUpdater, useTextSectionUpdater } from "@/components/providers/ContentProvider";
 import { clearStagedHeroImages, loadHeroDraft, mergeHeroDraft, persistHeroDraft, uploadStagedHeroImages } from "@/lib/hero-draft-client";
 import { removeUncommittedImages } from "@/lib/media-client";
 import type { ContentKey, Slide, TextSectionKey, Texts } from "@/lib/content";

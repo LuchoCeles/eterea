@@ -1,3 +1,5 @@
+"use client";
+
 import { Instagram } from "lucide-react";
 import { useContent } from "@/components/providers/ContentProvider";
 import { WhatsAppIcon } from "@/components/store/WhatsAppIcon";

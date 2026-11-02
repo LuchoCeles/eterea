@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ContentKey, ContentSnapshot, defaults, mergeTextSection, productsWithCategoryNames, resolveContent, type Slide, type TextSectionKey, type Texts } from "@/lib/content";
+import { ContentKey, ContentSnapshot, defaults, mergeTextSection, productsWithCategoryNames, resolveContent, type TextSectionKey, type Texts } from "@/lib/content";
 
 type ContentContextValue = {
   content: Partial<ContentSnapshot>;
@@ -77,51 +77,6 @@ export function useContent<K extends ContentKey>(key: K) {
     }
     return resolveContent(key, data ?? defaults[key]);
   }, [key, data, context?.products]);
-}
-
-export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: string[] = []) {
-  const response = await fetch(`/api/content/${key}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, uploadedUrls }),
-  });
-  if (!response.ok) {
-    const result = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(result?.error ?? "No se pudo guardar el contenido.");
-  }
-  const result: unknown = await response.json();
-  if (!result || typeof result !== "object" || !("data" in result)) {
-    throw new Error("El servidor no confirmó el guardado. Intentá de nuevo.");
-  }
-  return result as { data: unknown; cleanupPending?: number };
-}
-
-export async function saveHeroSlide(index: number, slide: Slide, uploadedUrls: string[] = []) {
-  const response = await fetch(`/api/content/hero/${index}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slide, uploadedUrls }),
-  });
-  const result = await response.json().catch(() => null) as { data?: Slide[]; error?: string } | null;
-  if (!response.ok || !result?.data) throw new Error(result?.error ?? "No se pudo guardar el banner.");
-  return result.data;
-}
-
-export async function saveTextSection<K extends TextSectionKey>(section: K, data: Texts[K], uploadedUrls: string[] = []) {
-  const response = await fetch(`/api/content/texts/${section}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, uploadedUrls }),
-  });
-  if (!response.ok) {
-    const result = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(result?.error ?? "No se pudo guardar la sección.");
-  }
-  const result: unknown = await response.json();
-  if (!result || typeof result !== "object" || !("data" in result)) {
-    throw new Error("El servidor no confirmó el guardado. Intentá de nuevo.");
-  }
-  return (result as { data: Texts[K] }).data;
 }
 
 export function useContentUpdater() {

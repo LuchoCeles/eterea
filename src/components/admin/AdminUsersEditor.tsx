@@ -2,12 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import { changePasswordAction, createUserAction, deleteUserAction, updateUserAction } from "@/app/actions/users";
 
 type AdminUser = { id: string; name: string; username: string; createdAt: string; role: string };
-
-async function responseData(response: Response) {
-  return response.json().catch(() => ({}));
-}
 
 export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initialUsers: AdminUser[]; currentUserId: string; owner: boolean }) {
   const [users, setUsers] = useState(initialUsers);
@@ -31,17 +28,13 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch("/api/admin/users", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, username, password }),
-      });
-      const data = await responseData(response);
-      if (!response.ok) throw new Error(data.error ?? "No se pudo crear el usuario.");
-      setUsers((current) => [...current, data.user]);
+      const result = await createUserAction({ name, username, password });
+      if ("error" in result) throw new Error(result.error);
+      setUsers((current) => [...current, result.user]);
       setName("");
       setUsername("");
       setPassword("");
-      setMessage(`Se creó la cuenta de ${data.user.name}.`);
+      setMessage(`Se creó la cuenta de ${result.user.name}.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo crear el usuario.");
     } finally {
@@ -63,16 +56,13 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
         setEditingId(null);
         return;
       }
-      const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes),
-      });
-      const data = await responseData(response);
-      if (!response.ok) throw new Error(data.error ?? "No se pudo actualizar el usuario.");
+      const result = await updateUserAction(user.id, changes);
+      if ("error" in result) throw new Error(result.error);
       setUsers((current) => current.map((item) => item.id === user.id
-        ? { ...item, name: data.user.name, username: data.user.username }
+        ? { ...item, name: result.user.name, username: result.user.username }
         : item));
       setEditingId(null);
-      setMessage(`Se actualizó la cuenta de ${data.user.name}.`);
+      setMessage(`Se actualizó la cuenta de ${result.user.name}.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo actualizar el usuario.");
     } finally {
@@ -91,12 +81,8 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/password`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: newPassword, ...(user.id === currentUserId && { currentPassword }) }),
-      });
-      const data = await responseData(response);
-      if (!response.ok) throw new Error(data.error ?? "No se pudo cambiar la contraseña.");
+      const result = await changePasswordAction(user.id, { password: newPassword, ...(user.id === currentUserId && { currentPassword }) });
+      if ("error" in result) throw new Error(result.error);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -115,9 +101,8 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, { method: "DELETE" });
-      const data = await responseData(response);
-      if (!response.ok) throw new Error(data.error ?? "No se pudo eliminar el usuario.");
+      const result = await deleteUserAction(user.id);
+      if ("error" in result) throw new Error(result.error);
       setUsers((current) => current.filter((item) => item.id !== user.id));
       setMessage(`Se eliminó la cuenta de ${user.name}.`);
     } catch (cause) {
