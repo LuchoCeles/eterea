@@ -40,7 +40,7 @@ export function CatalogProductCard({ product, onAdd }: { product: StoreProduct; 
       <div className="flex-1 border-b px-1 pb-4 pt-4">
         <p className="eyebrow text-muted-foreground">{product.category}</p>
         <h2 className="mt-1 font-sans text-sm font-medium tracking-normal"><Link href={href} draggable={false} className="hover:text-accent">{product.name}</Link></h2>
-        <ProductCardPrice product={product} />
+        <ProductCardPrice product={product} offersEnabled={offersEnabled} />
       </div>
     </article>
   );

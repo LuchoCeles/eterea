@@ -33,11 +33,20 @@ export function ProductStagedGallery({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCover, setEditingCover] = useState(false);
   const [pendingCoverId, setPendingCoverId] = useState<string | null>(null);
+  const [pendingEdits, setPendingEdits] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const editing = items.find((item) => item.id === editingId);
+
+  function advanceEditing(currentId: string) {
+    const next = pendingEdits.filter((id) => id !== currentId);
+    setPendingEdits(next);
+    setPendingCoverId(null);
+    setEditingCover(false);
+    setEditingId(next[0] ?? null);
+  }
 
   function move(from: number, to: number) {
     if (to === 0 || from === 0) {
@@ -89,10 +98,13 @@ export function ProductStagedGallery({
       }));
       urls.forEach(onObjectUrl);
       onChange([...itemsRef.current, ...added]);
+      if (added[0]) {
+        setPendingEdits(added.map((item) => item.id));
+        setEditingId(added[0].id);
+      }
       if (!currentItems.length && added[0]) {
         setPendingCoverId(added[0].id);
         setEditingCover(false);
-        setEditingId(added[0].id);
       }
     } catch {
       urls.forEach((url) => URL.revokeObjectURL(url));
@@ -215,7 +227,7 @@ export function ProductStagedGallery({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={disabled}
+            disabled={disabled || pendingEdits.length > 0}
             className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-center text-primary transition-colors hover:bg-primary/10 disabled:opacity-50 sm:min-h-56"
           >
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10">
@@ -232,7 +244,7 @@ export function ProductStagedGallery({
         accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
         multiple
         className="sr-only"
-        disabled={disabled || adding || items.length >= MAX_PRODUCT_IMAGES}
+        disabled={disabled || adding || pendingEdits.length > 0 || items.length >= MAX_PRODUCT_IMAGES}
         onChange={(event) => {
           void add(Array.from(event.currentTarget.files ?? []));
           event.currentTarget.value = "";
@@ -244,7 +256,7 @@ export function ProductStagedGallery({
           source={editing.url}
           cover={editingCover}
           initialSettings={editingCover ? editing.coverSettings : editing.settings}
-          onClose={() => { setEditingId(null); setPendingCoverId(null); }}
+          onClose={() => advanceEditing(editing.id)}
           onApply={(settings) => {
             const updated = items.map((item) => item.id === editing.id
               ? editingCover ? { ...item, coverSettings: settings as CropSettings }
@@ -252,10 +264,9 @@ export function ProductStagedGallery({
               : item);
             onChange(editingCover ? [updated.find((item) => item.id === editing.id)!, ...updated.filter((item) => item.id !== editing.id)] : updated);
             if (!editingCover && pendingCoverId === editing.id) {
-              setPendingCoverId(null);
               setEditingCover(true);
             } else {
-              setEditingId(null);
+              advanceEditing(editing.id);
             }
           }}
         />

@@ -5,6 +5,7 @@
 @source "./lib";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant admin-desktop (@media (min-width: 1280px) and (hover: hover) and (pointer: fine) and (not (any-pointer: coarse)));
 
 @theme inline {
   --font-display: Helvetica, Arial, sans-serif;
@@ -194,7 +195,7 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 1279px), (hover: none), (pointer: coarse), (any-pointer: coarse) {
   body:has(.admin-theme) [data-sonner-toaster][data-y-position="bottom"] {
     bottom: calc(6.5rem + env(safe-area-inset-bottom));
   }
@@ -208,6 +209,14 @@ html:not([data-admin-theme="light"]) body:has(.admin-theme) [data-sonner-toaster
   .admin-tabbar .admin-nav-active {
     background: var(--admin-tabbar-active);
     color: var(--admin-tabbar-accent);
+  }
+
+  .admin-tabbar nav {
+    scrollbar-width: none;
+  }
+
+  .admin-tabbar nav::-webkit-scrollbar {
+    display: none;
   }
 }
 

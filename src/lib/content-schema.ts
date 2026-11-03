@@ -31,8 +31,11 @@ const homeSections = z.object({
   newsletter: z.boolean(),
 }).partial().strict();
 const slide = z.object({
-  img: image,
+  id: z.number().int().positive().optional(),
+  img: image.refine((value) => !value.startsWith("local-banner:")),
   productId,
+  desktopSettings: cropSettings.nullable().optional(),
+  mobileSettings: cropSettings.nullable().optional(),
   kicker: shortText,
   title: shortText,
   cta: shortText,
@@ -80,7 +83,10 @@ const product = z.object({
   message: "Para ajustar una foto anterior, subí su archivo original.", path: ["images"],
 });
 const category = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(100), hidden: z.boolean().optional() });
-const homeCategoryCard = z.object({ id: z.string().min(1).max(191), categoryId: z.string().min(1).max(191), img: image, productId, hidden: z.boolean().optional() });
+const homeCategoryCard = z.object({
+  id: z.string().min(1).max(191), categoryId: z.string().min(1).max(191), img: image, productId,
+  hidden: z.boolean().optional(), imageSettings: cropSettings.nullable().optional(),
+});
 const instagramPost = z.object({
   id: z.string().min(1).max(191),
   url: z.string().max(4000),
@@ -94,12 +100,15 @@ const instagramUsername = z.string().trim().max(31).refine((value) => !value || 
 
 const textSectionsSchema = z.object({
   homeSections,
+  offers,
   benefits: z.array(z.object({ t: shortText, d: shortText })).max(30),
   homeCategoryCards: z.array(homeCategoryCard).max(100),
-  split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image, productId }).partial().strict(),
+  split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image, productId,
+    imageSettings: cropSettings.nullable().optional() }).partial().strict(),
   club: z.object({ kicker: shortText, big: shortText, text: shortText, code: shortText, cta: shortText }).partial().strict(),
   marquee: z.array(shortText).max(100),
-  editorial: z.object({ kicker: shortText, title: shortText, text: shortText, cta: shortText, img: image, productId }).partial().strict(),
+  editorial: z.object({ kicker: shortText, title: shortText, text: shortText, cta: shortText, img: image, productId,
+    imageSettings: cropSettings.nullable().optional() }).partial().strict(),
 });
 
 export const contentSchemas: Record<ContentKey, ZodType> = {
@@ -115,5 +124,5 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
   }).partial().strict(),
 };
 
-export const textSectionKeys: TextSectionKey[] = ["homeSections", "homeCategoryCards", "benefits", "split", "club", "marquee", "editorial"];
+export const textSectionKeys: TextSectionKey[] = ["homeSections", "offers", "homeCategoryCards", "benefits", "split", "club", "marquee", "editorial"];
 export const textSectionSchemas: Record<TextSectionKey, ZodType> = textSectionsSchema.shape;

@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { AdminUsersEditor } from "@/components/admin/AdminUsersEditor";
-import { getCurrentUser, isAdmin, isOwner } from "@/server/auth";
+import { getCurrentUser } from "@/server/auth";
 import { prisma } from "@/server/prisma";
 
 export default async function AdminUsersPage() {
   const currentUser = await getCurrentUser();
-  if (!currentUser || !(await isAdmin(currentUser.id))) redirect("/admin");
-  const owner = await isOwner(currentUser.id);
+  if (!currentUser?.isAdmin) redirect("/admin");
+  const owner = currentUser.isOwner;
   const users = await prisma.user.findMany({
     where: owner ? undefined : { id: currentUser.id },
     select: { id: true, name: true, username: true, createdAt: true, roles: { select: { role: true } } },

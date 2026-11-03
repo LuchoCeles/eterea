@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { loginAction } from "@/app/actions/auth";
 
 export function AuthForm() {
   const router = useRouter();
@@ -17,15 +18,10 @@ export function AuthForm() {
     event.preventDefault();
     setBusy(true);
     setMessage(null);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    }).catch(() => null);
-    const result = await response?.json().catch(() => null);
+    const result = await loginAction({ username, password }).catch(() => ({ error: "No se pudo iniciar sesión. Probá de nuevo." }));
     setBusy(false);
-    if (!response?.ok) {
-      setMessage(result?.error ?? "No se pudo iniciar sesión. Probá de nuevo.");
+    if ("error" in result) {
+      setMessage(result.error ?? "No se pudo iniciar sesión. Probá de nuevo.");
       return;
     }
     router.replace("/admin");

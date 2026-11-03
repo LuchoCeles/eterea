@@ -12,11 +12,12 @@ describe("Reglas de lanzamiento de Etérea", () => {
     assert.equal(hasRealDiscount({ ...product, oldPrice: undefined }), false);
   });
 
-  it("filtra promociones ficticias cuando las ofertas están apagadas", () => {
+  it("oculta todos los anuncios guardados cuando las ofertas están apagadas", () => {
     assert.deepEqual(
-      visibleAnnouncements(["2x1 en pantalones", "15% OFF · código ETEREA15", "Envío gratis desde $80.000", "3 cuotas sin interés", "Etérea New Concept"], false),
-      ["Etérea New Concept"],
+      visibleAnnouncements(["Promo imperdible", "2x1 en pantalones", "Etérea New Concept"], false),
+      [],
     );
+    assert.deepEqual(visibleAnnouncements(["Promo imperdible", " ", "Etérea New Concept"], true), ["Promo imperdible", "Etérea New Concept"]);
   });
 
   it("activa Oferta por los precios aunque el producto no esté en esa sección", () => {

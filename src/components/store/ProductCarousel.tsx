@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import type { Product } from "@/lib/products";
 import type { StoreProduct } from "@/lib/content";
+import { useCart } from "@/components/providers/CartProvider";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
 import { ProductImage } from "@/components/store/ProductImage";
 import { ProductCardPrice } from "@/components/store/ProductCardPrice";
@@ -18,31 +18,43 @@ export function ProductCarousel({
   kicker,
   title,
   products,
-  onAdd,
 }: {
   id?: string;
   kicker: string;
   title: string;
   products: StoreProduct[];
-  onAdd: (product: Product) => void;
 }) {
+  const { add } = useCart();
   const [carouselRef, carouselApi] = useEmblaCarousel({
-    loop: products.length > 1,
+    loop: products.length >= 4,
     align: "start",
     slidesToScroll: 1,
   });
   const sectionRef = useRef<HTMLElement>(null);
+  const [scrollability, setScrollability] = useState({ prev: false, next: false });
   const allProducts = useContent("products");
   const offersEnabled = useContent("texts").offers.enabled;
-  const canNavigate = products.length > 1;
-  // Embla necesita suficientes tarjetas para mantener el bucle en pantallas anchas.
-  const repeatedProducts = Array.from(
-    { length: canNavigate ? Math.ceil(10 / products.length) : 1 },
-    (_, group) => products.map((product) => ({ product, key: `${group}-${product.id}` })),
-  ).flat();
+  const canNavigate = scrollability.prev || scrollability.next;
+  // Las listas cortas muestran cada prenda una vez; las largas completan las tarjetas necesarias para el bucle.
+  const carouselProducts = Array.from(
+    { length: products.length >= 4 ? Math.max(10, products.length) : products.length },
+    (_, index) => ({ product: products[index % products.length], key: `${index}-${products[index % products.length].id}` }),
+  );
 
   useEffect(() => {
-    if (!carouselApi || !canNavigate) return;
+    if (!carouselApi) return;
+    const updateScrollability = () => setScrollability({
+      prev: carouselApi.canScrollPrev(), next: carouselApi.canScrollNext(),
+    });
+    carouselApi.on("select", updateScrollability).on("reInit", updateScrollability);
+    updateScrollability();
+    return () => {
+      carouselApi.off("select", updateScrollability).off("reInit", updateScrollability);
+    };
+  }, [carouselApi]);
+
+  useEffect(() => {
+    if (!carouselApi || !scrollability.next) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const canHover = window.matchMedia("(hover: hover)");
     const timer = window.setInterval(() => {
@@ -56,7 +68,7 @@ export function ProductCarousel({
       carouselApi.scrollNext();
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [carouselApi, canNavigate]);
+  }, [carouselApi, scrollability.next]);
 
   return (
     <section
@@ -80,7 +92,7 @@ export function ProductCarousel({
         >
           {/* El espacio integra cada slide para que Embla lo conserve al cerrar el bucle. */}
           <div className="flex">
-            {repeatedProducts.map(({ product: p, key }) => {
+            {carouselProducts.map(({ product: p, key }) => {
               const href = productHref(p, allProducts);
               const unavailable =
                 !!p.soldOut ||
@@ -134,7 +146,7 @@ export function ProductCarousel({
                     ) : (
                       <AddToCartButton
                         product={p}
-                        onAdd={onAdd}
+                        onAdd={add}
                         className="absolute inset-x-3 bottom-3 h-11 rounded-none bg-primary py-3 text-sm text-primary-foreground transition-all md:translate-y-3 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100"
                       />
                     )}
@@ -146,7 +158,7 @@ export function ProductCarousel({
                         {p.name}
                       </Link>
                     </h3>
-                    <ProductCardPrice product={p} />
+                    <ProductCardPrice product={p} offersEnabled={offersEnabled} />
                   </div>
                 </article>
               );
@@ -155,7 +167,7 @@ export function ProductCarousel({
         </div>
         {canNavigate && (
           <>
-            <div className="pointer-events-none absolute left-0 top-0 hidden aspect-[4/5] w-[42%] md:block lg:w-[23.5%]">
+            {scrollability.prev && <div className="pointer-events-none absolute left-0 top-0 hidden aspect-[4/5] w-[42%] md:block lg:w-[23.5%]">
               <button
                 type="button"
                 onClick={() => carouselApi?.scrollPrev()}
@@ -164,8 +176,8 @@ export function ProductCarousel({
               >
                 <ArrowLeft className="h-5 w-5 drop-shadow-sm" aria-hidden="true" />
               </button>
-            </div>
-            <div className="pointer-events-none absolute right-0 top-0 hidden aspect-[4/5] w-[42%] md:block lg:w-[23.5%]">
+            </div>}
+            {scrollability.next && <div className="pointer-events-none absolute right-0 top-0 hidden aspect-[4/5] w-[42%] md:block lg:w-[23.5%]">
               <button
                 type="button"
                 onClick={() => carouselApi?.scrollNext()}
@@ -174,7 +186,7 @@ export function ProductCarousel({
               >
                 <ArrowRight className="h-5 w-5 drop-shadow-sm" aria-hidden="true" />
               </button>
-            </div>
+            </div>}
           </>
         )}
       </div>

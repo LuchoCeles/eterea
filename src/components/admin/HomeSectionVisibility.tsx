@@ -8,7 +8,7 @@ const sectionLabels: { key: keyof HomeSections; label: string }[] = [
   { key: "hero", label: "Banners principales" },
   { key: "categories", label: "Categorías destacadas" },
   { key: "newArrivals", label: "Lo nuevo" },
-  { key: "offerBanners", label: "Banners de ofertas" },
+  { key: "offerBanners", label: "Sección de banners de ofertas" },
   { key: "sale", label: "Descuentos" },
   { key: "instagram", label: "Instagram" },
 ];

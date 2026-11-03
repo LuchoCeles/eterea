@@ -11,15 +11,16 @@ import { productSlug } from "@/lib/product-slugs";
 
 export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname().replace(/\/+$/, "") || "/";
-  const { items, addAnimationKey, changeQuantity, remove } = useCart();
+  const { items, addAnimationKey, changeQuantity, remove, shippingPostalCode, setShippingPostalCode,
+    shippingDeliveryType, setShippingDeliveryType } = useCart();
   const products = useContent("products");
   const categories = useContent("categories");
-  const { homeSections } = useContent("texts");
+  const { homeSections, offers } = useContent("texts");
   const contact = useContent("contact");
   const visibleProducts = visibleStoreProducts(products, categories);
   const { newArrivals, sale } = homeProducts(visibleProducts);
   const hasNewArrivals = newArrivals.length > 0;
-  const hasSale = homeSections.sale && sale.length > 0;
+  const hasSale = offers.enabled && homeSections.sale && sale.length > 0;
   const productPath = pathname.startsWith("/productos/") && pathname.split("/").length === 3;
   const isKnownProduct = productPath && visibleProducts.some((product) => (
     pathname === `/productos/${productSlug(product, products)}` || pathname === `/productos/${product.id}`
@@ -38,6 +39,10 @@ export function SiteHeader({ isAdmin }: { isAdmin: boolean }) {
         cartItems={items}
         cartAddCount={addAnimationKey}
         whatsappNumber={contact.whatsapp}
+        shippingPostalCode={shippingPostalCode}
+        onShippingPostalCodeChange={setShippingPostalCode}
+        shippingDeliveryType={shippingDeliveryType}
+        onShippingDeliveryTypeChange={setShippingDeliveryType}
         onQuantityChange={changeQuantity}
         onRemove={remove}
         homeSections={{ ...homeSections, newArrivals: homeSections.newArrivals && hasNewArrivals }}

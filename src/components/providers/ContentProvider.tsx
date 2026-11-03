@@ -79,40 +79,6 @@ export function useContent<K extends ContentKey>(key: K) {
   }, [key, data, context?.products]);
 }
 
-export async function saveContent(key: ContentKey, data: unknown, uploadedUrls: string[] = []) {
-  const response = await fetch(`/api/content/${key}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, uploadedUrls }),
-  });
-  if (!response.ok) {
-    const result = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(result?.error ?? "No se pudo guardar el contenido.");
-  }
-  const result: unknown = await response.json();
-  if (!result || typeof result !== "object" || !("data" in result)) {
-    throw new Error("El servidor no confirmó el guardado. Intentá de nuevo.");
-  }
-  return result as { data: unknown; cleanupPending?: number };
-}
-
-export async function saveTextSection<K extends TextSectionKey>(section: K, data: Texts[K], uploadedUrls: string[] = []) {
-  const response = await fetch(`/api/content/texts/${section}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, uploadedUrls }),
-  });
-  if (!response.ok) {
-    const result = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(result?.error ?? "No se pudo guardar la sección.");
-  }
-  const result: unknown = await response.json();
-  if (!result || typeof result !== "object" || !("data" in result)) {
-    throw new Error("El servidor no confirmó el guardado. Intentá de nuevo.");
-  }
-  return (result as { data: Texts[K] }).data;
-}
-
 export function useContentUpdater() {
   const context = useContext(ContentContext);
   if (!context) throw new Error("useContentUpdater debe usarse dentro de ContentProvider.");

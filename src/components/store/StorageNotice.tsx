@@ -53,7 +53,7 @@ export function StorageNotice() {
               Tu experiencia en Etérea
             </h2>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              Usamos almacenamiento local para recordar que leíste este aviso. El carrito se conserva durante esta visita, pero no entre visitas.
+              Al navegar por este sitio <strong>aceptás el uso de cookies</strong> para agilizar tu experiencia de compra.
             </p>
           </div>
           <button

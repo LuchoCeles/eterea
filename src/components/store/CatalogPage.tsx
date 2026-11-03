@@ -23,6 +23,7 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
   const [currentPage, setCurrentPage] = useState(1);
   const products = useContent("products");
   const storeCategories = useContent("categories");
+  const offersEnabled = useContent("texts").offers.enabled;
   const contact = useContent("contact");
   const instagramUrl = instagramProfileUrl(contact.instagramUsername);
 
@@ -51,19 +52,19 @@ export function CatalogPage({ initialCategory = "" }: { initialCategory?: string
     const matchesCategory = !activeCategory || product.categoryId === activeCategory;
     const matchesSize = !size || product.sizes?.includes(size) === true;
     const matchesSearch = !normalizedSearch || `${product.name} ${product.category}`.toLocaleLowerCase("es-AR").includes(normalizedSearch);
-    return matchesCategory && matchesSize && matchesSearch && (!discountOnly || hasRealDiscount(product));
+    return matchesCategory && matchesSize && matchesSearch && (!(offersEnabled && discountOnly) || hasRealDiscount(product));
   });
   let sortedProducts = [...filteredProducts];
   if (sort === "price-asc") sortedProducts.sort((a, b) => a.price - b.price);
   if (sort === "price-desc") sortedProducts.sort((a, b) => b.price - a.price);
   sortedProducts = sortProductsByAvailability(sortedProducts);
-  const saleCount = visibleProducts.filter(hasRealDiscount).length;
+  const saleCount = offersEnabled ? visibleProducts.filter(hasRealDiscount).length : 0;
   const pageCount = Math.ceil(sortedProducts.length / PRODUCTS_PER_PAGE);
   const visiblePage = Math.min(currentPage, Math.max(pageCount, 1));
   const pageProducts = sortedProducts.slice((visiblePage - 1) * PRODUCTS_PER_PAGE, visiblePage * PRODUCTS_PER_PAGE);
   const firstVisibleProduct = sortedProducts.length === 0 ? 0 : (visiblePage - 1) * PRODUCTS_PER_PAGE + 1;
   const lastVisibleProduct = Math.min(visiblePage * PRODUCTS_PER_PAGE, sortedProducts.length);
-  const activeFilterCount = Number(Boolean(activeCategory)) + Number(Boolean(size)) + Number(discountOnly);
+  const activeFilterCount = Number(Boolean(activeCategory)) + Number(Boolean(size)) + Number(offersEnabled && discountOnly);
 
   function selectCategory(value: string) {
     setCategory(value);

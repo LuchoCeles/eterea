@@ -29,13 +29,23 @@ export function parseCloudinaryAssetUrl(url: string, projectFolder: string) {
   return { cloudName, publicId };
 }
 
+export function isEditableCloudinaryImage(url: string, cloudName: string | undefined) {
+  const asset = parseCloudinaryAssetUrl(url, "eterea");
+  return !!asset && asset.cloudName === cloudName;
+}
+
 const responsiveWidths = [240, 480, 720, 960, 1280, 1920];
 
-export function responsiveCloudinaryImage(url: string, settings?: ImageSettings | CropSettings | null, cover = false) {
+export function responsiveCloudinaryImage(
+  url: string,
+  settings?: ImageSettings | CropSettings | null,
+  cover = false,
+  cropRatio?: number,
+) {
   if (!parseCloudinaryAssetUrl(url, "eterea")) return { src: url, srcSet: undefined };
   const marker = "/image/upload/";
-  const ratio = cover ? PRODUCT_COVER_RATIO : settings && "format" in settings
-    ? imageRatio(settings.format, settings.width, settings.height) : 0;
+  const ratio = cropRatio ?? (cover ? PRODUCT_COVER_RATIO : settings && "format" in settings
+    ? imageRatio(settings.format, settings.width, settings.height) : 0);
   const region = settings && ratio && validCropSettings(settings) ? cropRegion(settings, ratio) : null;
   let cropWidth = region ? Math.max(1, Math.min(settings!.width, Math.round(region.width * settings!.width))) : 0;
   let cropHeight = region ? Math.max(1, Math.min(settings!.height, Math.round(region.height * settings!.height))) : 0;

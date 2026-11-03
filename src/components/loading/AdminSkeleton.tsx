@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AdminSectionSkeleton } from "@/components/loading/AdminSectionSkeleton";
 import { AdminUsersSkeleton } from "@/components/loading/AdminUsersSkeleton";
+import { AdminShippingSkeleton } from "@/components/loading/AdminShippingSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function AdminContentSkeleton() {
@@ -10,6 +11,7 @@ export function AdminContentSkeleton() {
   if (pathname === "/admin/productos") return <AdminSectionSkeleton section="products" />;
   if (pathname === "/admin/categorias") return <AdminSectionSkeleton section="categories" />;
   if (pathname === "/admin/usuarios") return <AdminUsersSkeleton />;
+  if (pathname === "/admin/envios") return <AdminShippingSkeleton />;
 
   return (
     <div className="mx-auto max-w-[1120px]" role="status" aria-label="Cargando contenido del panel">

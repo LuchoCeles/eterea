@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { ChevronRight, ImageIcon, Plus, Search, Trash2 } from "lucide-react";
 import { useList } from "@/components/admin/AdminEditorFields";
 import { SharedImageField } from "@/components/admin/SharedImageField";
+import { ProductImage } from "@/components/store/ProductImage";
 import { useContent } from "@/components/providers/ContentProvider";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { resolveImageSource } from "@/lib/image-source";
 import type { HomeCategoryCard } from "@/lib/content";
+import { HOME_CATEGORY_IMAGE_RATIO } from "@/lib/image-presentation";
 
 export function AdminHomeCategoriesEditor({
   value,
@@ -187,11 +189,15 @@ export function AdminHomeCategoriesEditor({
                     <tr className="hover:bg-secondary/20">
                       <td className="px-4 py-3 align-top">
                         <div className="flex min-w-0 items-center gap-3">
-                          <img
-                            src={resolveImageSource(card, products)}
-                            alt=""
-                            className="h-14 w-14 shrink-0 rounded-xl border object-cover"
-                          />
+                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border">
+                            <ProductImage
+                              src={resolveImageSource(card, products)}
+                              alt=""
+                              presentation={card.imageSettings}
+                              cropRatio={HOME_CATEGORY_IMAGE_RATIO}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <label className="sr-only" htmlFor={`home-category-${card.id}`}>
                               Categoría de destino
@@ -267,13 +273,17 @@ export function AdminHomeCategoriesEditor({
                           <SharedImageField
                             label={`Foto de ${categoryName}`}
                             image={card.img}
+                            imageSettings={card.imageSettings}
                             productId={card.productId}
                             section="inicio"
+                            cropRatio={HOME_CATEGORY_IMAGE_RATIO}
+                            editorTitle={`Ajustar imagen de ${categoryName}`}
+                            editorDescription="Arrastrá la foto para elegir qué parte se ve en la tarjeta vertical de la categoría."
                             onUploaded={onUploaded}
-                            onChange={({ image, productId }) =>
+                            onChange={(next) =>
                               onChange(
                                 value.map((item) =>
-                                  item.id === card.id ? { ...item, img: image, productId } : item,
+                                  item.id === card.id ? { ...item, img: next.image, productId: next.productId, imageSettings: next.imageSettings } : item,
                                 ),
                               )
                             }

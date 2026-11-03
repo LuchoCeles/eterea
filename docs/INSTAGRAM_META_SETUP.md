@@ -224,6 +224,6 @@ En producción, hacé la misma comprobación en el entorno que ejecuta Etérea; 
 - [Servicio de Instagram](../src/server/instagram.ts)
 - [Cliente de Graph API y validación de perfil/feed](../src/server/instagram-meta.ts)
 - [Almacenamiento cifrado y cachés](../src/server/instagram-storage.ts)
-- [Ruta administrativa](../src/app/api/admin/instagram/route.ts)
+- [Acciones administrativas](../src/app/actions/instagram.ts)
 - [Formulario de conexión](../src/components/admin/InstagramConnection.tsx)
 - [Galería del Home](../src/components/store/InstagramSection.tsx)
