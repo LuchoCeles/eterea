@@ -11,7 +11,7 @@ export type Slide = ImageSource & {
 };
 export type StoreProduct = Product & { section: "nuevo" | "sale" | null; hidden?: boolean };
 export type StoreCategory = { id: string; name: string; hidden?: boolean };
-export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };
+export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean; imageSettings?: CropSettings | null };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string; instagramUsername: string };
 export type HomeSections = {
@@ -33,10 +33,10 @@ export type Texts = {
   benefits: { t: string; d: string }[];
   categories: StoreCategory[];
   homeCategoryCards: HomeCategoryCard[];
-  split: ImageSource & { kicker: string; big: string; sub: string; cta: string };
+  split: ImageSource & { kicker: string; big: string; sub: string; cta: string; imageSettings?: CropSettings | null };
   club: { kicker: string; big: string; text: string; code: string; cta: string };
   marquee: string[];
-  editorial: ImageSource & { kicker: string; title: string; text: string; cta: string };
+  editorial: ImageSource & { kicker: string; title: string; text: string; cta: string; imageSettings?: CropSettings | null };
 };
 export type TextSectionKey = "homeSections" | "offers" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
 

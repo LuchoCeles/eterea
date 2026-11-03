@@ -8,6 +8,7 @@ import { SharedImageField } from "@/components/admin/SharedImageField";
 import { CollapsibleCard, Field } from "@/components/admin/AdminEditorFields";
 import { Switch } from "@/components/ui/switch";
 import type { TextSectionKey, Texts } from "@/lib/content";
+import { SPLIT_BANNER_IMAGE_RATIO } from "@/lib/image-presentation";
 
 function SectionSaveButton({ section, label, value }: { section: TextSectionKey; label: string; value: Texts[TextSectionKey] }) {
   const { textDrafts, saveText } = useAdminSave();
@@ -105,10 +106,14 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
           <SharedImageField
             label="Foto"
             image={value.split.img}
+            imageSettings={value.split.imageSettings}
             productId={value.split.productId}
             section="ofertas"
+            cropRatio={SPLIT_BANNER_IMAGE_RATIO}
+            editorTitle="Ajustar imagen del banner de oferta"
+            editorDescription="Arrastrá la foto para elegir qué parte se ve en el banner. El encuadre sigue la proporción de la tarjeta de oferta."
             onUploaded={(url) => uploadedText("split", savedValue.split, [url])}
-            onChange={({ image, productId }) => set("split", { ...value.split, img: image, productId })}
+            onChange={(next) => set("split", { ...value.split, img: next.image, productId: next.productId, imageSettings: next.imageSettings })}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field

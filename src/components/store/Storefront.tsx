@@ -9,6 +9,7 @@ import { HowToBuySection } from "@/components/store/HowToBuySection";
 import { homeProducts } from "@/lib/catalog-products";
 import { resolveImageSource } from "@/lib/image-source";
 import { productsWithCategoryNames, visibleStoreProducts, type ContentSnapshot } from "@/lib/content";
+import { HOME_CATEGORY_IMAGE_RATIO, SPLIT_BANNER_IMAGE_RATIO } from "@/lib/image-presentation";
 
 export function Storefront({ content, instagramSection }: { content: ContentSnapshot; instagramSection: ReactNode }) {
   const T = content.texts;
@@ -40,7 +41,7 @@ export function Storefront({ content, instagramSection }: { content: ContentSnap
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {homeCategoryCards.map((card) => (
               <a key={card.id} href={`/productos?categoria=${encodeURIComponent(card.category.id)}`} className="group relative block overflow-hidden bg-card">
-                <ProductImage src={resolveImageSource(card, products)} alt="" loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <ProductImage src={resolveImageSource(card, products)} alt="" presentation={card.imageSettings} cropRatio={HOME_CATEGORY_IMAGE_RATIO} loading="lazy" sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="aspect-[3/4] w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-background/90 p-4">
                   <h3 className="font-display text-xl md:text-2xl">{card.category.name}</h3>
                   <ArrowUpRight className="h-5 w-5 shrink-0" />
@@ -55,7 +56,7 @@ export function Storefront({ content, instagramSection }: { content: ContentSnap
         {/* Banner promo partido */}
         {homeSections.offerBanners && T.offers.enabled && (T.offers.showSplit || T.offers.showClub) && <section className="mx-auto grid max-w-[1600px] gap-4 px-4 md:grid-cols-2 md:px-8">
           {T.offers.showSplit && T.split.big && <div className="relative min-h-[480px] overflow-hidden">
-            <ProductImage src={resolveImageSource(T.split, products)} alt={T.split.sub} loading="lazy" sizes="(min-width: 768px) 50vw, 100vw" className="absolute inset-0 h-full w-full object-cover object-left" />
+            <ProductImage src={resolveImageSource(T.split, products)} alt={T.split.sub} presentation={T.split.imageSettings} cropRatio={SPLIT_BANNER_IMAGE_RATIO} loading="lazy" sizes="(min-width: 768px) 50vw, 100vw" className="absolute inset-0 h-full w-full object-cover object-left" />
             <div className="absolute inset-0 flex flex-col justify-end p-8 text-primary-foreground md:p-12">
               <span className="eyebrow">{T.split.kicker}</span>
               <p className="mt-3 font-display text-7xl font-semibold leading-none md:text-9xl">{T.split.big}</p>

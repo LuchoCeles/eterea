@@ -3,7 +3,21 @@
 import type { CSSProperties } from "react";
 import { PRODUCT_IMAGE_FALLBACK } from "@/lib/products";
 import { responsiveCloudinaryImage } from "@/lib/cloudinary-media";
-import type { CropSettings, ImageSettings } from "@/lib/image-presentation";
+import { imageRatio, PRODUCT_COVER_RATIO, validCropSettings, type CropSettings, type ImageSettings } from "@/lib/image-presentation";
+
+function customCropStyle(settings: CropSettings, ratio: number): CSSProperties {
+  const baseScale = Math.max(1 / settings.width, 1 / (ratio * settings.height));
+  const width = settings.width * baseScale * settings.zoom;
+  const height = settings.height * baseScale * settings.zoom * ratio;
+  return {
+    position: "absolute",
+    width: `${width * 100}%`,
+    height: `${height * 100}%`,
+    left: `${50 + settings.x * (width - 1) * 50}%`,
+    top: `${50 + settings.y * (height - 1) * 50}%`,
+    transform: "translate(-50%, -50%)",
+  };
+}
 
 export function ProductImage({
   src,
@@ -17,6 +31,7 @@ export function ProductImage({
   fetchPriority,
   presentation,
   cover = false,
+  cropRatio,
 }: {
   src?: string | null;
   alt: string;
@@ -29,9 +44,15 @@ export function ProductImage({
   fetchPriority?: "high" | "low" | "auto";
   presentation?: ImageSettings | CropSettings | null;
   cover?: boolean;
+  cropRatio?: number;
 }) {
   const imageSrc = src?.trim() || PRODUCT_IMAGE_FALLBACK;
-  const optimized = responsiveCloudinaryImage(imageSrc, presentation, cover);
+  const optimized = responsiveCloudinaryImage(imageSrc, presentation, cover, cropRatio);
+  const localCrop = presentation && validCropSettings(presentation) ? presentation : null;
+  const presentationRatio = cropRatio ?? (cover ? PRODUCT_COVER_RATIO : presentation && "format" in presentation
+    ? imageRatio(presentation.format, presentation.width, presentation.height) : undefined);
+  const cropStyle = !optimized.srcSet && localCrop && presentationRatio
+    ? customCropStyle(localCrop, presentationRatio) : undefined;
 
   return (
     <img
@@ -46,7 +67,7 @@ export function ProductImage({
       height={height}
       fetchPriority={fetchPriority}
       className={className}
-      style={style}
+      style={cropStyle ? { ...cropStyle, ...style } : style}
       data-fallback-applied={imageSrc === PRODUCT_IMAGE_FALLBACK ? "true" : undefined}
       onError={(event) => {
         const image = event.currentTarget;

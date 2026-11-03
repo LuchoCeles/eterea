@@ -22,10 +22,10 @@ describe("Gestión de imágenes de Cloudinary", () => {
     assert.equal(managedCloudinarySection(`${publicId}/extra`, "eterea"), null);
   });
 
-  it("permite editar imágenes propias de productos y banners", () => {
+  it("permite editar imágenes propias de todas las secciones administradas", () => {
     assert.equal(isEditableCloudinaryImage(image, "eterea-demo"), true);
     assert.equal(isEditableCloudinaryImage(image.replace("/productos/", "/banners/"), "eterea-demo"), true);
-    assert.equal(isEditableCloudinaryImage(image.replace("/productos/", "/inicio/"), "eterea-demo"), false);
+    assert.equal(isEditableCloudinaryImage(image.replace("/productos/", "/inicio/"), "eterea-demo"), true);
     assert.equal(isEditableCloudinaryImage(image, "otra-nube"), false);
   });
 

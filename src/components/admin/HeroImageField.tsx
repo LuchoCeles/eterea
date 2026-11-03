@@ -79,7 +79,7 @@ export function HeroImageField({ slide, onSourceChange, onSettingsChange }: {
   }, [slide.img, staged]);
 
   function changeSource(next: { image: string; productId?: string }) {
-    setEditing(null);
+    setEditing("desktop");
     setLocalSource(isStagedHeroImage(next.image) ? stagedHeroPreview(next.image) : "");
     if (staged && next.image !== slide.img) void removeStagedHeroImage(slide.img).catch(() => undefined);
     onSourceChange(next);
@@ -149,7 +149,7 @@ export function HeroImageField({ slide, onSourceChange, onSettingsChange }: {
         onClose={() => setEditing(null)}
         onApply={(next) => {
           onSettingsChange(editing, next as CropSettings);
-          setEditing(null);
+          setEditing(editing === "desktop" ? "mobile" : null);
         }}
       />}
       {pickerOpen && <ProductImagePicker open={pickerOpen} products={products} selectedId={slide.productId}

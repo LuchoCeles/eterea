@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  Crop,
   Images,
   Loader2,
   Plus,
@@ -13,6 +14,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ProductImageEditor } from "@/components/admin/ProductImageEditor";
+import { ProductImage } from "@/components/store/ProductImage";
+import type { CropSettings } from "@/lib/image-presentation";
 import type { ImageSection } from "@/lib/media";
 import { uploadImage } from "@/lib/media-client";
 
@@ -59,54 +63,103 @@ export function Field({
 export function ImageField({
   label,
   value,
+  imageSettings,
   section,
+  cropRatio,
+  editorTitle,
+  editorDescription,
   onChange,
   onUploaded,
 }: {
   label: string;
   value: string;
+  imageSettings?: CropSettings | null;
   section: ImageSection;
-  onChange: (value: string) => void;
+  cropRatio: number;
+  editorTitle: string;
+  editorDescription: string;
+  onChange: (next: { image: string; settings: CropSettings }) => void;
   onUploaded: (url: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<{ source: string; file?: File } | null>(null);
+  const objectUrl = useRef<string | null>(null);
   const callbacks = useRef({ onChange, onUploaded });
   callbacks.current = { onChange, onUploaded };
+
+  useEffect(() => () => {
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+  }, []);
+
+  function closeEditor() {
+    if (busy) return;
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = null;
+    setEditing(null);
+  }
+
+  async function applySettings(settings: CropSettings) {
+    if (!editing) return;
+    setBusy(true);
+    try {
+      const image = editing.file ? await uploadImage(editing.file, section) : value;
+      if (editing.file) callbacks.current.onUploaded(image);
+      callbacks.current.onChange({ image, settings });
+      closeEditor();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo subir la foto.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="text-xs text-muted-foreground">
       {label}
       <div className="mt-1 flex items-center gap-3">
         {value ? (
-          <img src={value} alt="" className="h-20 w-16 rounded-xl border object-cover" />
+          <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-xl border">
+            <ProductImage src={value} alt="" presentation={imageSettings} cropRatio={cropRatio} className="h-full w-full object-cover" />
+          </div>
         ) : (
-          <div className="h-20 w-16 rounded-xl border bg-muted" />
+          <div className="h-20 w-16 shrink-0 rounded-xl border bg-muted" />
         )}
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-foreground hover:bg-secondary">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{" "}
-          Cambiar foto
-          <input
-            type="file"
-            accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
-            disabled={busy}
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (!file) return;
-              setBusy(true);
-              try {
-                const url = await uploadImage(file, section);
-                callbacks.current.onUploaded(url);
-                callbacks.current.onChange(url);
-              } catch {
-                toast.error("No se pudo subir la foto");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        </label>
+        <div className="flex flex-col items-start gap-2">
+          {value && <button type="button" disabled={busy} onClick={() => setEditing({ source: value })}
+            className="flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-foreground hover:bg-secondary disabled:opacity-50">
+            <Crop className="h-4 w-4" /> Ajustar posición
+          </button>}
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-foreground hover:bg-secondary">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{" "}
+            Cambiar foto
+            <input
+              type="file"
+              accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+              disabled={busy || !!editing}
+              className="hidden"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (!file) return;
+                const source = URL.createObjectURL(file);
+                objectUrl.current = source;
+                setEditing({ source, file });
+              }}
+            />
+          </label>
+        </div>
       </div>
+      {editing && <ProductImageEditor
+        key={editing.source}
+        source={editing.source}
+        initialSettings={editing.file ? null : imageSettings}
+        cropRatio={cropRatio}
+        title={editorTitle}
+        description={editorDescription}
+        applying={busy}
+        onClose={closeEditor}
+        onApply={(settings) => void applySettings(settings as CropSettings)}
+      />}
     </div>
   );
 }

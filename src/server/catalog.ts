@@ -3,15 +3,25 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { HomeCategoryCard, StoreCategory, StoreProduct } from "@/lib/content";
 import { paymentPriceId } from "@/lib/catalog-ids";
 import { loadProductRelations } from "@/server/product-relations";
+import type { CropSettings } from "@/lib/image-presentation";
 
 type CatalogDb = Pick<Prisma.TransactionClient, "category" | "product" | "productPaymentPrice" | "productImage" | "productSize" | "productColor" | "homeCategoryCard" | "$queryRaw">;
+
+function savedImageSettings(zoom: number | null, x: number | null, y: number | null,
+  width: number | null, height: number | null): CropSettings | undefined {
+  if (typeof zoom !== "number" || typeof x !== "number" || typeof y !== "number"
+    || typeof width !== "number" || typeof height !== "number"
+    || ![zoom, x, y, width, height].every(Number.isFinite)) return undefined;
+  return { zoom, x, y, width, height };
+}
 
 export async function loadRelationalCatalog(db: CatalogDb, includeCards = true) {
   const [categoryRows, productRows, cardRows, relations] = await Promise.all([
     db.category.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }], select: { id: true, name: true, hidden: true } }),
     db.product.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }] }),
     includeCards ? db.homeCategoryCard.findMany({ orderBy: [{ position: "asc" }, { id: "asc" }],
-      select: { id: true, categoryId: true, img: true, hidden: true, productId: true, position: true } })
+      select: { id: true, categoryId: true, img: true, hidden: true, productId: true, position: true,
+        imageZoom: true, imageX: true, imageY: true, imageWidth: true, imageHeight: true } })
       : Promise.resolve([]),
     loadProductRelations(db),
   ]);
@@ -43,10 +53,14 @@ export async function loadRelationalCatalog(db: CatalogDb, includeCards = true) 
       ...(related?.paymentPrices.length ? { paymentPrices: related.paymentPrices } : {}),
     };
   });
-  const homeCategoryCards: HomeCategoryCard[] = cardRows.map((row) => ({
-    id: row.id, categoryId: row.categoryId, img: row.img, hidden: row.hidden,
-    ...(row.productId ? { productId: row.productId } : {}),
-  }));
+  const homeCategoryCards: HomeCategoryCard[] = cardRows.map((row) => {
+    const imageSettings = savedImageSettings(row.imageZoom, row.imageX, row.imageY, row.imageWidth, row.imageHeight);
+    return {
+      id: row.id, categoryId: row.categoryId, img: row.img, hidden: row.hidden,
+      ...(row.productId ? { productId: row.productId } : {}),
+      ...(imageSettings ? { imageSettings } : {}),
+    };
+  });
   return { categories, products, homeCategoryCards, cardRows };
 }
 

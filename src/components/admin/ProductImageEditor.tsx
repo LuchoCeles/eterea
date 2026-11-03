@@ -51,6 +51,7 @@ export function ProductImageEditor({
   cropRatio,
   title,
   description,
+  applying = false,
   onClose,
   onApply,
 }: {
@@ -60,6 +61,7 @@ export function ProductImageEditor({
   cropRatio?: number;
   title?: string;
   description?: string;
+  applying?: boolean;
   onClose: () => void;
   onApply: (settings: ImageSettings | CropSettings) => void;
 }) {
@@ -349,6 +351,7 @@ export function ProductImageEditor({
           <button
             type="button"
             onClick={onClose}
+            disabled={applying}
             className="min-h-11 flex-1 rounded-xl border px-5 text-sm font-medium hover:bg-secondary sm:flex-none"
           >
             Cancelar
@@ -356,10 +359,10 @@ export function ProductImageEditor({
           <button
             type="button"
             onClick={apply}
-            disabled={!image}
+            disabled={!image || applying}
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:flex-none"
           >
-            Confirmar encuadre
+            {applying ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando foto…</> : "Confirmar encuadre"}
           </button>
         </div>
       </DialogContent>
