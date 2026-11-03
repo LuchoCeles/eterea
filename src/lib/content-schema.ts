@@ -97,6 +97,7 @@ const instagramUsername = z.string().trim().max(31).refine((value) => !value || 
 
 const textSectionsSchema = z.object({
   homeSections,
+  offers,
   benefits: z.array(z.object({ t: shortText, d: shortText })).max(30),
   homeCategoryCards: z.array(homeCategoryCard).max(100),
   split: z.object({ kicker: shortText, big: shortText, sub: shortText, cta: shortText, img: image, productId }).partial().strict(),
@@ -118,5 +119,5 @@ export const contentSchemas: Record<ContentKey, ZodType> = {
   }).partial().strict(),
 };
 
-export const textSectionKeys: TextSectionKey[] = ["homeSections", "homeCategoryCards", "benefits", "split", "club", "marquee", "editorial"];
+export const textSectionKeys: TextSectionKey[] = ["homeSections", "offers", "homeCategoryCards", "benefits", "split", "club", "marquee", "editorial"];
 export const textSectionSchemas: Record<TextSectionKey, ZodType> = textSectionsSchema.shape;

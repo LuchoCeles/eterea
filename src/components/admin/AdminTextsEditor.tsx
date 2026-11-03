@@ -6,6 +6,7 @@ import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility"
 import { AdminHomeCategoriesEditor } from "@/components/admin/AdminHomeCategoriesEditor";
 import { SharedImageField } from "@/components/admin/SharedImageField";
 import { CollapsibleCard, Field } from "@/components/admin/AdminEditorFields";
+import { Switch } from "@/components/ui/switch";
 import type { TextSectionKey, Texts } from "@/lib/content";
 
 function SectionSaveButton({ section, label, value }: { section: TextSectionKey; label: string; value: Texts[TextSectionKey] }) {
@@ -32,6 +33,7 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
   const get = <K extends TextSectionKey>(key: K) => (textDrafts[key]?.data ?? savedValue[key]) as Texts[K];
   const value: Texts = {
     ...savedValue,
+    offers: get("offers"),
     homeSections: get("homeSections"), homeCategoryCards: get("homeCategoryCards"),
     split: get("split"), club: get("club"),
   };
@@ -51,6 +53,41 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
           value={value.homeSections}
           onChange={(homeSections) => set("homeSections", homeSections)}
         />
+      </CollapsibleCard>
+      <CollapsibleCard
+        title="Ofertas"
+        summary={value.offers.enabled ? "Ofertas activadas" : "Ofertas desactivadas"}
+        right={<SectionSaveButton section="offers" label="Ofertas" value={savedValue.offers} />}
+      >
+        <p className="mb-4 text-sm text-muted-foreground">
+          Al desactivarlas, se ocultan los mensajes promocionales y los descuentos de la tienda.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Activar ofertas</span>
+            <Switch
+              checked={value.offers.enabled}
+              onCheckedChange={(enabled) => set("offers", { ...value.offers, enabled })}
+              aria-label="Activar ofertas"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Mostrar banner de oferta</span>
+            <Switch
+              checked={value.offers.showSplit}
+              onCheckedChange={(showSplit) => set("offers", { ...value.offers, showSplit })}
+              aria-label="Mostrar banner de oferta"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Banner del club</span>
+            <Switch
+              checked={value.offers.showClub}
+              onCheckedChange={(showClub) => set("offers", { ...value.offers, showClub })}
+              aria-label="Mostrar banner del club"
+            />
+          </label>
+        </div>
       </CollapsibleCard>
       <CollapsibleCard
         title="Categorías destacadas del inicio"

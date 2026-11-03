@@ -45,7 +45,7 @@ export async function loadRelationalContentWithSections(db: ContentDb) {
   const saved = new Set(sections.map((section) => section.key));
   const [contact, offers, home, split, club, editorial, promo, hero, benefits, marquee, instagram] = await Promise.all([
     saved.has("contact") ? db.contactSettings.findUnique({ where: { id: 1 } }) : null,
-    saved.has("texts") ? db.offerSettings.findUnique({ where: { id: 1 } }) : null,
+    saved.has("texts") || saved.has("offers") ? db.offerSettings.findUnique({ where: { id: 1 } }) : null,
     saved.has("homeSections") ? db.homeSectionSetting.findMany() : [],
     saved.has("split") ? db.splitBanner.findUnique({ where: { id: 1 } }) : null,
     saved.has("club") ? db.clubBanner.findUnique({ where: { id: 1 } }) : null,
@@ -134,7 +134,11 @@ export async function saveRelationalContent(db: ContentDb, key: ContentKey, valu
 }
 
 export async function saveRelationalTextSection(db: ContentDb, section: TextSectionKey, value: Texts[TextSectionKey]) {
-  if (section === "benefits") {
+  if (section === "offers") {
+    const offers = value as Texts["offers"];
+    const data = { enabled: offers.enabled, showSplit: offers.showSplit, showClub: offers.showClub };
+    await db.offerSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
+  } else if (section === "benefits") {
     await db.benefit.deleteMany();
     await db.benefit.createMany({ data: (value as Texts["benefits"]).map((item, position) => ({
       position, title: item.t, description: item.d,

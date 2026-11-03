@@ -38,7 +38,7 @@ export type Texts = {
   marquee: string[];
   editorial: ImageSource & { kicker: string; title: string; text: string; cta: string };
 };
-export type TextSectionKey = "homeSections" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
+export type TextSectionKey = "homeSections" | "offers" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
 
 const placeholder = "/assets/eterea-placeholder.svg";
 
