@@ -20,8 +20,8 @@ export default function AboutPage() {
         <article className="mx-auto grid max-w-[1440px] gap-12 px-5 pb-24 pt-10 sm:px-8 sm:pb-28 sm:pt-16 lg:grid-cols-2 lg:gap-16 lg:px-12 lg:pb-32 lg:pt-20 xl:gap-24 xl:px-16" aria-labelledby="about-title">
           <figure className="relative aspect-[4/5] w-full overflow-hidden bg-[#e8d8c6] lg:aspect-auto lg:min-h-[760px]">
             <Image
-              src="/assets/quienes-somos-editorial.png"
-              alt="Mujer con prendas claras bajo la luz cálida y sombras de flores"
+              src="/assets/quienes-somos.webp"
+              alt="Mujer con vestido claro entre margaritas y pastos altos"
               fill
               priority
               sizes="(min-width: 1024px) 50vw, 100vw"

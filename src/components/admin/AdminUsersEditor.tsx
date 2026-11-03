@@ -1,10 +1,37 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { changePasswordAction, createUserAction, deleteUserAction, updateUserAction } from "@/app/actions/users";
 
 type AdminUser = { id: string; name: string; username: string; createdAt: string; role: string };
+
+function PasswordField({ id, label, value, onChange, autoComplete, required, minLength }: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  required?: boolean;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label className="grid gap-2 text-sm font-medium">{label}
+      <span className="relative block">
+        <input id={id} value={value} onChange={(event) => onChange(event.target.value)} required={required}
+          minLength={minLength} maxLength={128} type={visible ? "text" : "password"} autoComplete={autoComplete}
+          className="h-11 w-full rounded-lg border bg-background px-3 pr-12" />
+        <button type="button" aria-controls={id} aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+          aria-pressed={visible} onClick={() => setVisible((current) => !current)}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
+          {visible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+        </button>
+      </span>
+    </label>
+  );
+}
 
 export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initialUsers: AdminUser[]; currentUserId: string; owner: boolean }) {
   const [users, setUsers] = useState(initialUsers);
@@ -133,9 +160,7 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
           <label className="grid gap-2 text-sm font-medium">Usuario
             <input value={username} onChange={(event) => setUsername(event.target.value)} required minLength={3} maxLength={191} pattern="[a-zA-Z0-9._@+\-]+" autoComplete="off" className="h-11 rounded-lg border bg-background px-3" />
           </label>
-          <label className="grid gap-2 text-sm font-medium">Contraseña
-            <input value={password} onChange={(event) => setPassword(event.target.value)} required minLength={12} maxLength={128} type="password" autoComplete="new-password" className="h-11 rounded-lg border bg-background px-3" />
-          </label>
+          <PasswordField id="admin-user-password" label="Contraseña" value={password} onChange={setPassword} required minLength={12} autoComplete="new-password" />
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Usá al menos 12 caracteres para la contraseña.</p>
         <button disabled={busyId !== null} className="admin-save-button mt-5 inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold disabled:opacity-50"><Plus className="h-4 w-4" />Crear usuario</button>
@@ -178,15 +203,9 @@ export function AdminUsersEditor({ initialUsers, currentUserId, owner }: { initi
               <form onSubmit={(event) => void changePassword(event, user)} className="mt-5 border-t border-border pt-5">
                 <h4 className="font-semibold">{user.id === currentUserId ? "Cambiar mi contraseña" : `Cambiar contraseña de ${user.name}`}</h4>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {user.id === currentUserId && <label className="grid gap-2 text-sm font-medium">Contraseña actual
-                    <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required maxLength={128} type="password" autoComplete="current-password" className="h-11 rounded-lg border bg-background px-3" />
-                  </label>}
-                  <label className="grid gap-2 text-sm font-medium">Contraseña nueva
-                    <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={12} maxLength={128} type="password" autoComplete="new-password" className="h-11 rounded-lg border bg-background px-3" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">Repetir contraseña nueva
-                    <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={12} maxLength={128} type="password" autoComplete="new-password" className="h-11 rounded-lg border bg-background px-3" />
-                  </label>
+                  {user.id === currentUserId && <PasswordField id={`current-password-${user.id}`} label="Contraseña actual" value={currentPassword} onChange={setCurrentPassword} required autoComplete="current-password" />}
+                  <PasswordField id={`new-password-${user.id}`} label="Contraseña nueva" value={newPassword} onChange={setNewPassword} required minLength={12} autoComplete="new-password" />
+                  <PasswordField id={`confirm-password-${user.id}`} label="Repetir contraseña nueva" value={confirmPassword} onChange={setConfirmPassword} required minLength={12} autoComplete="new-password" />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">Usá entre 12 y 128 caracteres. Las otras sesiones de esta cuenta se cerrarán.</p>
                 <div className="mt-4 flex gap-2">
