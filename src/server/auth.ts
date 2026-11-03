@@ -1,31 +1,12 @@
 import "server-only";
-import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/server/prisma";
+import { COOKIE_NAME, credentialVersion, readSessionToken } from "@/server/session-token";
 
 const scrypt = promisify(scryptCallback);
-const COOKIE_NAME = "eterea_session";
-const SESSION_SECONDS = 60 * 60 * 24 * 7;
-
-type SessionPayload = { userId: string; expiresAt: number; credentialVersion: string };
-
-function credentialVersion(passwordHash: string) {
-  return createHash("sha256").update(passwordHash).digest("base64url");
-}
-
-function secret() {
-  const value = process.env.AUTH_SECRET;
-  if (!value || Buffer.byteLength(value) < 32) {
-    throw new Error("Configurá AUTH_SECRET con al menos 32 bytes antes de habilitar sesiones.");
-  }
-  return value;
-}
-
-function signature(value: string) {
-  return createHmac("sha256", secret()).update(value).digest("base64url");
-}
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("base64url");
@@ -39,31 +20,6 @@ export async function verifyPassword(password: string, stored: string) {
   const expected = Buffer.from(expectedText, "base64url");
   const actual = (await scrypt(password, salt, expected.length)) as Buffer;
   return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
-
-export function createSessionToken(userId: string, passwordHash: string) {
-  const payload: SessionPayload = {
-    userId, expiresAt: Math.floor(Date.now() / 1000) + SESSION_SECONDS,
-    credentialVersion: credentialVersion(passwordHash),
-  };
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${encoded}.${signature(encoded)}`;
-}
-
-export function readSessionToken(token: string | undefined): SessionPayload | null {
-  if (!token) return null;
-  const [encoded, received] = token.split(".");
-  if (!encoded || !received) return null;
-  try {
-    const expected = Buffer.from(signature(encoded));
-    const actual = Buffer.from(received);
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as SessionPayload;
-    if (!payload.userId || !payload.credentialVersion || payload.expiresAt <= Math.floor(Date.now() / 1000)) return null;
-    return payload;
-  } catch {
-    return null;
-  }
 }
 
 export const getCurrentUser = cache(async () => {
@@ -104,4 +60,4 @@ export async function isAdminRequest(request: Request) {
     ? { id: user.id } : null;
 }
 
-export { COOKIE_NAME };
+export { COOKIE_NAME, createSessionToken, readSessionToken } from "@/server/session-token";

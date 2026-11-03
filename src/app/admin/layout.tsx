@@ -1,10 +1,11 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin/AdminEditor";
 import { AdminContentSkeleton } from "@/components/loading/AdminSkeleton";
 import { ContentProvider, ContentSnapshotHydrator } from "@/components/providers/ContentProvider";
 import { defaults } from "@/lib/content";
-import { getCurrentUser } from "@/server/auth";
+import { COOKIE_NAME, getCurrentUser, readSessionToken } from "@/server/auth";
 import { loadContentSnapshot } from "@/server/content";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,10 @@ export const metadata = { title: "Panel de administración — Etérea", robots:
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await getCurrentUser();
-  if (!user) redirect("/auth");
+  if (!user) {
+    const token = (await cookies()).get(COOKIE_NAME)?.value;
+    redirect(readSessionToken(token) ? "/auth?session-check=1" : "/auth");
+  }
   if (!user.isAdmin) redirect("/");
   const owner = user.isOwner;
 

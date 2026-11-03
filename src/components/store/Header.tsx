@@ -20,6 +20,7 @@ import type { HomeSections } from "@/lib/content";
 const links: { label: string; href: string; section?: keyof HomeSections }[] = [
   { label: "Lo nuevo", href: "/#nuevo", section: "newArrivals" },
   { label: "Prendas", href: "/productos" },
+  { label: "Cómo comprar", href: "/#como-comprar" },
   { label: "Quiénes somos", href: "/quienes-somos" },
   { label: "Instagram", href: "/#instagram", section: "instagram" },
 ];
@@ -124,7 +125,7 @@ export function Header({
     if (pathname !== "/" || !window.location.hash) return;
 
     const sectionId = window.location.hash.slice(1);
-    if (!["nuevo", "instagram", "descuentos"].includes(sectionId)) return;
+    if (!["nuevo", "instagram", "descuentos", "como-comprar"].includes(sectionId)) return;
     let observer: MutationObserver | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let cancelAnimation: (() => void) | undefined;

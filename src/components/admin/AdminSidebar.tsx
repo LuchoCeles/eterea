@@ -147,13 +147,12 @@ export function AdminSidebar({ activeSection, pendingSections = [], owner }: { a
         })}
         <Fragment>
           <p className="mt-4 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground admin-desktop:block">Envíos</p>
-          <Link href="/admin/envios" prefetch={false} aria-current={pathname === "/admin/envios" ? "page" : undefined}
-            className={clsx("admin-nav-link relative flex min-h-[62px] min-w-0 flex-[1_0_68px] flex-col items-center justify-center gap-1 rounded-[19px] px-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring admin-desktop:min-h-[52px] admin-desktop:flex-none admin-desktop:flex-row admin-desktop:justify-start admin-desktop:gap-3 admin-desktop:rounded-xl admin-desktop:px-4 admin-desktop:text-left", pathname === "/admin/envios" ? "admin-nav-active font-semibold" : "font-medium text-muted-foreground hover:bg-secondary/55 hover:text-foreground")}>
-            {pathname === "/admin/envios" && <span className="absolute inset-y-3 left-0 hidden w-[3px] rounded-r-full bg-primary admin-desktop:block" aria-hidden="true" />}
-            <Truck className="h-5 w-5 shrink-0 admin-desktop:h-6 admin-desktop:w-6" strokeWidth={pathname === "/admin/envios" ? 2 : 1.7} aria-hidden="true" />
+          <button type="button" disabled title="Envíos · Sección en desarrollo" aria-label="Envíos, sección en desarrollo"
+            className="relative flex min-h-[62px] min-w-0 flex-[1_0_68px] cursor-not-allowed flex-col items-center justify-center gap-1 rounded-[19px] px-1 text-center font-medium text-muted-foreground opacity-50 admin-desktop:min-h-[52px] admin-desktop:flex-none admin-desktop:flex-row admin-desktop:justify-start admin-desktop:gap-3 admin-desktop:rounded-xl admin-desktop:px-4 admin-desktop:text-left">
+            <Truck className="h-5 w-5 shrink-0 admin-desktop:h-6 admin-desktop:w-6" strokeWidth={1.7} aria-hidden="true" />
             <span className="w-full truncate text-[10px] leading-tight admin-desktop:hidden">Envíos</span>
             <span className="hidden truncate text-sm admin-desktop:block">Envíos</span>
-          </Link>
+          </button>
         </Fragment>
         <Fragment>
           <p className="mt-4 hidden px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground admin-desktop:block">Cuenta</p>

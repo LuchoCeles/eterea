@@ -1,6 +1,6 @@
 export function HowToBuySection() {
   return (
-    <section aria-labelledby="how-to-buy-title" className="border-t border-foreground/10 bg-pearl px-4 py-16 sm:px-6 md:py-24">
+    <section id="como-comprar" aria-labelledby="how-to-buy-title" className="border-t border-foreground/10 bg-pearl px-4 py-16 sm:px-6 md:py-24">
       <div className="mx-auto max-w-[1100px]">
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow text-accent">Tu compra, paso a paso</p>
