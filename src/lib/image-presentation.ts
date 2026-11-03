@@ -3,6 +3,8 @@ export type ImageFormat = (typeof imageFormats)[number];
 export const editableImageFormats = ["1:1"] as const;
 export type EditableImageFormat = (typeof editableImageFormats)[number];
 export const PRODUCT_COVER_RATIO = 4 / 5;
+export const HOME_CATEGORY_IMAGE_RATIO = 3 / 4;
+export const SPLIT_BANNER_IMAGE_RATIO = 16 / 10;
 
 export type CropSettings = {
   zoom: number;

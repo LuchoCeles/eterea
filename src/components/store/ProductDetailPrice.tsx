@@ -1,9 +1,14 @@
+import { Truck } from "lucide-react";
 import { formatPrice, type Product } from "@/lib/products";
 import { hasRealDiscount } from "@/lib/storefront-rules";
 
 type PriceProduct = Pick<Product, "price" | "oldPrice" | "paymentPrices">;
 
-export function ProductDetailPrice({ product }: { product: PriceProduct }) {
+export function ProductDetailPrice({ product, freeShippingThreshold = null, offersEnabled = true }: {
+  product: PriceProduct;
+  freeShippingThreshold?: number | null;
+  offersEnabled?: boolean;
+}) {
   const paymentPrices = product.paymentPrices ?? [];
   const basePaymentIndex = paymentPrices.findIndex((payment) => payment.price === product.price);
   const basePayment = paymentPrices[basePaymentIndex];
@@ -20,7 +25,7 @@ export function ProductDetailPrice({ product }: { product: PriceProduct }) {
 
   return (
     <div className="mt-6 border-b pb-7 tabular-nums">
-      {hasRealDiscount(product) && (
+      {offersEnabled && hasRealDiscount(product) && (
         <p className="text-sm text-muted-foreground line-through">
           {formatPrice(product.oldPrice ?? product.price)}
         </p>
@@ -44,6 +49,12 @@ export function ProductDetailPrice({ product }: { product: PriceProduct }) {
             </div>
           ))}
         </dl>
+      )}
+      {freeShippingThreshold !== null && (
+        <p className="mt-4 flex items-center gap-2 text-sm text-accent">
+          <Truck aria-hidden="true" className="h-4 w-4 shrink-0" />
+          <span>Envío gratis en compras desde {formatPrice(freeShippingThreshold)}</span>
+        </p>
       )}
     </div>
   );

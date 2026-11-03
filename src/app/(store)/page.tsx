@@ -4,13 +4,14 @@ import { InstagramSection } from "@/components/store/InstagramSection";
 import { loadRecentInstagramPosts, loadInstagramMediaAssets, loadInstagramProfilePicture } from "@/server/instagram";
 import { loadStorefrontData } from "@/server/storefront-content";
 import { visibleInstagramPosts } from "@/lib/storefront-rules";
+import { contentForStorefront } from "@/lib/storefront-projection";
 import type { ContentSnapshot } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { content, instagramConnected } = await loadStorefrontData();
-  return <Storefront instagramSection={content.texts.homeSections.instagram ? (
+  return <Storefront content={contentForStorefront(content)} instagramSection={content.texts.homeSections.instagram ? (
     <Suspense fallback={<section className="min-h-60 border-t bg-sea" aria-hidden="true" />}>
       <InstagramContent content={content} instagramConnected={instagramConnected} />
     </Suspense>

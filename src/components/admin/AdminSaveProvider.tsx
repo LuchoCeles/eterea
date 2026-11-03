@@ -2,13 +2,11 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import {
-  saveContent,
-  saveTextSection,
-  useContentUpdater,
-  useTextSectionUpdater,
-} from "@/components/providers/ContentProvider";
-import type { ContentKey, TextSectionKey, Texts } from "@/lib/content";
+import { saveContent, saveHeroSlide, saveTextSection } from "@/components/admin/content-actions";
+import { useContentUpdater, useTextSectionUpdater } from "@/components/providers/ContentProvider";
+import { clearStagedHeroImages, loadHeroDraft, mergeHeroDraft, persistHeroDraft, uploadStagedHeroImages } from "@/lib/hero-draft-client";
+import { removeUncommittedImages } from "@/lib/media-client";
+import type { ContentKey, Slide, TextSectionKey, Texts } from "@/lib/content";
 
 type DraftEntry = {
   data: unknown;
@@ -17,12 +15,15 @@ type DraftEntry = {
   uploadedUrls: string[];
   saving: boolean;
   error: string | null;
+  structureDirty?: boolean;
 };
 
 type AdminSaveContextValue = {
   drafts: Partial<Record<ContentKey, DraftEntry>>;
   textDrafts: Partial<Record<TextSectionKey, DraftEntry>>;
-  change: (key: ContentKey, initial: unknown, data: unknown) => void;
+  change: (key: ContentKey, initial: unknown, data: unknown, structure?: boolean) => void;
+  restoreHeroDraft: (initial: Slide[]) => void;
+  saveHeroBanner: (index: number, initial: Slide[]) => Promise<boolean>;
   uploaded: (key: ContentKey, initial: unknown, urls: string[]) => void;
   save: (key: ContentKey, initial: unknown) => Promise<void>;
   saveData: (
@@ -155,13 +156,73 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
   }, []);
 
-  function change(key: ContentKey, initial: unknown, data: unknown) {
+  function change(key: ContentKey, initial: unknown, data: unknown, structure = false) {
     setEntry(key, initial, (entry) => ({
       ...entry,
       data,
       version: entry.version + 1,
       error: null,
+      structureDirty: entry.structureDirty || structure,
     }));
+    if (key === "hero") {
+      const entry = draftsRef.current.hero!;
+      persistHeroDraft(entry.savedData as Slide[], data as Slide[], entry.structureDirty === true);
+    }
+  }
+
+  function restoreHeroDraft(initial: Slide[]) {
+    if (draftsRef.current.hero) return;
+    const stored = loadHeroDraft(initial);
+    if (stored) setEntry("hero", initial, (entry) => ({
+      ...entry, data: stored.data, structureDirty: stored.structureDirty, version: 1,
+    }));
+  }
+
+  async function saveHeroBanner(index: number, initial: Slide[]): Promise<boolean> {
+    if (savingKeys.current.has("hero")) return false;
+    const entry = draftsRef.current.hero;
+    const draft = (entry?.data as Slide[] | undefined)?.[index];
+    const savedBefore = entry?.savedData as Slide[] | undefined;
+    if (!draft || !savedBefore?.[index] || JSON.stringify(draft) === JSON.stringify(savedBefore[index])) return false;
+    if (entry?.structureDirty) {
+      toast.error("Guardá primero los cambios de la lista de banners.");
+      return false;
+    }
+    savingKeys.current.add("hero");
+    setEntry("hero", initial, (current) => ({ ...current, saving: true, error: null }));
+    let uploads: string[] = [];
+    try {
+      const prepared = await uploadStagedHeroImages([draft]);
+      uploads = prepared.uploads;
+      const savedAfter = await saveHeroSlide(index, prepared.data[0], uploads);
+      updateContent("hero", savedAfter);
+      setEntry("hero", initial, (current) => {
+        const currentData = current.data as Slide[];
+        const data = mergeHeroDraft(savedBefore, currentData, savedAfter, prepared.uploadedByMarker);
+        const currentSlide = currentData[index];
+        const savedSlide = savedAfter[index];
+        if (currentSlide && savedSlide && JSON.stringify({
+          ...currentSlide,
+          img: prepared.uploadedByMarker.get(currentSlide.img) ?? currentSlide.img,
+        }) === JSON.stringify(prepared.data[0])) {
+          // El servidor puede omitir ajustes nulos; la respuesta guardada pasa a ser la referencia.
+          data[index] = savedSlide;
+        }
+        persistHeroDraft(savedAfter, data, current.structureDirty === true);
+        return { ...current, data, savedData: savedAfter, saving: false, error: null };
+      });
+      void clearStagedHeroImages(prepared.uploadedByMarker.keys());
+      toast.success(`Banner ${index + 1} guardado`);
+      return true;
+    } catch (error) {
+      await removeUncommittedImages(uploads).catch(() => undefined);
+      const message = error instanceof Error ? error.message : "No se pudo guardar el banner.";
+      setEntry("hero", initial, (current) => ({ ...current, saving: false, error: message }));
+      toast.error(message);
+      return false;
+    } finally {
+      savingKeys.current.delete("hero");
+    }
   }
 
   function uploaded(key: ContentKey, initial: unknown, urls: string[]) {
@@ -188,24 +249,40 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
     }
 
     const version = entry.version;
-    const data = structuredClone(entry.data);
-    const uploadedUrls = [...entry.uploadedUrls];
+    let data = structuredClone(entry.data);
+    let uploadedUrls = [...entry.uploadedUrls];
+    let stagedUploads: string[] = [];
+    let uploadedByMarker = new Map<string, string>();
     savingKeys.current.add(key);
     setEntry(key, initial, (current) => ({ ...current, saving: true, error: null }));
 
     try {
+      if (key === "hero") {
+        const prepared = await uploadStagedHeroImages(data as Slide[]);
+        data = prepared.data;
+        stagedUploads = prepared.uploads;
+        uploadedByMarker = prepared.uploadedByMarker;
+        uploadedUrls = [...new Set([...uploadedUrls, ...stagedUploads])];
+      }
       const result = await saveContent(key, data, uploadedUrls);
       updateContent(key, result.data);
       const hasNewerChanges = draftsRef.current[key]!.version !== version;
-      setEntry(key, initial, (current) => ({
-        ...current,
-        data: hasNewerChanges ? current.data : result.data,
-        savedData: result.data,
-        uploadedUrls: current.uploadedUrls.filter((url) => !uploadedUrls.includes(url)),
-        saving: false,
-      }));
+      setEntry(key, initial, (current) => {
+        const nextData = hasNewerChanges ? current.data : result.data;
+        const finalData = key === "hero" && hasNewerChanges
+          ? (nextData as Slide[]).map((slide, index) => ({ ...slide,
+            id: (result.data as Slide[])[index]?.id ?? slide.id,
+            img: uploadedByMarker.get(slide.img) ?? slide.img,
+          })) : nextData;
+        if (key === "hero") persistHeroDraft(result.data as Slide[], finalData as Slide[], hasNewerChanges && current.structureDirty === true);
+        return { ...current, data: finalData, savedData: result.data,
+          uploadedUrls: current.uploadedUrls.filter((url) => !uploadedUrls.includes(url)),
+          structureDirty: hasNewerChanges && current.structureDirty === true, saving: false };
+      });
+      if (key === "hero") void clearStagedHeroImages(uploadedByMarker.keys());
       if (!hasNewerChanges) toast.success("Cambios guardados");
     } catch (error) {
+      await removeUncommittedImages(stagedUploads).catch(() => undefined);
       const message =
         error instanceof Error ? error.message : "No se pudo guardar. Intentá de nuevo.";
       setEntry(key, initial, (current) => ({ ...current, saving: false, error: message }));
@@ -259,6 +336,8 @@ export function AdminSaveProvider({ children }: { children: ReactNode }) {
         drafts,
         textDrafts,
         change,
+        restoreHeroDraft,
+        saveHeroBanner,
         uploaded,
         save,
         saveData,

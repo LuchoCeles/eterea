@@ -48,16 +48,24 @@ export function ProductImageEditor({
   source,
   initialSettings,
   cover = false,
+  cropRatio,
+  title,
+  description,
+  applying = false,
   onClose,
   onApply,
 }: {
   source: string;
   initialSettings?: ImageSettings | CropSettings | null;
   cover?: boolean;
+  cropRatio?: number;
+  title?: string;
+  description?: string;
+  applying?: boolean;
   onClose: () => void;
   onApply: (settings: ImageSettings | CropSettings) => void;
 }) {
-  const editableSettings = cover || !initialSettings || !("format" in initialSettings)
+  const editableSettings = cover || cropRatio !== undefined || !initialSettings || !("format" in initialSettings)
     || initialSettings.format === "1:1";
   const initialZoom = editableSettings ? initialSettings?.zoom ?? 1 : 1;
   const initialOffset = {
@@ -74,7 +82,7 @@ export function ProductImageEditor({
   const [zoom, setZoom] = useState(initialZoom);
   const [offset, setOffset] = useState(initialOffset);
   const [error, setError] = useState("");
-  const ratio = cover ? PRODUCT_COVER_RATIO : 1;
+  const ratio = cropRatio ?? (cover ? PRODUCT_COVER_RATIO : 1);
   const previewHeight = Math.round(PREVIEW_WIDTH / ratio);
 
   useEffect(() => {
@@ -244,7 +252,7 @@ export function ProductImageEditor({
     }
     const settings = { zoom: zoomRef.current, x: offsetRef.current.x, y: offsetRef.current.y,
       width: image.naturalWidth, height: image.naturalHeight };
-    onApply(cover ? settings : { ...settings, format: editableImageFormats[0] });
+    onApply(cover || cropRatio !== undefined ? settings : { ...settings, format: editableImageFormats[0] });
   }
 
   return (
@@ -256,11 +264,11 @@ export function ProductImageEditor({
     >
       <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden border-0 p-0 sm:h-[min(96dvh,900px)] sm:w-[min(92vw,620px)] sm:rounded-2xl sm:border">
         <DialogHeader className="shrink-0 border-b px-5 py-5 text-left sm:px-7">
-          <DialogTitle className="text-xl">{cover ? "Ajustar portada para tarjetas" : "Ajustar foto"}</DialogTitle>
+          <DialogTitle className="text-xl">{title ?? (cover ? "Ajustar portada para tarjetas" : "Ajustar foto")}</DialogTitle>
           <DialogDescription>
-            {cover
+            {description ?? (cover
               ? "Elegí qué parte de la foto se verá en las tarjetas. Arrastrá para moverla o usá dos dedos para acercar."
-              : "Elegí qué parte de la foto se verá en la ficha del producto. Arrastrá para moverla o usá dos dedos para acercar."}
+              : "Elegí qué parte de la foto se verá en la ficha del producto. Arrastrá para moverla o usá dos dedos para acercar.")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 overflow-hidden bg-secondary/30 p-3 sm:gap-4 sm:p-5">
@@ -343,6 +351,7 @@ export function ProductImageEditor({
           <button
             type="button"
             onClick={onClose}
+            disabled={applying}
             className="min-h-11 flex-1 rounded-xl border px-5 text-sm font-medium hover:bg-secondary sm:flex-none"
           >
             Cancelar
@@ -350,10 +359,10 @@ export function ProductImageEditor({
           <button
             type="button"
             onClick={apply}
-            disabled={!image}
+            disabled={!image || applying}
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:flex-none"
           >
-            Confirmar encuadre
+            {applying ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando foto…</> : "Confirmar encuadre"}
           </button>
         </div>
       </DialogContent>

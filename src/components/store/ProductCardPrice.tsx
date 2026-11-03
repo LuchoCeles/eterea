@@ -1,8 +1,8 @@
 import { formatPrice, type Product } from "@/lib/products";
 import { hasRealDiscount } from "@/lib/storefront-rules";
 
-export function ProductCardPrice({ product }: { product: Product }) {
-  const discounted = hasRealDiscount(product);
+export function ProductCardPrice({ product, offersEnabled = true }: { product: Product; offersEnabled?: boolean }) {
+  const discounted = offersEnabled && hasRealDiscount(product);
   const discount = discounted ? Math.round((1 - product.price / (product.oldPrice ?? product.price)) * 100) : 0;
   const paymentPrices = product.paymentPrices ?? [];
   const cheapestPayment = paymentPrices.length >= 2

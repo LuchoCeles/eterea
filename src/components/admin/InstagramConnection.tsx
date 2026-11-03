@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { disconnectInstagramAction, instagramStatusAction, saveInstagramAction, validateInstagramAction } from "@/app/actions/instagram";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,33 +21,24 @@ import { CollapsibleCard } from "@/components/admin/AdminEditorFields";
 type ConnectionStatus = "loading" | "saved" | "missing" | "error";
 type VerifiedAccount = { username: string; accountId: string; sampleCount: number };
 
-export function InstagramConnection() {
-  const [status, setStatus] = useState<ConnectionStatus>("loading");
+export function InstagramConnection({ initial }: { initial: { saved: boolean; username: string | null; error?: boolean } }) {
+  const [status, setStatus] = useState<ConnectionStatus>(initial.error ? "error" : initial.saved ? "saved" : "missing");
   const [token, setToken] = useState("");
   const [accountId, setAccountId] = useState("");
   const [saving, setSaving] = useState(false);
-  const [username, setUsername] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(initial.username);
   const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
-  const [retry, setRetry] = useState(0);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/admin/instagram", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudo consultar la conexión.");
-        return response.json() as Promise<{ saved: boolean; username: string | null }>;
-      })
-      .then((result) => {
-        setUsername(result.username);
-        setStatus(result.saved ? "saved" : "missing");
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setStatus("error");
-        }
-      });
-    return () => controller.abort();
-  }, [retry]);
+  async function retryStatus() {
+    setStatus("loading");
+    const result = await instagramStatusAction().catch(() => ({ error: "No se pudo consultar la conexión." }));
+    if ("error" in result) {
+      setStatus("error");
+      return;
+    }
+    setUsername(result.data.username);
+    setStatus(result.data.saved ? "saved" : "missing");
+  }
 
   async function validate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,14 +46,9 @@ export function InstagramConnection() {
     setVerifiedAccount(null);
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/instagram", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token.trim(), accountId: accountId.trim() }),
-      });
-      const result = (await response.json()) as { valid?: boolean; username?: string; accountId?: string; sampleCount?: number; error?: string };
-      if (!response.ok || !result.valid || !result.username || !result.accountId) throw new Error(result.error || "No se pudo validar la cuenta.");
-      setVerifiedAccount({ username: result.username, accountId: result.accountId, sampleCount: result.sampleCount ?? 0 });
+      const result = await validateInstagramAction({ token: token.trim(), accountId: accountId.trim() });
+      if ("error" in result) throw new Error(result.error);
+      setVerifiedAccount(result.data);
       toast.success("La cuenta respondió correctamente. Revisá el usuario antes de confirmar.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo validar la cuenta.");
@@ -74,17 +61,12 @@ export function InstagramConnection() {
     if (!verifiedAccount || !token.trim()) return;
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/instagram", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token.trim(), accountId: verifiedAccount.accountId, confirmUsername: verifiedAccount.username }),
-      });
-      const result = (await response.json()) as { saved?: boolean; username?: string; accountId?: string; error?: string };
-      if (!response.ok || !result.saved) throw new Error(result.error || "No se pudo guardar la conexión.");
+      const result = await saveInstagramAction({ token: token.trim(), accountId: verifiedAccount.accountId, confirmUsername: verifiedAccount.username });
+      if ("error" in result) throw new Error(result.error);
       setToken("");
       setVerifiedAccount(null);
       setStatus("saved");
-      setUsername(result.username ?? null);
+      setUsername(result.data.username);
       setAccountId("");
       toast.success("Conexión guardada. El Home podrá mostrar las últimas publicaciones de la cuenta.");
     } catch (error) {
@@ -97,9 +79,8 @@ export function InstagramConnection() {
   async function disconnect() {
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/instagram", { method: "DELETE" });
-      const result = (await response.json()) as { saved?: boolean; error?: string };
-      if (!response.ok || result.saved !== false) throw new Error(result.error || "No se pudo desvincular la cuenta.");
+      const result = await disconnectInstagramAction();
+      if ("error" in result) throw new Error(result.error);
       setToken("");
       setAccountId("");
       setVerifiedAccount(null);
@@ -125,10 +106,7 @@ export function InstagramConnection() {
           {status === "missing" && "Todavía no hay una cuenta conectada."}
           {status === "error" && "No se pudo consultar el estado de la conexión."}
         </p>
-        {status === "error" && <Button type="button" variant="outline" onClick={() => {
-          setStatus("loading");
-          setRetry((current) => current + 1);
-        }}>
+        {status === "error" && <Button type="button" variant="outline" onClick={() => void retryStatus()}>
           Reintentar consulta
         </Button>}
         {status === "saved" && <AlertDialog>

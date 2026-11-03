@@ -1,0 +1,11 @@
+ALTER TABLE `HeroSlide`
+  ADD COLUMN `desktopZoom` DOUBLE NULL,
+  ADD COLUMN `desktopX` DOUBLE NULL,
+  ADD COLUMN `desktopY` DOUBLE NULL,
+  ADD COLUMN `desktopWidth` INTEGER NULL,
+  ADD COLUMN `desktopHeight` INTEGER NULL,
+  ADD COLUMN `mobileZoom` DOUBLE NULL,
+  ADD COLUMN `mobileX` DOUBLE NULL,
+  ADD COLUMN `mobileY` DOUBLE NULL,
+  ADD COLUMN `mobileWidth` INTEGER NULL,
+  ADD COLUMN `mobileHeight` INTEGER NULL;

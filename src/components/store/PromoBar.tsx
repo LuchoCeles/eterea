@@ -1,15 +1,13 @@
 "use client";
 
 import { Waves } from "lucide-react";
-import { defaults } from "@/lib/content";
 import { useContent } from "@/components/providers/ContentProvider";
 import { visibleAnnouncements } from "@/lib/storefront-rules";
 
 export function PromoBar() {
   const saved = useContent("promo");
   const { offers } = useContent("texts");
-  const filtered = visibleAnnouncements(saved, offers.enabled);
-  const messages = filtered.length ? filtered : visibleAnnouncements(defaults.promo, offers.enabled);
+  const messages = visibleAnnouncements(saved, offers.enabled);
   const copies = messages.length ? Math.max(2, Math.ceil(12 / messages.length)) : 0;
   const tickerMessages = Array.from({ length: copies }, () => messages).flat();
   const duration = Math.ceil(Math.max(60, tickerMessages.length * 7) * (4 / 3));

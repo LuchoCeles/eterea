@@ -6,7 +6,9 @@ import { HomeSectionVisibility } from "@/components/admin/HomeSectionVisibility"
 import { AdminHomeCategoriesEditor } from "@/components/admin/AdminHomeCategoriesEditor";
 import { SharedImageField } from "@/components/admin/SharedImageField";
 import { CollapsibleCard, Field } from "@/components/admin/AdminEditorFields";
+import { Switch } from "@/components/ui/switch";
 import type { TextSectionKey, Texts } from "@/lib/content";
+import { SPLIT_BANNER_IMAGE_RATIO } from "@/lib/image-presentation";
 
 function SectionSaveButton({ section, label, value }: { section: TextSectionKey; label: string; value: Texts[TextSectionKey] }) {
   const { textDrafts, saveText } = useAdminSave();
@@ -32,6 +34,7 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
   const get = <K extends TextSectionKey>(key: K) => (textDrafts[key]?.data ?? savedValue[key]) as Texts[K];
   const value: Texts = {
     ...savedValue,
+    offers: get("offers"),
     homeSections: get("homeSections"), homeCategoryCards: get("homeCategoryCards"),
     split: get("split"), club: get("club"),
   };
@@ -53,6 +56,41 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
         />
       </CollapsibleCard>
       <CollapsibleCard
+        title="Ofertas"
+        summary={value.offers.enabled ? "Ofertas activadas" : "Ofertas desactivadas"}
+        right={<SectionSaveButton section="offers" label="Ofertas" value={savedValue.offers} />}
+      >
+        <p className="mb-4 text-sm text-muted-foreground">
+          Al desactivarlas, se ocultan los mensajes promocionales y los descuentos de la tienda.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Activar ofertas</span>
+            <Switch
+              checked={value.offers.enabled}
+              onCheckedChange={(enabled) => set("offers", { ...value.offers, enabled })}
+              aria-label="Activar ofertas"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Mostrar banner de oferta</span>
+            <Switch
+              checked={value.offers.showSplit}
+              onCheckedChange={(showSplit) => set("offers", { ...value.offers, showSplit })}
+              aria-label="Mostrar banner de oferta"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 rounded-xl border bg-secondary/30 p-4 text-sm">
+            <span>Banner del club</span>
+            <Switch
+              checked={value.offers.showClub}
+              onCheckedChange={(showClub) => set("offers", { ...value.offers, showClub })}
+              aria-label="Mostrar banner del club"
+            />
+          </label>
+        </div>
+      </CollapsibleCard>
+      <CollapsibleCard
         title="Categorías destacadas del inicio"
         summary={`${value.homeCategoryCards.filter((card) => !card.hidden).length} destacadas de ${value.homeCategoryCards.length} disponibles`}
         right={<SectionSaveButton section="homeCategoryCards" label="Categorías destacadas del inicio" value={savedValue.homeCategoryCards} />}
@@ -68,10 +106,14 @@ export function TextsEditor({ value: savedValue }: { value: Texts }) {
           <SharedImageField
             label="Foto"
             image={value.split.img}
+            imageSettings={value.split.imageSettings}
             productId={value.split.productId}
             section="ofertas"
+            cropRatio={SPLIT_BANNER_IMAGE_RATIO}
+            editorTitle="Ajustar imagen del banner de oferta"
+            editorDescription="Arrastrá la foto para elegir qué parte se ve en el banner. El encuadre sigue la proporción de la tarjeta de oferta."
             onUploaded={(url) => uploadedText("split", savedValue.split, [url])}
-            onChange={({ image, productId }) => set("split", { ...value.split, img: image, productId })}
+            onChange={(next) => set("split", { ...value.split, img: next.image, productId: next.productId, imageSettings: next.imageSettings })}
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field

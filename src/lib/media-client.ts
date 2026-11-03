@@ -1,6 +1,6 @@
 import type { ImageSection } from "@/lib/media";
 
-async function removeUncommittedImages(urls: string[]) {
+export async function removeUncommittedImages(urls: string[]) {
   if (!urls.length) return;
   await fetch("/api/media", {
     method: "DELETE",
@@ -13,7 +13,14 @@ export async function uploadImage(file: File, section: ImageSection): Promise<st
   const body = new FormData();
   body.set("file", file);
   body.set("section", section);
-  const response = await fetch("/api/media", { method: "POST", body });
+  let response: Response;
+  try {
+    response = await fetch("/api/media", { method: "POST", body });
+  } catch {
+    throw new Error(
+      `No se pudo conectar con el servidor al subir “${file.name}”. Revisá la conexión e intentá de nuevo.`,
+    );
+  }
   const result = (await response.json().catch(() => null)) as { url?: string; error?: string } | null;
   if (!response.ok || !result?.url) throw new Error(result?.error ?? "No se pudo subir la imagen.");
   return result.url;
@@ -21,26 +28,13 @@ export async function uploadImage(file: File, section: ImageSection): Promise<st
 
 export async function uploadImages(files: File[], section: ImageSection): Promise<string[]> {
   const urls: string[] = [];
-  let nextIndex = 0;
-  let firstError: Error | null = null;
-
-  async function worker() {
-    while (!firstError) {
-      const index = nextIndex++;
-      const file = files[index];
-      if (!file) return;
-      try {
-        urls[index] = await uploadImage(file, section);
-      } catch (error) {
-        firstError = error instanceof Error ? error : new Error("No se pudieron subir las fotos.");
-      }
+  for (const file of files) {
+    try {
+      urls.push(await uploadImage(file, section));
+    } catch (error) {
+      await removeUncommittedImages(urls).catch(() => undefined);
+      throw error instanceof Error ? error : new Error("No se pudieron subir las fotos.");
     }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(2, files.length) }, worker));
-  if (firstError) {
-    await removeUncommittedImages(urls.filter(Boolean));
-    throw firstError;
   }
   return urls;
 }

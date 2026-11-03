@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { planCloudinaryDeletions, reconcileCloudinaryQueue } from "@/lib/cloudinary-media";
-import { catalogCategories, defaults, productsWithCategoryNames, resolveContent, type ContentKey, type ContentSnapshot, type HomeCategoryCard, type StoreProduct, type TextSectionKey } from "@/lib/content";
+import { catalogCategories, defaults, productsWithCategoryNames, resolveContent, type ContentKey, type ContentSnapshot, type HomeCategoryCard, type Slide, type StoreProduct, type TextSectionKey } from "@/lib/content";
 import { contentSchemas, textSectionSchemas } from "@/lib/content-schema";
 import { referencedProductIds } from "@/lib/image-source";
 import { needsCoverConfirmation } from "@/lib/image-presentation";
@@ -11,7 +11,7 @@ import { deleteCloudinaryImage, deleteCloudinaryPublicId } from "@/server/cloudi
 import { saveHomeCategoryCardRows } from "@/server/home-category-cards";
 import { queueChangedImages } from "@/server/image-cleanup";
 import { prisma } from "@/server/prisma";
-import { loadRelationalContentWithSections, saveRelationalContent, saveRelationalTextSection } from "@/server/relational-content";
+import { loadRelationalContentWithSections, saveRelationalContent, saveRelationalTextSection, updateRelationalHeroSlide } from "@/server/relational-content";
 
 type Db = Prisma.TransactionClient;
 const PENDING_UPLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -250,8 +250,41 @@ export async function saveContentAndCleanImages(key: ContentKey, value: unknown,
         previousImageUrls = (await db.heroSlide.findMany({ select: { img: true } })).map((row) => row.img);
       }
       await saveRelationalContent(db, key, next);
+      if (key === "hero") next = (await loadRelationalContentWithSections(db)).content.hero;
     }
     const cleanupPending = await queueChangedImages(db, changedImageUrls(previousImageUrls, contentImageUrls(key, next), uploadedUrls));
+    return { data: next, cleanupPending };
+  }, { timeout: 120_000 });
+}
+
+export async function saveSingleHeroSlide(index: number, value: unknown, uploadedUrls: string[] = []) {
+  if (!Number.isInteger(index) || index < 0 || index >= 30) {
+    throw new ContentValidationError("El banner elegido no es válido.");
+  }
+  const parsed = contentSchemas.hero.safeParse([value]);
+  if (!parsed.success) throw new ContentValidationError("El formato del banner no es válido.");
+  const slide = (parsed.data as Slide[])[0];
+  return prisma.$transaction(async (db) => {
+    if (slide.productId) {
+      const product = await db.product.findUnique({ where: { id: slide.productId }, select: { id: true } });
+      if (!product) throw new ContentValidationError("La foto seleccionada pertenece a un producto que ya no existe.");
+    }
+    const saved = await db.contentSection.findUnique({ where: { key: "hero" }, select: { key: true } });
+    let previousImage = defaults.hero[index]?.img;
+    if (!saved) {
+      if (index >= defaults.hero.length) throw new ContentValidationError("Guardá primero la lista de banners.");
+      const slides = defaults.hero.map((item, position) => position === index ? slide : item);
+      await saveRelationalContent(db, "hero", slides);
+    } else {
+      const previous = await updateRelationalHeroSlide(db, index, slide);
+      if (previous === null) {
+        throw new ContentValidationError("La lista de banners cambió. Actualizá la página antes de guardar.");
+      }
+      previousImage = previous;
+    }
+    const next = (await loadRelationalContentWithSections(db)).content.hero;
+    const cleanupPending = await queueChangedImages(db,
+      changedImageUrls(previousImage ? [previousImage] : [], [slide.img], uploadedUrls));
     return { data: next, cleanupPending };
   }, { timeout: 120_000 });
 }

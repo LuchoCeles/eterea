@@ -19,6 +19,14 @@ npm run dev
 
 Abrí `http://localhost:3000`. Ingresá a `/auth` con usuario y contraseña para administrar promociones, banners, productos, textos e Instagram. El panel no ofrece registro público.
 
+## Arquitectura de datos
+
+Las páginas y los layouts del App Router leen el contenido desde `src/server/` y lo entregan con Server Components. La portada renderiza sus secciones estáticas en el servidor; los carruseles, el carrito, los filtros y los formularios conservan componentes cliente porque necesitan interacción.
+
+Las escrituras del panel, el inicio de sesión y los cambios de cuenta usan Server Actions en `src/app/actions/`. Cada acción valida la entrada y vuelve a comprobar el rol en el servidor. Las reglas y valores por defecto viven en `src/lib/`, y el acceso a Prisma y a secretos permanece en `src/server/`. Los Route Handlers de `src/app/api/` se reservan para la subida y entrega de imágenes binarias y la cotización de Correo Argentino, que requiere una solicitud cancelable desde el navegador. El contenido público mantiene su caché de cinco minutos y se invalida después de cada guardado.
+
+El inicio de sesión y la cotización pública comparten límites de solicitudes persistidos en `RateLimitBucket`. La migración `prisma/migrations/20261102020000_rate_limit_buckets/migration.sql` crea esa tabla sin modificar usuarios ni contenido. Aplicala antes de ejecutar esta versión: sin la tabla, el acceso y el cotizador responden con un error. Revisá el SQL y obtené autorización explícita antes de aplicarlo en TiDB compartido.
+
 En una base vacía, después de aplicar las migraciones configurá temporalmente `BOOTSTRAP_OWNER_USERNAME` y `BOOTSTRAP_OWNER_PASSWORD` (12 caracteres como mínimo) en tu entorno privado. También podés definir `BOOTSTRAP_OWNER_NAME`, que se muestra en la barra superior; si lo omitís, se usa el usuario como nombre inicial. Ejecutá `npm run db:bootstrap-owner` una sola vez. El comando crea la primera cuenta con los roles `admin` y `owner`; rechaza bases que ya tengan usuarios. Retirá esas variables al terminar.
 
 ## Categorías y productos
@@ -28,6 +36,16 @@ Creá las categorías en **Catálogo → Categorías** y asignalas a los product
 Las categorías, los productos, sus precios por medio de pago y las tarjetas destacadas del inicio se guardan en las tablas `Category`, `Product`, `ProductPaymentPrice` y `HomeCategoryCard`. Cada producto puede tener descripción, talles, colores y hasta cinco fotos ordenadas en `ProductImage`, `ProductSize` y `ProductColor`. La primera foto es la portada del catálogo y de la ficha `/productos/<nombre-normalizado>`; el administrador puede elegirla y reordenar las demás. Si dos nombres generan la misma URL, se añade un sufijo corto derivado del ID. Los enlaces anteriores por ID redirigen a la URL nueva. El administrador elige qué tarjetas destacar en **Inicio → Diseño del inicio**; las anteriores quedan ocultas hasta que se elijan. Los productos anteriores conservan su orden y quedan sin fecha cuando no se conoce su alta real.
 
 Para una base existente, seguí la secuencia de **Migración relacional** más abajo. Los importadores no modifican usuarios ni roles.
+
+## Envíos por Correo Argentino
+
+La ficha de cada prenda y el carrito permiten cotizar un envío a domicilio mediante la API oficial de MiCorreo. El carrito vuelve a cotizar cuando cambia el código postal o la cantidad de prendas; el total estimado y el mensaje de WhatsApp incluyen el costo obtenido. Sin una cotización vigente, el mensaje indica que el envío queda a cotizar y no lo suma al total de prendas.
+
+Para activar el cotizador, solicitá a Correo Argentino las credenciales de API y el ID de cliente de MiCorreo. En **Administración → Envíos** (`/admin/envios`) cargá esos datos, el CP desde el que despachás y las medidas estimadas de un paquete. La contraseña se guarda cifrada con `AUTH_SECRET` y no se devuelve al navegador después de guardarla; si cambiás ese secreto, volvé a cargar la contraseña. Mientras las prendas no tengan medidas individuales, configurá un peso y una altura estimados por prenda, más el peso, alto, ancho y largo del embalaje; la cotización usa un solo paquete y suma esos valores según las unidades del carrito. Revisá las medidas reales antes de cobrar el envío. La app no crea ni paga etiquetas de Correo Argentino.
+
+En la misma página podés definir un monto mínimo de prendas para ofrecer envío gratis. El mínimo se compara con el total según el medio de pago elegido, después de sus descuentos y antes del envío. Se confirma como gratis cuando Correo Argentino cotiza la entrega a ese código postal. Si dejás el monto vacío, la promoción queda desactivada. Como las demás promociones, solo se aplica cuando el interruptor de ofertas está activado.
+
+`prisma/migrations/20261031000000_shipping_settings/migration.sql` crea la tabla tipada `ShippingSettings` sin cambiar productos ni pedidos. Revisá y autorizá esa migración antes de aplicarla en TiDB compartido. La página de Envíos muestra los requisitos, pero no permite guardar hasta que exista la tabla.
 
 ## Migración relacional
 
@@ -72,7 +90,7 @@ Para los pasos completos, errores y referencias oficiales, consultá [docs/INSTA
 
 ## Imágenes
 
-Las imágenes nuevas se suben a Cloudinary dentro de `eterea/<sección>/imagenes` y el contenido guarda su URL segura. La carga conserva el archivo original, sin transformaciones ni compresión agregada por la aplicación. Se admiten fotos de hasta 50 MB cada una y tandas de hasta 20 fotos. Next.js también queda configurado para aceptar respuestas de origen de hasta 50.000.000 bytes al optimizar imágenes.
+Las imágenes nuevas se suben a Cloudinary dentro de `eterea/<sección>/imagenes` y el contenido guarda su URL segura. La carga conserva el archivo original, sin transformaciones ni compresión agregada por la aplicación. El servidor comprueba el tamaño y la firma binaria del formato. Se admiten fotos de hasta 50 MB cada una y tandas de hasta 20 fotos.
 
 Cada carga usa un UUID propio, con sobrescritura desactivada, y reserva su identificador en `CloudinaryPendingUpload` antes de enviarse. Al guardar cambios o eliminar un producto, las fotos que ya no estén referenciadas quedan en `CloudinaryCleanup` dentro de la misma transacción; los borrados fallidos se reintentan en la siguiente actividad. Las cargas abandonadas se revisan después de siete días, al ocurrir una nueva carga o guardado. Para eliminar un producto vinculado a banners o destacados, primero hay que desvincularlo; las referencias de publicaciones de Instagram heredadas se sueltan automáticamente. La tabla `Media` se conserva para poder mostrar imágenes antiguas; las subidas nuevas ya no guardan bytes en la base.
 

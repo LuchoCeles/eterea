@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowUpRight } from "lucide-react";
-import { AboutScene } from "@/components/store/AboutScene";
+import { ArrowUpRight } from "lucide-react";
 import { StoreFooter } from "@/components/store/StoreFooter";
-import styles from "./about.module.css";
 
 const title = "Quiénes somos | Etérea New Concept";
-const description = "Etérea nació en Santa Clara del Mar. Conocé nuestra forma de sentir la moda, la naturaleza y las prendas que acompañan cada etapa.";
+const description = "Conocé por qué nació Etérea New Concept en Santa Clara del Mar y cómo elegimos las prendas que nos representan.";
 
 export const metadata: Metadata = {
   title,
@@ -17,48 +16,53 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <main className="overflow-hidden bg-background">
-        <section className="mx-auto flex max-w-[1080px] flex-col items-center px-5 pb-14 pt-20 text-center sm:px-8 sm:pb-20 sm:pt-28 lg:pt-32" aria-labelledby="about-title">
-          <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-accent sm:text-xs">Etérea New Concept · Santa Clara del Mar</p>
-          <h1 id="about-title" className="mt-8 max-w-[950px] font-display text-[clamp(3.25rem,8vw,7.25rem)] font-normal leading-[0.98] tracking-[-0.065em]">
-            Vestir también es <br className="hidden sm:block" />una forma de <em className="font-serif font-normal text-accent">ser.</em>
-          </h1>
-          <p className="mt-8 max-w-[560px] text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
-            Nacimos cerca del mar para elegir prendas que se sientan propias. Ropa simple, diferente y libre para acompañarte en cada etapa.
-          </p>
-          <Link href="#nuestra-historia" className="group mt-10 inline-flex min-h-11 items-center gap-2 border-b border-foreground/40 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
-            Conocé nuestra historia <ArrowDown aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-y-1" />
-          </Link>
-        </section>
+      <main className="flex-1 bg-background">
+        <article className="mx-auto grid max-w-[1440px] gap-12 px-5 pb-24 pt-10 sm:px-8 sm:pb-28 sm:pt-16 lg:grid-cols-2 lg:gap-16 lg:px-12 lg:pb-32 lg:pt-20 xl:gap-24 xl:px-16" aria-labelledby="about-title">
+          <figure className="relative aspect-[4/5] w-full overflow-hidden bg-[#e8d8c6] lg:aspect-auto lg:min-h-[760px]">
+            <Image
+              src="/assets/quienes-somos.webp"
+              alt="Mujer con vestido claro entre margaritas y pastos altos"
+              fill
+              priority
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
+            />
+          </figure>
 
-        <div className="relative overflow-hidden bg-sea/45" aria-hidden="true">
-          <div className={styles.scene}>
-            <AboutScene />
-          </div>
-        </div>
+          <div className="lg:pt-8">
+            <header>
+              <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accent sm:text-xs">Etérea New Concept</p>
+              <h1 id="about-title" className="mt-7 font-display text-[clamp(3.25rem,6vw,5.75rem)] font-normal leading-[1.02] tracking-[-0.06em]">
+                ¿Por qué <em className="font-serif font-normal not-italic text-accent">Etérea?</em>
+              </h1>
+            </header>
 
-        <section id="nuestra-historia" className="scroll-mt-24 px-5 py-20 sm:px-8 sm:py-28 lg:py-32" aria-labelledby="story-title">
-          <div className="mx-auto grid max-w-[1160px] gap-10 border-t border-foreground/20 pt-9 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-24 lg:pt-12">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-accent">01 / Nuestra historia</p>
-              <h2 id="story-title" className="mt-8 max-w-[510px] font-display text-[clamp(2.7rem,5vw,4.75rem)] font-normal leading-[1.05] tracking-[-0.05em]">
-                De la costa, <em className="font-serif font-normal text-accent">a tu manera.</em>
-              </h2>
+            <div className="mt-10 border-t border-foreground/20 pt-8 text-[15px] leading-8 text-muted-foreground sm:mt-12 sm:pt-10 sm:text-lg sm:leading-9">
+              <p className="text-foreground">
+                Etéreo es aquello inmaterial, sublime, ligero y sutil. Algo tan delicado que parece casi intangible, como si no perteneciera a este mundo.
+              </p>
+              <p className="mt-8">
+                Nacimos en Santa Clara del Mar, un pequeño pueblo costero de la provincia de Buenos Aires, donde crecimos respirando mar, rodeadas de naturaleza e inspiradas por sus formas y sus ciclos.
+              </p>
+              <p className="mt-8">
+                De esta esencia nace Etérea New Concept, un espacio que refleja nuestra manera de ver la belleza, de expresarnos y de reinventarnos a través de cada etapa.
+              </p>
+              <p className="mt-8">
+                Seleccionamos prendas que nos representan, combinando lo simple con lo diferente.
+              </p>
+              <p className="mt-8 font-serif text-[clamp(1.6rem,3vw,2.25rem)] font-normal not-italic leading-snug tracking-[-0.035em] text-primary">
+                Porque creemos que todo cambia, todo se transforma y todo fluye.
+              </p>
+              <p className="mt-10 font-medium text-foreground">Bienvenidas a nuestro nuevo concepto.</p>
             </div>
-            <div className="max-w-[570px] space-y-6 text-sm leading-8 text-muted-foreground sm:text-base sm:leading-9 lg:pt-12">
-              <p>Etéreo es aquello ligero y sutil, casi intangible. Esa sensación nos acompaña desde Santa Clara del Mar, donde crecimos entre la naturaleza, sus formas y sus ciclos.</p>
-              <p>Así nació Etérea: un espacio para expresarnos y reinventarnos. Seleccionamos prendas que combinan lo simple con lo diferente, porque creemos que todo cambia, se transforma y fluye.</p>
-              <p className="font-medium text-foreground">Queremos que encuentres algo que se sienta tan tuyo como tu propia forma de ser.</p>
+
+            <div className="mt-12 sm:mt-16">
+              <Link href="/productos" className="group inline-flex min-h-11 items-center gap-2 border-b border-foreground/50 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                Descubrí las prendas <ArrowUpRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </Link>
             </div>
           </div>
-        </section>
-
-        <section className="border-t border-foreground/10 bg-pearl px-5 py-16 text-center sm:px-8 sm:py-20" aria-label="Explorá Etérea">
-          <p className="font-serif text-[clamp(1.75rem,3vw,2.6rem)] italic leading-tight text-primary">Lo simple. Lo diferente. Lo tuyo.</p>
-          <Link href="/productos" className="group mt-7 inline-flex min-h-11 items-center gap-2 border-b border-foreground/50 text-[11px] font-medium uppercase tracking-[0.15em] transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
-            Descubrí las prendas <ArrowUpRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </Link>
-        </section>
+        </article>
       </main>
       <StoreFooter />
     </>

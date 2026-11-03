@@ -1,11 +1,17 @@
 import { categoryIdForName, sortProductsByCreation, type Product } from "@/lib/products";
 import type { Offers } from "@/lib/storefront-rules";
+import type { CropSettings } from "@/lib/image-presentation";
 
 export type ImageSource = { img: string; productId?: string };
-export type Slide = ImageSource & { kicker: string; title: string; cta: string; promo: string; align: "left" | "right" };
+export type Slide = ImageSource & {
+  id?: number;
+  kicker: string; title: string; cta: string; promo: string; align: "left" | "right";
+  desktopSettings?: CropSettings | null;
+  mobileSettings?: CropSettings | null;
+};
 export type StoreProduct = Product & { section: "nuevo" | "sale" | null; hidden?: boolean };
 export type StoreCategory = { id: string; name: string; hidden?: boolean };
-export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean };
+export type HomeCategoryCard = { id: string; categoryId: string; img: string; productId?: string; hidden?: boolean; imageSettings?: CropSettings | null };
 export type InstagramPost = { id: string; url: string; image: string; productId?: string; title: string; kind: "post" | "reel" };
 export type ContactSettings = { whatsapp: string; instagramUsername: string };
 export type HomeSections = {
@@ -27,12 +33,12 @@ export type Texts = {
   benefits: { t: string; d: string }[];
   categories: StoreCategory[];
   homeCategoryCards: HomeCategoryCard[];
-  split: ImageSource & { kicker: string; big: string; sub: string; cta: string };
+  split: ImageSource & { kicker: string; big: string; sub: string; cta: string; imageSettings?: CropSettings | null };
   club: { kicker: string; big: string; text: string; code: string; cta: string };
   marquee: string[];
-  editorial: ImageSource & { kicker: string; title: string; text: string; cta: string };
+  editorial: ImageSource & { kicker: string; title: string; text: string; cta: string; imageSettings?: CropSettings | null };
 };
-export type TextSectionKey = "homeSections" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
+export type TextSectionKey = "homeSections" | "offers" | "homeCategoryCards" | "benefits" | "split" | "club" | "marquee" | "editorial";
 
 const placeholder = "/assets/eterea-placeholder.svg";
 
