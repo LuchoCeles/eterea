@@ -34,7 +34,7 @@ export default function NotFound() {
             Error 404 · Un pequeño desvío
           </div>
           <h1 className="mt-5 font-display text-[clamp(2.65rem,13vw,3.4rem)] font-normal leading-[0.98] tracking-[-0.035em] sm:mt-7 sm:text-[clamp(4rem,8vw,6.5rem)] lg:mt-3 lg:text-[clamp(2.25rem,9svh,6.2rem)] lg:leading-[0.95]">
-            Esta página<br />{" "}se fue con<br />{" "}<em className="font-normal text-accent">la marea.</em>
+            Esta página<br />{" "}se fue con<br />{" "}<em className="font-normal not-italic text-accent">la marea.</em>
           </h1>
           <p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground sm:mt-8 sm:text-base sm:leading-8 lg:mt-3 lg:leading-7">
             Parece que llegaste a una orilla que todavía no existe. Volvé al inicio o seguí explorando las prendas de Etérea.

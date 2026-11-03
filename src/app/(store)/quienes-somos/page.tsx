@@ -33,7 +33,7 @@ export default function AboutPage() {
             <header>
               <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-accent sm:text-xs">Etérea New Concept</p>
               <h1 id="about-title" className="mt-7 font-display text-[clamp(3.25rem,6vw,5.75rem)] font-normal leading-[1.02] tracking-[-0.06em]">
-                ¿Por qué <em className="font-serif font-normal text-accent">Etérea?</em>
+                ¿Por qué <em className="font-serif font-normal not-italic text-accent">Etérea?</em>
               </h1>
             </header>
 
@@ -50,7 +50,7 @@ export default function AboutPage() {
               <p className="mt-8">
                 Seleccionamos prendas que nos representan, combinando lo simple con lo diferente.
               </p>
-              <p className="mt-8 font-sans text-[clamp(1.6rem,3vw,2.25rem)] font-medium italic leading-snug tracking-[-0.035em] text-primary">
+              <p className="mt-8 font-serif text-[clamp(1.6rem,3vw,2.25rem)] font-normal not-italic leading-snug tracking-[-0.035em] text-primary">
                 Porque creemos que todo cambia, todo se transforma y todo fluye.
               </p>
               <p className="mt-10 font-medium text-foreground">Bienvenidas a nuestro nuevo concepto.</p>
