@@ -139,6 +139,8 @@ describe("Header del Home", () => {
       onRemove: () => undefined, homeSections: defaults.texts.homeSections, isAdmin: false,
     }));
     assert.ok(html.includes('src="/assets/eterea-header-logo.svg"'));
+    assert.ok(html.includes('srcSet="/assets/eterea-mobile-logo.svg"'));
+    assert.ok(html.includes('media="(max-width: 767px)"'));
     assert.ok(html.includes('aria-label="Etérea inicio"'));
     assert.ok(html.includes("Ver prendas"));
     assert.ok(html.includes("Abrir menú"));

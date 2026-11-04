@@ -22,7 +22,7 @@ export default async function StoreLayout({ children }: { children: ReactNode })
     <ShippingPolicyProvider configured={shippingPolicy.configured} threshold={activeThreshold}>
       <ContentProvider initialContent={storefrontContent}>
         <StorefrontTabTitle />
-        <div className="flex min-h-svh flex-col">
+        <div className="flex min-h-svh min-w-0 flex-col overflow-x-clip [&>*]:min-w-0">
           <SiteHeader isAdmin={isAdmin} />
           {children}
         </div>
