@@ -2,18 +2,20 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ChevronDown, Truck } from "lucide-react";
+import { ChevronDown, Trash2, Truck } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ShippingDeliveryOptions } from "@/components/store/ShippingDeliveryOptions";
+import type { CartShippingSelection } from "@/lib/cart-checkout";
 import { formatPrice } from "@/lib/products";
 import { validPostalCode, type ShippingDeliveryType, type ShippingQuote } from "@/lib/shipping";
 
-export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliveryType, onDeliveryTypeChange,
+export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliveryType, noShipping, onDeliveryTypeChange,
   editing, onEditing, results, freeShipping, loading, retry }: {
   postalCode: string;
   onPostalCodeChange: (value: string) => void;
   deliveryType: ShippingDeliveryType | null;
-  onDeliveryTypeChange: (deliveryType: ShippingDeliveryType) => void;
+  noShipping: boolean;
+  onDeliveryTypeChange: (deliveryType: CartShippingSelection) => void;
   editing: boolean;
   onEditing: (editing: boolean) => void;
   results: Record<ShippingDeliveryType, { loading: boolean; quote?: ShippingQuote; error?: string }>;
@@ -23,9 +25,9 @@ export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliver
 }) {
   const [draft, setDraft] = useState(postalCode);
   const [validationError, setValidationError] = useState("");
-  const [open, setOpen] = useState(!deliveryType);
+  const [open, setOpen] = useState(!deliveryType && !noShipping);
   useEffect(() => setDraft(postalCode), [postalCode]);
-  useEffect(() => { if (!deliveryType) setOpen(true); }, [deliveryType]);
+  useEffect(() => { if (!deliveryType && !noShipping) setOpen(true); }, [deliveryType, noShipping]);
 
   function calculate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,18 +48,26 @@ export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliver
     : selectedResult?.quote ? freeShipping ? "Gratis" : formatPrice(selectedResult.quote.price)
       : "Actualizá el precio";
   const summary = editing ? "Confirmá el código postal para actualizar el envío"
-    : deliveryType ? `${deliveryType === "D" ? "A domicilio" : "Por sucursal"} · CP ${postalCode} · ${selectedPrice}`
+    : noShipping ? "Sin envío · Solo prendas"
+      : deliveryType ? `${deliveryType === "D" ? "A domicilio" : "Por sucursal"} · CP ${postalCode} · ${selectedPrice}`
       : validPostalCode(postalCode) ? `CP ${postalCode} · Elegí una opción` : "Calculá el envío a tu código postal";
 
   return <Collapsible open={open} onOpenChange={setOpen} className="border border-border">
-    <CollapsibleTrigger className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-      <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">Opciones de envío</span>
-        <span className="block text-xs text-muted-foreground">{summary}</span>
-      </span>
-      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-    </CollapsibleTrigger>
+    <div className="flex items-stretch">
+      <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">Opciones de envío</span>
+          <span className="block text-xs text-muted-foreground">{summary}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+      </CollapsibleTrigger>
+      {deliveryType && <button type="button" aria-label="Quitar envío" title="Quitar envío"
+        onClick={() => { onDeliveryTypeChange("none"); setOpen(false); }}
+        className="grid w-11 shrink-0 place-items-center border-l text-accent hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Trash2 className="h-4 w-4" aria-hidden="true" />
+      </button>}
+    </div>
     <CollapsibleContent className="border-t px-3 pb-3">
       <form onSubmit={calculate} className="mt-3 flex">
         <input aria-label="Código postal del envío" inputMode="numeric" autoComplete="off" maxLength={4}
@@ -75,6 +85,11 @@ export function CartShippingCalculator({ postalCode, onPostalCodeChange, deliver
           results={results} freeShipping={freeShipping} />
         {loading && <span className="sr-only">Calculando opciones de envío…</span>}
       </div>}
+      {!deliveryType && !noShipping && <button type="button"
+        onClick={() => { onDeliveryTypeChange("none"); setOpen(false); }}
+        className="mt-3 w-full border border-transparent bg-muted/60 p-3.5 text-left text-sm hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        Continuar sin envío
+      </button>}
     </CollapsibleContent>
   </Collapsible>;
 }

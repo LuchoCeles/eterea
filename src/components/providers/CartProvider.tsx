@@ -2,15 +2,15 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { CartItem, Product } from "@/lib/products";
-import type { ShippingDeliveryType } from "@/lib/shipping";
+import type { CartShippingSelection } from "@/lib/cart-checkout";
 
 type CartContextValue = {
   items: CartItem[];
   addAnimationKey: number;
   shippingPostalCode: string;
   setShippingPostalCode: (postalCode: string) => void;
-  shippingDeliveryType: ShippingDeliveryType | null;
-  setShippingDeliveryType: (deliveryType: ShippingDeliveryType) => void;
+  shippingDeliveryType: CartShippingSelection;
+  setShippingDeliveryType: (deliveryType: CartShippingSelection) => void;
   add: (product: Product, selection?: { size?: string; color?: string }) => void;
   changeQuantity: (lineKey: string, quantity: number) => void;
   remove: (lineKey: string) => void;
@@ -22,7 +22,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [addAnimationKey, setAddAnimationKey] = useState(0);
   const [shippingPostalCode, updateShippingPostalCode] = useState("");
-  const [shippingDeliveryType, setShippingDeliveryType] = useState<ShippingDeliveryType | null>(null);
+  const [shippingDeliveryType, setShippingDeliveryType] = useState<CartShippingSelection>(null);
   const value: CartContextValue = {
     items,
     addAnimationKey,

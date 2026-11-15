@@ -2,6 +2,7 @@ import { formatPrice, type CartItem } from "./products";
 import { shippingDeliveryLabel, type ShippingDeliveryType, type ShippingQuote } from "./shipping";
 
 export type CartPaymentOption = { key: string; label: string };
+export type CartShippingSelection = ShippingDeliveryType | "none" | null;
 
 function paymentKey(label: string): string {
   return label.trim().toLocaleLowerCase("es-AR");
@@ -25,7 +26,7 @@ export function availableCartPayments(items: CartItem[]): CartPaymentOption[] {
 
 export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shipping?: ShippingQuote,
   freeShippingThreshold: number | null = null, shippingConfigured = false,
-  deliveryType: ShippingDeliveryType | null = "D") {
+  deliveryType: CartShippingSelection = "D") {
   const quantity = items.reduce((amount, item) => amount + item.quantity, 0);
   const validShipping = shippingConfigured && shipping && shipping.deliveryType === deliveryType &&
     shipping.quantity === quantity && Date.parse(shipping.expiresAt) > Date.now()
@@ -38,7 +39,7 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shi
   const baseTotal = items.reduce((amount, item) => amount + item.price * item.quantity, 0);
   const productsTotal = lines.reduce((amount, line) => amount + line.total, 0);
   const discount = Math.max(0, baseTotal - productsTotal);
-  const amountUntilFreeShipping = !shippingConfigured || freeShippingThreshold === null ? null
+  const amountUntilFreeShipping = !shippingConfigured || deliveryType === "none" || freeShippingThreshold === null ? null
     : Math.max(0, (Math.round(freeShippingThreshold * 100) - Math.round(productsTotal * 100)) / 100);
   const freeShipping = !!validShipping && amountUntilFreeShipping === 0;
   const shippingPrice = validShipping ? (freeShipping ? 0 : validShipping.price) : null;
@@ -55,9 +56,9 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shi
     ...(validShipping ? [`Prendas: ${formatPrice(productsTotal)}`] : []),
     ...(validShipping
       ? [`${shippingDeliveryLabel(validShipping.deliveryType)}: ${freeShipping ? "Gratis" : formatPrice(validShipping.price)}`]
-      : shippingConfigured ? [deliveryType
-        ? `${shippingDeliveryLabel(deliveryType)}: a cotizar (no incluido en el total)`
-        : "Envío: a elegir (no incluido en el total)"] : []),
+      : shippingConfigured ? [deliveryType === "none" ? "Envío: no solicitado"
+        : deliveryType ? `${shippingDeliveryLabel(deliveryType)}: a cotizar (no incluido en el total)`
+          : "Envío: a elegir (no incluido en el total)"] : []),
     `${validShipping ? "Total a pagar" : "Total de prendas"}: ${formatPrice(total)}`,
   ].join("\n");
 

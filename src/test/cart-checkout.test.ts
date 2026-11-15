@@ -89,6 +89,19 @@ it("no agrega el envío al total hasta elegir una modalidad", () => {
   assert.ok(checkout.message.includes("Envío: a elegir (no incluido en el total)"));
 });
 
+it("permite cancelar un envío cotizado y avisarlo sin sumarlo al pedido", () => {
+  const quote = { postalCode: "1414", quantity: 2, price: 4000,
+    deliveryType: "D" as const, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+  const checkout = cartCheckout([first], undefined, quote, 100_000, true, "none");
+  assert.equal(checkout.shippingPrice, null);
+  assert.equal(checkout.freeShipping, false);
+  assert.equal(checkout.amountUntilFreeShipping, null);
+  assert.equal(checkout.total, checkout.productsTotal);
+  assert.ok(checkout.message.includes("Envío: no solicitado"));
+  assert.ok(checkout.message.includes(`Total de prendas: ${formatPrice(137_800)}`));
+  assert.ok(!checkout.message.includes("Envío Clásico"));
+});
+
 it("omite por completo el envío cuando la configuración está pendiente", () => {
   const checkout = cartCheckout([first], undefined, undefined, 100_000, false);
   assert.ok(!checkout.message.includes("Envío"));
