@@ -25,7 +25,7 @@ export function availableCartPayments(items: CartItem[]): CartPaymentOption[] {
 
 export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shipping?: ShippingQuote,
   freeShippingThreshold: number | null = null, shippingConfigured = false,
-  deliveryType: ShippingDeliveryType = "D") {
+  deliveryType: ShippingDeliveryType | null = "D") {
   const quantity = items.reduce((amount, item) => amount + item.quantity, 0);
   const validShipping = shippingConfigured && shipping && shipping.deliveryType === deliveryType &&
     shipping.quantity === quantity && Date.parse(shipping.expiresAt) > Date.now()
@@ -55,7 +55,9 @@ export function cartCheckout(items: CartItem[], payment?: CartPaymentOption, shi
     ...(validShipping ? [`Prendas: ${formatPrice(productsTotal)}`] : []),
     ...(validShipping
       ? [`${shippingDeliveryLabel(validShipping.deliveryType)}: ${freeShipping ? "Gratis" : formatPrice(validShipping.price)}`]
-      : shippingConfigured ? [`${shippingDeliveryLabel(deliveryType)}: a cotizar (no incluido en el total)`] : []),
+      : shippingConfigured ? [deliveryType
+        ? `${shippingDeliveryLabel(deliveryType)}: a cotizar (no incluido en el total)`
+        : "Envío: a elegir (no incluido en el total)"] : []),
     `${validShipping ? "Total a pagar" : "Total de prendas"}: ${formatPrice(total)}`,
   ].join("\n");
 

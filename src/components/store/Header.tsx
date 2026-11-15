@@ -10,11 +10,11 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription, SheetC
 import { formatPrice, type CartItem } from "@/lib/products";
 import { ProductImage } from "@/components/store/ProductImage";
 import { CartShippingCalculator } from "@/components/store/CartShippingCalculator";
-import { useShippingQuote } from "@/components/store/useShippingQuote";
-import { useFreeShippingThreshold, useShippingConfigured } from "@/components/providers/ShippingPolicyProvider";
+import { useShippingQuotes } from "@/components/store/useShippingQuotes";
+import { useFreeShippingThreshold, useShippingConfigured, useShippingDeliveryTypes } from "@/components/providers/ShippingPolicyProvider";
 import { normalizeWhatsAppNumber } from "@/lib/storefront-rules";
 import { availableCartPayments, cartCheckout } from "@/lib/cart-checkout";
-import { shippingDeliveryLabel, type ShippingDeliveryType } from "@/lib/shipping";
+import { shippingDeliveryLabel, validPostalCode, type ShippingDeliveryType } from "@/lib/shipping";
 import type { HomeSections } from "@/lib/content";
 
 const links: { label: string; href: string; section?: keyof HomeSections }[] = [
@@ -72,7 +72,7 @@ export function Header({
   whatsappNumber,
   shippingPostalCode = "",
   onShippingPostalCodeChange = () => {},
-  shippingDeliveryType = "D",
+  shippingDeliveryType = null,
   onShippingDeliveryTypeChange = () => {},
   onQuantityChange,
   onRemove,
@@ -85,7 +85,7 @@ export function Header({
   whatsappNumber: string;
   shippingPostalCode?: string;
   onShippingPostalCodeChange?: (postalCode: string) => void;
-  shippingDeliveryType?: ShippingDeliveryType;
+  shippingDeliveryType?: ShippingDeliveryType | null;
   onShippingDeliveryTypeChange?: (deliveryType: ShippingDeliveryType) => void;
   onQuantityChange: (lineKey: string, quantity: number) => void;
   onRemove: (lineKey: string) => void;
@@ -101,6 +101,9 @@ export function Header({
   const [shippingInputDirty, setShippingInputDirty] = useState(false);
   const freeShippingThreshold = useFreeShippingThreshold();
   const shippingConfigured = useShippingConfigured();
+  const availableDeliveryTypes = useShippingDeliveryTypes();
+  const activeDeliveryType = shippingDeliveryType && availableDeliveryTypes.includes(shippingDeliveryType)
+    ? shippingDeliveryType : null;
   const previousCartAddCount = useRef(cartAddCount);
   const menuTitleRef = useRef<HTMLHeadingElement>(null);
   const isCartAnimating = useRef(false);
@@ -177,17 +180,17 @@ export function Header({
   }
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
-  const shippingEstimate = useShippingQuote(shippingConfigured ? shippingPostalCode : "", cartCount, shippingDeliveryType);
-  const shippingQuote = shippingConfigured && !shippingInputDirty && shippingEstimate.quote &&
-    shippingEstimate.quote.deliveryType === shippingDeliveryType && shippingEstimate.quote.quantity === cartCount &&
-    Date.parse(shippingEstimate.quote.expiresAt) > Date.now()
-    ? shippingEstimate.quote : undefined;
+  const shippingEstimate = useShippingQuotes(shippingConfigured ? shippingPostalCode : "", cartCount, availableDeliveryTypes);
+  const selectedEstimate = activeDeliveryType ? shippingEstimate.results[activeDeliveryType] : undefined;
+  const shippingQuote = shippingConfigured && !shippingInputDirty && selectedEstimate?.quote &&
+    selectedEstimate.quote.quantity === cartCount && Date.parse(selectedEstimate.quote.expiresAt) > Date.now()
+    ? selectedEstimate.quote : undefined;
   const paymentOptions = availableCartPayments(cartItems);
   const selectedPayment = paymentOptions.find((option) => option.key === selectedPaymentKey) ?? paymentOptions[0];
   const hasPaymentPrices = cartItems.some((item) => item.paymentPrices?.length);
   const noCommonPayment = hasPaymentPrices && paymentOptions.length === 0;
   const checkout = cartCheckout(cartItems, selectedPayment, shippingQuote, freeShippingThreshold,
-    shippingConfigured, shippingDeliveryType);
+    shippingConfigured, activeDeliveryType);
   const freeShippingProgress = freeShippingThreshold
     ? Math.min(100, (checkout.productsTotal / freeShippingThreshold) * 100)
     : 0;
@@ -313,16 +316,19 @@ export function Header({
                   </div>}
                   {paymentOptions.length === 1 && <p className="text-sm">Medio de pago: <span className="font-medium">{selectedPayment.label}</span></p>}
                   {shippingConfigured && <CartShippingCalculator postalCode={shippingPostalCode} onPostalCodeChange={onShippingPostalCodeChange}
-                    deliveryType={shippingDeliveryType} onDeliveryTypeChange={onShippingDeliveryTypeChange}
-                    onEditing={setShippingInputDirty}
-                    loading={shippingEstimate.loading} error={shippingEstimate.error} retry={shippingEstimate.retry} />}
-                  {checkout.amountUntilFreeShipping === 0 && !shippingQuote && <p className="text-xs text-muted-foreground">
-                    Ingresá tu código postal para confirmar la entrega sin cargo.
+                    deliveryType={activeDeliveryType} onDeliveryTypeChange={onShippingDeliveryTypeChange}
+                    editing={shippingInputDirty} onEditing={setShippingInputDirty}
+                    results={shippingEstimate.results} freeShipping={checkout.amountUntilFreeShipping === 0}
+                    loading={shippingEstimate.loading} retry={shippingEstimate.retry} />}
+                  {checkout.amountUntilFreeShipping === 0 && !shippingQuote && !activeDeliveryType && <p className="text-xs text-muted-foreground">
+                    {validPostalCode(shippingPostalCode)
+                      ? "Elegí un envío para confirmar la entrega sin cargo."
+                      : "Ingresá tu código postal para confirmar la entrega sin cargo."}
                   </p>}
                   <div className="space-y-2 border-t pt-3">
                     <p className="flex justify-between text-sm"><span>{shippingConfigured ? "Subtotal (sin envío)" : "Subtotal"}</span><span>{formatPrice(checkout.baseTotal)}</span></p>
                     {checkout.discount > 0 && <p className="flex justify-between text-sm text-accent"><span>Descuento</span><span>−{formatPrice(checkout.discount)}</span></p>}
-                    {shippingConfigured && <p className="flex justify-between text-sm"><span>{shippingDeliveryLabel(shippingDeliveryType)}</span><span className="text-right text-muted-foreground">{checkout.freeShipping ? "Gratis" : checkout.shippingPrice !== null ? formatPrice(checkout.shippingPrice) : shippingEstimate.loading && !shippingInputDirty ? "Calculando…" : "Calculalo para verlo"}</span></p>}
+                    {shippingConfigured && <p className="flex justify-between text-sm"><span>{activeDeliveryType ? shippingDeliveryLabel(activeDeliveryType) : "Envío"}</span><span className="text-right text-muted-foreground">{checkout.freeShipping ? "Gratis" : checkout.shippingPrice !== null ? formatPrice(checkout.shippingPrice) : !activeDeliveryType ? "Elegí una opción" : selectedEstimate?.loading && !shippingInputDirty ? "Calculando…" : "Calculalo para verlo"}</span></p>}
                     <p className="flex justify-between border-t pt-2 font-medium"><span>{checkout.shippingPrice !== null ? "Total" : "Total de prendas"}</span><span>{formatPrice(checkout.total)}</span></p>
                   </div>
                   {noCommonPayment && <p className="text-xs text-accent">No hay un medio de pago disponible para todas las prendas. Revisá el carrito para continuar.</p>}

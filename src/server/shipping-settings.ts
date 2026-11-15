@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/server/prisma";
 import type { AdminShippingSettings, ShippingSettingsInput } from "@/lib/shipping-settings";
-import { decryptShippingPassword, encryptShippingPassword } from "@/server/shipping-crypto";
 import type { CorreoArgentinoConfig } from "@/server/correo-argentino-api";
 
 export class ShippingSettingsError extends Error {
@@ -9,36 +8,39 @@ export class ShippingSettingsError extends Error {
 }
 
 const empty: AdminShippingSettings = {
-  environment: "production", apiUser: "", customerId: "", postalCodeOrigin: "",
+  environment: "production", customerId: "", postalCodeOrigin: "",
   itemWeightGrams: 0, packageWeightGrams: 0, itemHeightCm: 0, packageHeightCm: 0,
-  packageWidthCm: 0, packageLengthCm: 0, passwordConfigured: false, configured: false,
+  packageWidthCm: 0, packageLengthCm: 0, appConfigured: false, configured: false,
+  homeDeliveryEnabled: true, branchDeliveryEnabled: true, shippingSurcharge: 0,
   freeShippingThreshold: null, storageReady: true,
 };
 
 function missingTable(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2021";
+  return typeof error === "object" && error !== null && "code" in error &&
+    (error.code === "P2021" || error.code === "P2022");
 }
 
-function secret() {
-  const value = process.env.AUTH_SECRET;
-  if (!value || Buffer.byteLength(value) < 32)
-    throw new ShippingSettingsError("Configurá AUTH_SECRET para guardar la contraseña de Correo Argentino.", 503);
-  return value;
+function appCredentials() {
+  const user = process.env.CORREO_ARGENTINO_PRODUCTION_APP_USER?.trim();
+  const password = process.env.CORREO_ARGENTINO_PRODUCTION_APP_PASSWORD;
+  return user && password ? { user, password } : null;
 }
 
 export async function getAdminShippingSettings(): Promise<AdminShippingSettings> {
   try {
     const row = await prisma.shippingSettings.findUnique({ where: { id: 1 } });
-    if (!row) return empty;
-    const passwordConfigured = !!decryptShippingPassword(row, secret());
+    if (!row) return { ...empty, appConfigured: !!appCredentials() };
+    const appConfigured = !!appCredentials();
     return {
-      environment: row.environment === "test" ? "test" : "production",
-      apiUser: row.apiUser, customerId: row.customerId, postalCodeOrigin: row.postalCodeOrigin,
+      environment: "production", customerId: row.customerId, postalCodeOrigin: row.postalCodeOrigin,
       itemWeightGrams: row.itemWeightGrams, packageWeightGrams: row.packageWeightGrams,
       itemHeightCm: row.itemHeightCm, packageHeightCm: row.packageHeightCm,
       packageWidthCm: row.packageWidthCm, packageLengthCm: row.packageLengthCm,
+      homeDeliveryEnabled: row.homeDeliveryEnabled, branchDeliveryEnabled: row.branchDeliveryEnabled,
+      shippingSurcharge: row.shippingSurcharge.toNumber(),
       freeShippingThreshold: row.freeShippingThreshold?.toNumber() ?? null,
-      passwordConfigured, configured: passwordConfigured, storageReady: true,
+      appConfigured, configured: appConfigured && !!row.customerId &&
+        (row.homeDeliveryEnabled || row.branchDeliveryEnabled), storageReady: true,
     };
   } catch (error) {
     if (missingTable(error)) return { ...empty, storageReady: false };
@@ -47,29 +49,23 @@ export async function getAdminShippingSettings(): Promise<AdminShippingSettings>
 }
 
 export async function saveAdminShippingSettings(input: ShippingSettingsInput): Promise<AdminShippingSettings> {
-  let existing;
-  try {
-    existing = await prisma.shippingSettings.findUnique({ where: { id: 1 } });
-  } catch (error) {
-    if (missingTable(error)) throw new ShippingSettingsError("La configuración de envíos necesita la migración pendiente.", 503);
-    throw error;
-  }
-  if (!input.password && (!existing || input.environment !== existing.environment || input.apiUser !== existing.apiUser))
-    throw new ShippingSettingsError("Ingresá la contraseña de la API para este usuario y ambiente.");
-  if (!input.password && existing && !decryptShippingPassword(existing, secret()))
-    throw new ShippingSettingsError("Volvé a ingresar la contraseña de la API de MiCorreo.");
-  const passwordColumns = input.password ? encryptShippingPassword(input.password, secret()) : {
-    encryptedPassword: existing!.encryptedPassword, passwordIv: existing!.passwordIv, passwordTag: existing!.passwordTag,
-  };
   const data = {
-    environment: input.environment, apiUser: input.apiUser, customerId: input.customerId,
+    environment: "production", customerId: input.customerId,
     postalCodeOrigin: input.postalCodeOrigin, itemWeightGrams: input.itemWeightGrams,
     packageWeightGrams: input.packageWeightGrams, itemHeightCm: input.itemHeightCm,
     packageHeightCm: input.packageHeightCm, packageWidthCm: input.packageWidthCm,
     packageLengthCm: input.packageLengthCm, freeShippingThreshold: input.freeShippingThreshold,
-    ...passwordColumns,
+    homeDeliveryEnabled: input.homeDeliveryEnabled, branchDeliveryEnabled: input.branchDeliveryEnabled,
+    shippingSurcharge: input.shippingSurcharge,
+    // Columnas heredadas: se vacían al guardar y ya no se usan para autenticar.
+    apiUser: "", encryptedPassword: "", passwordIv: "", passwordTag: "",
   };
-  await prisma.shippingSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
+  try {
+    await prisma.shippingSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
+  } catch (error) {
+    if (missingTable(error)) throw new ShippingSettingsError("La configuración de envíos necesita la migración pendiente.", 503);
+    throw error;
+  }
   return getAdminShippingSettings();
 }
 
@@ -82,34 +78,39 @@ export async function loadShippingQuoteSettings(): Promise<CorreoArgentinoConfig
     throw error;
   }
   if (!row) return null;
-  const password = decryptShippingPassword(row, secret());
-  if (!password) throw new ShippingSettingsError("No se pudo leer la contraseña de Correo Argentino. Guardala de nuevo desde Envíos.", 503);
+  const credentials = appCredentials();
+  if (!credentials) throw new ShippingSettingsError("Falta configurar la credencial de aplicación de MiCorreo en el servidor.", 503);
   return {
-    base: row.environment === "test"
-      ? "https://apitest.correoargentino.com.ar/micorreo/v1"
-      : "https://api.correoargentino.com.ar/micorreo/v1",
-    user: row.apiUser, password, customerId: row.customerId, origin: row.postalCodeOrigin,
+    base: "https://api.correoargentino.com.ar/micorreo/v1",
+    ...credentials, customerId: row.customerId, origin: row.postalCodeOrigin,
     itemWeight: row.itemWeightGrams, packageWeight: row.packageWeightGrams,
     itemHeight: row.itemHeightCm, packageHeight: row.packageHeightCm,
     width: row.packageWidthCm, length: row.packageLengthCm, revision: row.updatedAt.getTime(),
+    homeDeliveryEnabled: row.homeDeliveryEnabled, branchDeliveryEnabled: row.branchDeliveryEnabled,
+    surcharge: row.shippingSurcharge.toNumber(),
   };
 }
 
-export async function loadStorefrontShippingPolicy(): Promise<{ configured: boolean; freeShippingThreshold: number | null }> {
+export async function loadStorefrontShippingPolicy(): Promise<{
+  configured: boolean; freeShippingThreshold: number | null;
+  homeDeliveryEnabled: boolean; branchDeliveryEnabled: boolean;
+}> {
   try {
     const row = await prisma.shippingSettings.findUnique({
-      where: { id: 1 },
-      select: { encryptedPassword: true, passwordIv: true, passwordTag: true, freeShippingThreshold: true },
+      where: { id: 1 }, select: { customerId: true, freeShippingThreshold: true,
+        homeDeliveryEnabled: true, branchDeliveryEnabled: true },
     });
-    const authSecret = process.env.AUTH_SECRET;
-    const configured = !!row && !!authSecret && Buffer.byteLength(authSecret) >= 32 &&
-      !!decryptShippingPassword(row, authSecret);
+    const configured = !!row?.customerId && !!appCredentials() &&
+      (row.homeDeliveryEnabled || row.branchDeliveryEnabled);
     return {
       configured,
+      homeDeliveryEnabled: row?.homeDeliveryEnabled ?? true,
+      branchDeliveryEnabled: row?.branchDeliveryEnabled ?? true,
       freeShippingThreshold: configured ? row.freeShippingThreshold?.toNumber() ?? null : null,
     };
   } catch (error) {
-    if (missingTable(error)) return { configured: false, freeShippingThreshold: null };
+    if (missingTable(error)) return { configured: false, freeShippingThreshold: null,
+      homeDeliveryEnabled: true, branchDeliveryEnabled: true };
     throw error;
   }
 }

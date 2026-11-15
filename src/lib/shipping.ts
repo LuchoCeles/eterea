@@ -12,6 +12,11 @@ export function shippingDeliveryLabel(deliveryType: ShippingDeliveryType): strin
   return deliveryType === "S" ? "Retiro por sucursal" : "Envío Clásico";
 }
 
+export function resolveShippingDeliveryType(value: ShippingDeliveryType,
+  available: ShippingDeliveryType[]): ShippingDeliveryType {
+  return available.includes(value) ? value : available[0] ?? "D";
+}
+
 export function validPostalCode(value: string): boolean {
   return /^\d{4}$/.test(value);
 }

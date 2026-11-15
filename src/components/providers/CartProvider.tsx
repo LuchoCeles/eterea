@@ -9,7 +9,7 @@ type CartContextValue = {
   addAnimationKey: number;
   shippingPostalCode: string;
   setShippingPostalCode: (postalCode: string) => void;
-  shippingDeliveryType: ShippingDeliveryType;
+  shippingDeliveryType: ShippingDeliveryType | null;
   setShippingDeliveryType: (deliveryType: ShippingDeliveryType) => void;
   add: (product: Product, selection?: { size?: string; color?: string }) => void;
   changeQuantity: (lineKey: string, quantity: number) => void;
@@ -21,13 +21,17 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [addAnimationKey, setAddAnimationKey] = useState(0);
-  const [shippingPostalCode, setShippingPostalCode] = useState("");
-  const [shippingDeliveryType, setShippingDeliveryType] = useState<ShippingDeliveryType>("D");
+  const [shippingPostalCode, updateShippingPostalCode] = useState("");
+  const [shippingDeliveryType, setShippingDeliveryType] = useState<ShippingDeliveryType | null>(null);
   const value: CartContextValue = {
     items,
     addAnimationKey,
     shippingPostalCode,
-    setShippingPostalCode,
+    setShippingPostalCode: (postalCode) => {
+      if (postalCode === shippingPostalCode) return;
+      updateShippingPostalCode(postalCode);
+      setShippingDeliveryType(null);
+    },
     shippingDeliveryType,
     setShippingDeliveryType,
     add: (product, selection) => {

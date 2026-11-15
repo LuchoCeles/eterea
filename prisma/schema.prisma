@@ -65,6 +65,9 @@ model ShippingSettings {
   packageHeightCm    Int
   packageWidthCm     Int
   packageLengthCm    Int
+  homeDeliveryEnabled Boolean @default(true)
+  branchDeliveryEnabled Boolean @default(true)
+  shippingSurcharge  Decimal  @default(0) @db.Decimal(14, 2)
   freeShippingThreshold Decimal? @db.Decimal(14, 2)
   updatedAt          DateTime @updatedAt @db.DateTime(3)
 }

@@ -11,11 +11,14 @@ type NumericKey = "itemWeightGrams" | "packageWeightGrams" | "itemHeightCm" | "p
 
 function formFromSettings(settings: AdminShippingSettings): ShippingSettingsInput {
   return {
-    environment: settings.environment, apiUser: settings.apiUser, password: "", customerId: settings.customerId,
+    environment: "production", customerId: settings.customerId,
     postalCodeOrigin: settings.postalCodeOrigin, itemWeightGrams: settings.itemWeightGrams,
     packageWeightGrams: settings.packageWeightGrams, itemHeightCm: settings.itemHeightCm,
     packageHeightCm: settings.packageHeightCm, packageWidthCm: settings.packageWidthCm,
     packageLengthCm: settings.packageLengthCm,
+    homeDeliveryEnabled: settings.homeDeliveryEnabled,
+    branchDeliveryEnabled: settings.branchDeliveryEnabled,
+    shippingSurcharge: settings.shippingSurcharge,
     freeShippingThreshold: settings.freeShippingThreshold,
   };
 }
@@ -33,8 +36,8 @@ export function AdminShippingSettingsEditor({ initial }: { initial: AdminShippin
   const [saved, setSaved] = useState(initial);
   const [draft, setDraft] = useState<ShippingSettingsInput>(formFromSettings(initial));
   const [saving, setSaving] = useState(false);
-  const changed = !saved.configured || Object.entries(draft).some(([key, value]) =>
-    key === "password" ? value !== "" : value !== saved[key as keyof AdminShippingSettings]);
+  const changed = !saved.customerId || Object.entries(draft).some(([key, value]) =>
+    value !== saved[key as keyof AdminShippingSettings]);
 
   function setNumber(key: NumericKey, value: number) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -71,28 +74,18 @@ export function AdminShippingSettingsEditor({ initial }: { initial: AdminShippin
     {!saved.storageReady && <p role="alert" className="mb-5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
       La página está lista, pero falta aplicar la migración de la base de datos para guardar estos datos.
     </p>}
+    {!saved.appConfigured && <p role="alert" className="mb-5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+      Falta configurar la credencial de aplicación de MiCorreo para producción en el servidor. Podés guardar el ID, pero el cotizador se activará cuando se complete esa configuración.
+    </p>}
 
     <form onSubmit={save} className="space-y-5">
       <fieldset disabled={saving} className="min-w-0 space-y-5 border-0 p-0">
       <section className="admin-card-surface rounded-[22px] border border-border p-5 sm:p-6">
         <div className="flex items-center gap-2"><Truck className="h-5 w-5 text-accent" /><h2 className="font-display text-2xl">Cuenta MiCorreo</h2></div>
-        <p className="mt-2 text-sm text-muted-foreground">Solicitá las credenciales de API y el ID de cliente a Correo Argentino. La contraseña se guarda cifrada y no vuelve a mostrarse. <a href="https://www.correoargentino.com.ar/MiCorreo/public/paq-ar" target="_blank" rel="noreferrer" className="underline underline-offset-2">Ver cómo pedir la integración</a>.</p>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium">Ambiente
-            <select value={draft.environment} onChange={(event) => setDraft((current) => ({ ...current, environment: event.target.value as "production" | "test" }))} className={inputClass}>
-              <option value="production">Producción</option><option value="test">Pruebas</option>
-            </select>
-          </label>
+        <p className="mt-2 text-sm text-muted-foreground">Ingresá el ID de cliente de tu cuenta MiCorreo. No hace falta cargar el usuario ni la contraseña de tu cuenta. <a href="https://www.correoargentino.com.ar/MiCorreo/public/paq-ar" target="_blank" rel="noreferrer" className="underline underline-offset-2">Ver MiCorreo</a>.</p>
+        <div className="mt-5 max-w-xs">
           <label className="block text-sm font-medium">ID de cliente
             <input required inputMode="numeric" value={draft.customerId} onChange={(event) => setDraft((current) => ({ ...current, customerId: event.target.value.replace(/\D/g, "") }))} className={inputClass} placeholder="Número de cliente" />
-          </label>
-          <label className="block text-sm font-medium">Usuario de API
-            <input required autoComplete="username" value={draft.apiUser} onChange={(event) => setDraft((current) => ({ ...current, apiUser: event.target.value }))} className={inputClass} placeholder="Usuario provisto por Correo Argentino" />
-          </label>
-          <label className="block text-sm font-medium">Contraseña de API
-            <input type="password" required={!saved.passwordConfigured || draft.environment !== saved.environment || draft.apiUser !== saved.apiUser} autoComplete="new-password" value={draft.password}
-              onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))}
-              className={inputClass} placeholder={saved.passwordConfigured && draft.environment === saved.environment && draft.apiUser === saved.apiUser ? "Guardada; dejá vacío para conservarla" : "Ingresá la contraseña"} />
           </label>
         </div>
       </section>
@@ -118,6 +111,28 @@ export function AdminShippingSettingsEditor({ initial }: { initial: AdminShippin
           <NumericField label="Ancho del paquete" unit="cm" name="packageWidthCm" value={draft.packageWidthCm} onChange={setNumber} />
           <NumericField label="Largo del paquete" unit="cm" name="packageLengthCm" value={draft.packageLengthCm} onChange={setNumber} />
         </div>
+      </section>
+      <section className="admin-card-surface rounded-[22px] border border-border p-5 sm:p-6">
+        <h2 className="font-display text-2xl">Opciones y precio del envío</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Elegí qué entregas ofrecés. El importe adicional se suma a la tarifa que devuelve Correo Argentino para cualquiera de las opciones.</p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+            <input type="checkbox" checked={draft.homeDeliveryEnabled} disabled={!draft.branchDeliveryEnabled}
+              onChange={(event) => setDraft((current) => ({ ...current, homeDeliveryEnabled: event.target.checked }))} />
+            Envíos a domicilio
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+            <input type="checkbox" checked={draft.branchDeliveryEnabled} disabled={!draft.homeDeliveryEnabled}
+              onChange={(event) => setDraft((current) => ({ ...current, branchDeliveryEnabled: event.target.checked }))} />
+            Envíos a sucursal
+          </label>
+        </div>
+        <label className="mt-5 block max-w-xs text-sm font-medium">Importe adicional por envío ($)
+          <input type="number" min={0} step={0.01} required value={draft.shippingSurcharge}
+            onChange={(event) => setDraft((current) => ({ ...current, shippingSurcharge: Number(event.target.value) }))}
+            className={inputClass} placeholder="Ej.: 2000" />
+        </label>
+        <p className="mt-2 text-xs text-muted-foreground">Ejemplo: si Correo cotiza $6.500 y agregás $2.000, el comprador verá $8.500. El envío gratis sigue siendo gratis cuando corresponde.</p>
       </section>
       <section className="admin-card-surface rounded-[22px] border border-border p-5 sm:p-6">
         <h2 className="font-display text-2xl">Envío gratis</h2>
