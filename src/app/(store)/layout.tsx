@@ -19,7 +19,9 @@ export default async function StoreLayout({ children }: { children: ReactNode })
   const activeThreshold = storefrontContent.texts.offers.enabled ? shippingPolicy.freeShippingThreshold : null;
 
   return (
-    <ShippingPolicyProvider configured={shippingPolicy.configured} threshold={activeThreshold}>
+    <ShippingPolicyProvider configured={shippingPolicy.configured} threshold={activeThreshold}
+      homeDeliveryEnabled={shippingPolicy.homeDeliveryEnabled}
+      branchDeliveryEnabled={shippingPolicy.branchDeliveryEnabled}>
       <ContentProvider initialContent={storefrontContent}>
         <StorefrontTabTitle />
         <div className="flex min-h-svh flex-col">
