@@ -1,13 +1,17 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import type { ShippingDeliveryType } from "@/lib/shipping";
 
-const ShippingPolicyContext = createContext({ configured: false, threshold: null as number | null });
+const ShippingPolicyContext = createContext({ configured: false, threshold: null as number | null,
+  homeDeliveryEnabled: true, branchDeliveryEnabled: true });
 
-export function ShippingPolicyProvider({ configured, threshold, children }: {
-  configured: boolean; threshold: number | null; children: ReactNode;
+export function ShippingPolicyProvider({ configured, threshold, homeDeliveryEnabled, branchDeliveryEnabled, children }: {
+  configured: boolean; threshold: number | null; homeDeliveryEnabled: boolean;
+  branchDeliveryEnabled: boolean; children: ReactNode;
 }) {
-  return <ShippingPolicyContext.Provider value={{ configured, threshold }}>{children}</ShippingPolicyContext.Provider>;
+  return <ShippingPolicyContext.Provider value={{ configured, threshold, homeDeliveryEnabled,
+    branchDeliveryEnabled }}>{children}</ShippingPolicyContext.Provider>;
 }
 
 export function useFreeShippingThreshold() {
@@ -16,4 +20,10 @@ export function useFreeShippingThreshold() {
 
 export function useShippingConfigured() {
   return useContext(ShippingPolicyContext).configured;
+}
+
+export function useShippingDeliveryTypes(): ShippingDeliveryType[] {
+  const { homeDeliveryEnabled, branchDeliveryEnabled } = useContext(ShippingPolicyContext);
+  return [homeDeliveryEnabled ? "D" : null, branchDeliveryEnabled ? "S" : null]
+    .filter((value): value is ShippingDeliveryType => value !== null);
 }
